@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Eskiz1.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+79091b3770a87f8108b393f13191301983702f53")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+11f7bf30e47f77d3b67e5709718bd33e696458d2")]
 [assembly: System.Reflection.AssemblyProductAttribute("Eskiz1.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Eskiz1.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
