@@ -1,0 +1,12 @@
+Bugün ilk temelleri attım, klasör yapılarını ve genel proje mimarisini oluşturdum. Sistem modüllerinin birbirine girmemesini sağlamak için ayırdım. 
+Yazdığım kodlar kaybolmasın diye Git kısmını ayarladım.
+.NET SDK kurdum. Bilgisayarda C# çalıştıracak bir compiler yoktu.
+Backend kısmının ilk iskeletini kurdum.
+Bazı VSCode eklentileri kurdum ileride faydasını göreceğim.
+
+Bazı angarya işleri terminalden yapmayı öğrenmem gerek hem daha hızlı hem de hata ihtimali çok daha düşük.
+Git kullanımını alışkanlık haline getirerek hızlıca çözmem lazım.
+.NET SDK ve EF Core 'u biraz öğrenmem lazım.
+API kavramında bilgilerimi geliştirmek zorundayım.
+
+20 Nisan saat 22.30-23 civarı başladım gece yarısını biraz geçirince masadan kalkıyorum. Bugünlük bu kadar yeter.
