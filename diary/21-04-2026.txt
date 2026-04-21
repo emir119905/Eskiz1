@@ -1,0 +1,4 @@
+Bugün sardı biraz aslında. İlk kez API yazdım çalıştığını falan swagger üzerinden gözle görmüş oldum. Biraz daha anladığımı düşünüyorum kavramı.
+C# üzerinden database i hallettim hiç SQL yazmaya gerek kalmadı pratik bir yol hoşuma gitti. 
+En önemlisi terminal kullanma alışkanlığı edindim zırt pırt git push yapıyorum eklediğim en ufak değişikliği bu yazı bitince bunu da pushlarım mesela.
+Bugün şimdilik yeter belki uyumadan önce 2. bir tur daha atarım.
