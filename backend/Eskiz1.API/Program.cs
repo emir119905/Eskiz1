@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Eskiz1.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+// Yahoo API için HTTP İstemcisini ve kendi yazdığımız servisi sisteme kaydediyoruz
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<Eskiz1.API.Services.YahooFinanceService>();
 
 // 1. Garsonları (Controllers) sisteme dahil ediyoruz
 builder.Services.AddControllers();
