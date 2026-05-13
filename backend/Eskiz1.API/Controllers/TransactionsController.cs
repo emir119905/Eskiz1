@@ -16,7 +16,6 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // GET: api/transactions -> Tüm al/sat işlemlerini listeler
         [HttpGet]
         public async Task<IActionResult> GetTransactions()
         {
@@ -24,13 +23,44 @@ namespace Eskiz1.API.Controllers
             return Ok(transactions);
         }
 
-        // POST: api/transactions -> Yeni bir alım veya satım işlemi ekler
+        // GÜNCELLENEN KISIM: Bakiye Kontrollü Al-Sat İşlemi
         [HttpPost]
         public async Task<IActionResult> AddTransaction(Transaction transaction)
         {
+            // 1. Kullanıcıyı bul
+            var user = await _context.Users.FindAsync(transaction.UserID);
+            if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+            // 2. İşlem tutarını hesapla (Miktar * Fiyat)
+            decimal totalAmount = transaction.Quantity * transaction.PriceAtTransaction;
+
+            // 3. Alım (BUY) işlemiyse parayı düş, Satım (SELL) işlemiyse parayı ekle
+            if (transaction.TransactionType.ToUpper() == "BUY")
+            {
+                if (user.Balance < totalAmount)
+                    return BadRequest($"Yetersiz bakiye brom! Cüzdanında {user.Balance} TL var, sen {totalAmount} TL'lik işlem deniyorsun.");
+                
+                user.Balance -= totalAmount;
+            }
+            else if (transaction.TransactionType.ToUpper() == "SELL")
+            {
+                // (İleride burada "Adamın elinde o kadar hisse var mı?" kontrolü de ekleriz)
+                user.Balance += totalAmount;
+            }
+            else
+            {
+                return BadRequest("Geçersiz işlem tipi. Lütfen BUY veya SELL gönder.");
+            }
+
+            // 4. İşlemi kaydet ve değişiklikleri veritabanına işle
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
-            return Ok(transaction);
+
+            return Ok(new { 
+                Mesaj = "İşlem başarıyla gerçekleşti!", 
+                KalanBakiye = user.Balance, 
+                IslemDetayi = transaction 
+            });
         }
     }
 }
