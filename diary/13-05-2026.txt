@@ -1,0 +1,3 @@
+keyifliydi büyük işler yaptım
+venv dosyasını ignoreluyoruz öldürseler unutmam artık
+proje iyi bir yere evrilecek gibi gözüküyor
