@@ -16,6 +16,7 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
+        // GET: api/transactions -> Tüm geçmiş işlemleri listeler
         [HttpGet]
         public async Task<IActionResult> GetTransactions()
         {
@@ -23,43 +24,60 @@ namespace Eskiz1.API.Controllers
             return Ok(transactions);
         }
 
-        // GÜNCELLENEN KISIM: Bakiye Kontrollü Al-Sat İşlemi
+        // POST: api/transactions -> Piyasa fiyatından bakiye kontrollü işlem yapar
         [HttpPost]
         public async Task<IActionResult> AddTransaction(Transaction transaction)
         {
-            // 1. Kullanıcıyı bul
+            // 1. Kullanıcıyı ve cüzdanını kontrol et
             var user = await _context.Users.FindAsync(transaction.UserID);
             if (user == null) return NotFound("Kullanıcı bulunamadı.");
 
-            // 2. İşlem tutarını hesapla (Miktar * Fiyat)
+            // 2. Veritabanındaki (Yahoo'dan çekilen) EN GÜNCEL fiyatı bul
+            var latestPriceData = await _context.HistoricalData
+                .Where(h => h.StockID == transaction.StockID)
+                .OrderByDescending(h => h.Date)
+                .FirstOrDefaultAsync();
+
+            if (latestPriceData == null)
+            {
+                return BadRequest("Bu hisse için fiyat verisi bulunamadı. Önce Yahoo Finance üzerinden verileri eşitlemelisiniz (Sync).");
+            }
+
+            // 3. Kullanıcının elle girdiği fiyatı, gerçek piyasa fiyatıyla eziyoruz
+            transaction.PriceAtTransaction = latestPriceData.ClosePrice;
+
+            // 4. İşlem tutarını (Miktar * Gerçek Kapanış Fiyatı) hesapla
             decimal totalAmount = transaction.Quantity * transaction.PriceAtTransaction;
 
-            // 3. Alım (BUY) işlemiyse parayı düş, Satım (SELL) işlemiyse parayı ekle
+            // 5. Alım-Satım tipine göre cüzdanı güncelle
             if (transaction.TransactionType.ToUpper() == "BUY")
             {
                 if (user.Balance < totalAmount)
-                    return BadRequest($"Yetersiz bakiye brom! Cüzdanında {user.Balance} TL var, sen {totalAmount} TL'lik işlem deniyorsun.");
+                {
+                    return BadRequest($"Yetersiz bakiye! İşlem Tutarı: {totalAmount} TL, Cüzdan: {user.Balance} TL. Gerçek piyasa fiyatı: {transaction.PriceAtTransaction} TL.");
+                }
                 
                 user.Balance -= totalAmount;
             }
             else if (transaction.TransactionType.ToUpper() == "SELL")
             {
-                // (İleride burada "Adamın elinde o kadar hisse var mı?" kontrolü de ekleriz)
+                // Satışta parayı cüzdana ekliyoruz
                 user.Balance += totalAmount;
             }
             else
             {
-                return BadRequest("Geçersiz işlem tipi. Lütfen BUY veya SELL gönder.");
+                return BadRequest("Geçersiz işlem tipi. Sadece 'BUY' veya 'SELL' kullanabilirsin.");
             }
 
-            // 4. İşlemi kaydet ve değişiklikleri veritabanına işle
+            // 6. İşlemi kaydet ve cüzdan güncellemesini yansıt
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
 
             return Ok(new { 
-                Mesaj = "İşlem başarıyla gerçekleşti!", 
-                KalanBakiye = user.Balance, 
-                IslemDetayi = transaction 
+                Mesaj = "İşlem gerçek piyasa fiyatı üzerinden başarıyla gerçekleşti!", 
+                GerceklesenFiyat = transaction.PriceAtTransaction,
+                ToplamTutar = totalAmount,
+                YeniBakiye = user.Balance 
             });
         }
     }

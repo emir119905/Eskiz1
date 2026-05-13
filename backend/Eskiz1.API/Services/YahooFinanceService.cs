@@ -20,14 +20,13 @@ namespace Eskiz1.API.Services
         {
             try
             {
-                string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1mo";
+                // Senin ayarladığın gibi 1 yıllık veri çekiyoruz (range=1y)
+                string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1y";
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
                 var response = await _httpClient.GetAsync(url);
-                
-                // Eğer HTTP hatası varsa (404, 403 vb.) direkt hatayı döndür
                 if (!response.IsSuccessStatusCode)
                     return $"HTTP Hatası: {response.StatusCode} - {response.ReasonPhrase} (Sembol: {symbol})";
 
@@ -43,13 +42,23 @@ namespace Eskiz1.API.Services
                 var closePrices = quote.GetProperty("close").EnumerateArray().ToList();
                 var volumes = quote.GetProperty("volume").EnumerateArray().ToList();
 
+                // 1. ADIM: Veritabanında bu hisseye ait DAHA ÖNCE KAYDEDİLMİŞ tarihleri getir
+                var existingDates = await _context.HistoricalData
+                    .Where(h => h.StockID == stockId)
+                    .Select(h => h.Date.Date)
+                    .ToListAsync();
+
                 var historicalDataList = new List<HistoricalData>();
+                int addedCount = 0; // Kaç yeni satır eklendiğini sayalım
 
                 for (int i = 0; i < timestamps.Count; i++)
                 {
                     if (closePrices[i].ValueKind == JsonValueKind.Null) continue;
 
-                    var date = DateTimeOffset.FromUnixTimeSeconds(timestamps[i].GetInt64()).DateTime;
+                    var date = DateTimeOffset.FromUnixTimeSeconds(timestamps[i].GetInt64()).DateTime.Date;
+
+                    // 2. ADIM: EĞER BU TARİH VERİTABANINDA VARSA, PAS GEÇ! (İşte sihirli filtre burası)
+                    if (existingDates.Contains(date)) continue;
 
                     historicalDataList.Add(new HistoricalData
                     {
@@ -59,16 +68,22 @@ namespace Eskiz1.API.Services
                         ClosePrice = closePrices[i].GetDecimal(),
                         Volume = volumes[i].GetInt64()
                     });
+                    
+                    addedCount++;
                 }
 
-                await _context.HistoricalData.AddRangeAsync(historicalDataList);
-                await _context.SaveChangesAsync();
+                // Sadece YENİ veriler listeye girdiyse veritabanına yaz
+                if (historicalDataList.Any())
+                {
+                    await _context.HistoricalData.AddRangeAsync(historicalDataList);
+                    await _context.SaveChangesAsync();
+                    return $"OK_{addedCount}"; // OK_250 gibi bir yanıt dönecek
+                }
 
-                return "OK";
+                return "OK_0"; // Eklenecek yeni veri yoksa
             }
             catch (Exception ex)
             {
-                // JSON parçalama veya C# tarafındaki asıl hatayı fırlat
                 return $"Kod Patladı: {ex.Message}";
             }
         }

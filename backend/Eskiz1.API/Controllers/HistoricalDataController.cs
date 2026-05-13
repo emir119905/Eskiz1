@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Eskiz1.API.Services;
 using Eskiz1.API.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace Eskiz1.API.Controllers
 {
@@ -24,13 +23,20 @@ namespace Eskiz1.API.Controllers
             var stock = await _context.Stocks.FindAsync(stockId);
             if (stock == null) return NotFound("Hisse bulunamadı!");
 
-            // Artık true/false yerine string mesaj dönüyor
             var resultMessage = await _yahooService.FetchAndSaveHistoricalDataAsync(stock.Symbol, stock.StockID);
             
-            if (resultMessage == "OK")
-                return Ok($"{stock.Symbol} için son 1 aylık veriler başarıyla çekildi.");
+            if (resultMessage.StartsWith("OK_"))
+            {
+                int count = int.Parse(resultMessage.Split('_')[1]);
+                if (count > 0)
+                    return Ok($"{stock.Symbol} için {count} adet YENİ günlük veri başarıyla veritabanına eklendi.");
+                else
+                    return Ok($"{stock.Symbol} için veritabanı zaten güncel. Yeni veri eklenmedi.");
+            }
             else
+            {
                 return BadRequest($"HATA DETAYI: {resultMessage}");
+            }
         }
     }
 }
