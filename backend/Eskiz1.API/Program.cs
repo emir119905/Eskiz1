@@ -16,9 +16,9 @@ builder.Services.AddSwaggerGen();
 // 3. Veritabanı motorumuzu SQL Server'a bağlıyoruz
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
-
 // 4. Uygulama çalışırken Swagger vitrinini herkese açıyoruz
 app.UseSwagger();
 app.UseSwaggerUI();
