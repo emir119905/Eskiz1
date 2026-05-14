@@ -9,12 +9,12 @@ from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 import uvicorn
 
-app = FastAPI(title="Eskiz-1 AI Prediction Service")
+app = FastAPI(title="Eskiz-1 Multivariate AI Service")
 
-# Modellerin ve Scaler'ların ortalıkta dağınık durmaması için bir klasör açıyoruz
+# Modellerin saklanacağı klasör
 os.makedirs("ai_models", exist_ok=True)
 
-# 1. DATABASE BAĞLANTISI
+# 1. DATABASE BAĞLANTISI (Artık OpenPrice ve Volume de çekiyoruz!)
 def get_db_data(stock_id: int):
     try:
         conn_str = (
@@ -24,7 +24,8 @@ def get_db_data(stock_id: int):
             r'Trusted_Connection=yes;'
             r'TrustServerCertificate=yes;' 
         )
-        query = f"SELECT Date, ClosePrice FROM HistoricalData WHERE StockID = {stock_id} ORDER BY Date ASC"
+        # SADECE CLOSE DEĞİL, 3 BÜYÜK PARAMETREYİ ÇEKİYORUZ
+        query = f"SELECT Date, ClosePrice, OpenPrice, Volume FROM HistoricalData WHERE StockID = {stock_id} ORDER BY Date ASC"
         
         conn = pyodbc.connect(conn_str)
         df = pd.read_sql(query, conn)
@@ -33,9 +34,13 @@ def get_db_data(stock_id: int):
     except Exception as e:
         raise Exception(f"Veritabanı Bağlantı Hatası: {str(e)}")
 
-# 2. FABRİKA: MODELİ EĞİT VE KAYDET (Sadece ilk kez sorulan hisseler için)
+# 2. FABRİKA: ÇOK DEĞİŞKENLİ MODELİ EĞİT
 def train_and_save_model(df, stock_id):
-    data = df['ClosePrice'].values.reshape(-1, 1)
+    # 3 özelliği de alıyoruz
+    features = ['ClosePrice', 'OpenPrice', 'Volume']
+    data = df[features].values
+    
+    # MinMaxScaler her bir kolonu kendi içinde 0 ile 1 arasına sıkıştırır
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(data)
     
@@ -43,24 +48,23 @@ def train_and_save_model(df, stock_id):
     x_train, y_train = [], []
     
     for x in range(prediction_days, len(scaled_data)):
-        x_train.append(scaled_data[x-prediction_days:x, 0])
-        y_train.append(scaled_data[x, 0])
+        x_train.append(scaled_data[x-prediction_days:x]) # 60 günlük 3'lü paketler
+        y_train.append(scaled_data[x]) # Model aynı anda 3 şeyi de tahmin edecek!
         
     x_train, y_train = np.array(x_train), np.array(y_train)
-    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     
-    # LSTM Mimarisi
+    # LSTM Mimarisi (Artık input shape 3 boyutlu!)
     model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], 1)))
+    model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], x_train.shape[2])))
     model.add(Dropout(0.2))
     model.add(LSTM(units=50, return_sequences=False))
     model.add(Dropout(0.2))
     model.add(Dense(units=25))
-    model.add(Dense(units=1))
+    model.add(Dense(units=3)) # ÇIKIŞ KATMANI: Close, Open, Volume için 3 nöron!
     
     model.compile(optimizer='adam', loss='mean_squared_error')
     
-    # 50 EPOCH! Artık model adam akıllı öğreniyor.
+    # 50 Epoch ile derin öğrenme
     model.fit(x_train, y_train, epochs=50, batch_size=32, verbose=0)
     
     # BEYNİ VE ÖLÇEĞİ DİSKE KAYDET
@@ -69,7 +73,7 @@ def train_and_save_model(df, stock_id):
     
     return model, scaler, scaled_data
 
-# 3. ZEKİ TAHMİN ENDPOINT'İ (30 Günlük Multi-Step)
+# 3. ZEKİ TAHMİN ENDPOINT'İ
 @app.get("/predict/{stock_id}")
 def predict(stock_id: int):
     try:
@@ -83,37 +87,48 @@ def predict(stock_id: int):
         if os.path.exists(model_path) and os.path.exists(scaler_path):
             model = load_model(model_path)
             scaler = joblib.load(scaler_path)
-            data = df['ClosePrice'].values.reshape(-1, 1)
+            
+            features = ['ClosePrice', 'OpenPrice', 'Volume']
+            data = df[features].values
             scaled_data = scaler.transform(data)
-            message = "Hafızadaki model ile 30 günlük trend hesaplandı."
+            
+            message = "Hafızadaki Gelişmiş Multivariate Model kullanıldı."
         else:
             model, scaler, scaled_data = train_and_save_model(df, stock_id)
-            message = "Yeni hisse eğitildi ve 30 günlük trend hesaplandı."
+            message = "Yeni hisse çok değişkenli (Multivariate) olarak eğitildi!"
         
-        # --- MULTI-STEP FORECASTING (30 GÜNLÜK ZİNCİR) ---
+        # --- MULTI-STEP FORECASTING ---
         future_predictions = []
         
-        # Tahmine başlayacağımız ilk 60 günlük pencereyi alıyoruz
-        current_batch = scaled_data[-60:].reshape(1, 60, 1)
+        # Tahmine başlayacağımız ilk 60 günlük pencereyi (3 boyutlu) alıyoruz
+        current_batch = scaled_data[-60:].reshape(1, 60, 3)
         
-        for i in range(30): # 30 gün boyunca bu döngü dönecek
-            # 1. Sıradaki günü tahmin et
-            next_prediction = model.predict(current_batch, verbose=0)
+        for i in range(30):
+            # 1. Sıradaki günü (Close, Open, Volume) tahmin et
+            next_prediction = model.predict(current_batch, verbose=0) # Çıktı: (1, 3)
             
-            # 2. Tahmini TL/Dolar cinsine çevirip listeye ekle
-            real_price = scaler.inverse_transform(next_prediction)
-            future_predictions.append(float(real_price[0][0]))
+            # 2. Tahmini gerçek sayılara (TL ve Adet) çevir
+            real_values = scaler.inverse_transform(next_prediction)
             
-            # 3. Pencereyi kaydır: En eski günü at, yeni tahmini pencerenin sonuna ekle
-            next_prediction_reshaped = next_prediction.reshape(1, 1, 1)
+            # 3. Bize frontend'de sadece Kapanış Fiyatı (ClosePrice) lazım. 
+            # Listede 0. indeks ClosePrice'tır.
+            future_predictions.append(float(real_values[0][0]))
+            
+            # 4. Pencereyi kaydır: Modelin kendi tahmin ettiği 3 veriyi listeye ekle
+            next_prediction_reshaped = next_prediction.reshape(1, 1, 3)
             current_batch = np.append(current_batch[:, 1:, :], next_prediction_reshaped, axis=1)
+        
+        # Geçmiş 30 günün gerçek kapanış fiyatları
+        past_30_days = [float(x) for x in df['ClosePrice'].tail(30).values]
         
         return {
             "stockId": stock_id,
-            "predictions": future_predictions, # Artık tek rakam değil, 30 elemanlı liste dönüyor!
+            "pastData": past_30_days,
+            "predictions": future_predictions,
             "message": message
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

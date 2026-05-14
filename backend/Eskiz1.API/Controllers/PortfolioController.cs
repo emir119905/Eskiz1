@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Eskiz1.API.Data;
+using Eskiz1.API.Models; // Enum'ı (TransactionType) tanıyabilmesi için bu şart!
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Eskiz1.API.Controllers
 {
@@ -37,9 +39,9 @@ namespace Eskiz1.API.Controllers
                     StockID = g.Key,
                     Symbol = g.First().Stock?.Symbol,
                     
-                    // Toplam Alınan - Toplam Satılan = Eldeki Lot
-                    TotalQuantity = g.Where(t => t.TransactionType.ToUpper() == "BUY").Sum(t => t.Quantity) -
-                                    g.Where(t => t.TransactionType.ToUpper() == "SELL").Sum(t => t.Quantity)
+                    // ✅ DÜZELTİLEN KISIM: Artık string değil Enum kullanıyoruz!
+                    TotalQuantity = g.Where(t => t.TransactionType == TransactionType.BUY).Sum(t => t.Quantity) -
+                                    g.Where(t => t.TransactionType == TransactionType.SELL).Sum(t => t.Quantity)
                 })
                 .Where(h => h.TotalQuantity > 0) // Sadece elinde hala mal olanları göster
                 .ToList();

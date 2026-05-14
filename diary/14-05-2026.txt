@@ -1,0 +1,4 @@
+bugün güzel işler yaptım artık tahmin modelim daha akıllı. 
+sıkıcı swagger ekranıyla uğraşmak yerine kendi arayüzümüzde cüzdan bakiyesi, grafik ve portföyü görüntüleyebiliyoruz.
+bazı güvenlik sorunları ve bugları hallettim.
+genel anlamda yorucu bir gündü ancak zevkliydi bu işin nereye varacağını çok merak edyorum.

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eskiz-1 | Yapay Zeka Destekli Borsa</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .main-container { display: flex; gap: 20px; max-width: 1200px; margin: auto; }
+        .left-panel { flex: 2; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5); }
+        .right-panel { flex: 1; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 20px; }
+        
+        input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; outline: none; background-color: #2c2c2c; color: white; width: 100px;}
+        button { padding: 10px 15px; font-size: 16px; font-weight: bold; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .btn-predict { background-color: #3b82f6; } .btn-predict:hover { background-color: #2563eb; }
+        .btn-buy { background-color: #10b981; width: 100%; margin-top: 5px; } .btn-buy:hover { background-color: #059669; }
+        .btn-sell { background-color: #ef4444; width: 100%; margin-top: 5px; } .btn-sell:hover { background-color: #dc2626; }
+        
+        .wallet-box { background-color: #2c2c2c; padding: 15px; border-radius: 8px; border-left: 5px solid #10b981; }
+        .wallet-box h3 { margin: 0 0 10px 0; font-size: 18px; color: #aaaaaa; }
+        .wallet-box .balance { font-size: 28px; font-weight: bold; color: #10b981; }
+        
+        .trade-box { background-color: #2c2c2c; padding: 15px; border-radius: 8px; }
+        .trade-box h3 { margin: 0 0 15px 0; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        
+        #messageBox { margin-top: 15px; font-style: italic; color: #aaaaaa; }
+        ul { list-style-type: none; padding: 0; }
+        li { background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between;}
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>🚀 Eskiz-1 | Yapay Zeka Destekli Sanal Borsa</h2>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <h3>📈 Analiz Masası</h3>
+            <div>
+                <input type="number" id="stockInput" value="1" placeholder="Hisse ID">
+                <button class="btn-predict" onclick="getPrediction()">Geleceği Göster</button>
+            </div>
+            <p id="messageBox">Model hazır bekliyor...</p>
+            <canvas id="predictionChart"></canvas>
+        </div>
+
+        <div class="right-panel">
+            <div class="wallet-box">
+                <h3>💰 Cüzdanım (<span id="userName">...</span>)</h3>
+                <div class="balance" id="userBalance">0.00 ₺</div>
+            </div>
+
+            <div class="trade-box">
+                <h3>⚖️ Hızlı İşlem</h3>
+                <p style="font-size: 14px; color: #aaa; margin-top:0;">(Seçili Hisse ID üzerinden işlem yapar)</p>
+                <input type="number" id="qtyInput" value="10" placeholder="Adet" style="width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+                <button class="btn-buy" onclick="executeTrade(0)">🟢 AL (BUY)</button>
+                <button class="btn-sell" onclick="executeTrade(1)">🔴 SAT (SELL)</button>
+            </div>
+
+            <div class="trade-box" style="flex-grow: 1;">
+                <h3>💼 Portföyüm</h3>
+                <ul id="portfolioList">
+                    <li style="color: #aaa;">Henüz hisse yok...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LÜTFEN C# PORTUNU KENDİ PORTUNA GÖRE AYARLA!
+        const API_BASE = "http://localhost:5221/api"; 
+        const USER_ID = 1; // Şimdilik 1 numaralı kullanıcıyla işlem yapıyoruz
+        let myChart = null;
+
+        // Sayfa açıldığında cüzdanı yükle
+        window.onload = () => { loadPortfolio(); };
+
+        // 1. Portföyü ve Bakiyeyi Getir
+        async function loadPortfolio() {
+            try {
+                const res = await fetch(`${API_BASE}/Portfolio/${USER_ID}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                document.getElementById('userName').innerText = data.adSoyad;
+                document.getElementById('userBalance').innerText = data.guncelBakiye.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺";
+
+                const pList = document.getElementById('portfolioList');
+                pList.innerHTML = '';
+                if(data.sahipOlunanHisseler.length === 0) {
+                    pList.innerHTML = '<li style="color: #aaa;">Henüz hisse yok...</li>';
+                } else {
+                    data.sahipOlunanHisseler.forEach(h => {
+                        pList.innerHTML += `<li><span>${h.symbol}</span> <span><b>${h.totalQuantity} Lot</b></span></li>`;
+                    });
+                }
+            } catch(e) { console.error("Portföy yüklenemedi", e); }
+        }
+
+        // 2. Al / Sat İşlemi
+        async function executeTrade(transactionType) {
+            const stockId = parseInt(document.getElementById('stockInput').value);
+            const qty = parseInt(document.getElementById('qtyInput').value);
+
+            try {
+                const res = await fetch(`${API_BASE}/Transactions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        UserID: USER_ID,
+                        StockID: stockId,
+                        TransactionType: transactionType, // 0 = BUY, 1 = SELL (C# Enum Karşılığı)
+                        Quantity: qty
+                    })
+                });
+
+                const result = await res.json();
+                if(res.ok) {
+                    alert(`✅ İşlem Başarılı!\n${result.mesaj}\nFiyat: ${result.gerceklesenFiyat} ₺`);
+                    loadPortfolio(); // İşlem bitince cüzdanı güncelle
+                } else {
+                    alert(`❌ Hata: ${result}`); // BadRequest mesajı düz metin dönebilir
+                }
+            } catch(e) { alert("Sistem hatası: " + e.message); }
+        }
+
+        // 3. Yapay Zeka Tahmini Çiz (Mevcut Fonksiyonun Aynısı)
+        async function getPrediction() {
+            const stockId = document.getElementById('stockInput').value;
+            const msgBox = document.getElementById('messageBox');
+            msgBox.innerHTML = "Aşçı mutfakta, veriler işleniyor... ⏳";
+
+            try {
+                const response = await fetch(`${API_BASE}/Prediction/${stockId}`);
+                if (!response.ok) throw new Error("API'ye ulaşılamadı! Python açık mı?");
+                
+                const data = await response.json();
+                msgBox.innerHTML = `✅ ${data.message}`;
+                drawAdvancedChart(data.pastData, data.predictions);
+
+            } catch (error) {
+                msgBox.innerHTML = "❌ Hata: " + error.message;
+            }
+        }
+
+        function drawAdvancedChart(pastData, futureData) {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            const labels = [];
+            for(let i=30; i>0; i--) labels.push(`G-${i}`);
+            for(let i=1; i<=30; i++) labels.push(`T+${i}`);
+
+            const pastPlot = [...pastData, ...Array(30).fill(null)]; 
+            const futurePlot = Array(29).fill(null);
+            futurePlot.push(pastData[pastData.length - 1]);
+            futurePlot.push(...futureData);
+
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Gerçekleşen Fiyat', data: pastPlot, borderColor: '#ffffff', borderWidth: 3, pointRadius: 0, tension: 0.2 },
+                        { label: 'Yapay Zeka Tahmini', data: futurePlot, borderColor: '#3b82f6', borderWidth: 3, borderDash: [5, 5], pointRadius: 0, tension: 0.2 }
+                    ]
+                },
+                options: { responsive: true, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { labels: { color: 'white' } } }, scales: { x: { ticks: { color: '#aaaaaa' }, grid: { color: '#333333' } }, y: { ticks: { color: '#aaaaaa' }, grid: { color: '#333333' } } } }
+            });
+        }
+    </script>
+</body>
+</html>

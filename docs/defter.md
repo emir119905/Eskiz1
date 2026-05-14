@@ -23,3 +23,16 @@ AI Service Entegrasyonu ve LSTM Tahmin Motoru
     İlk borsa fiyat tahmininin başarıyla üretilmesi ve Swagger üzerinden test edilmesi
 
     Devasa venv klasörünün .gitignore ile Git takibinden çıkarılması ve temiz push
+
+## 14/05/2026
+
+    model artık çok değişkenli düşünerek tahmin yapıyor
+    zincirleme bir şekilde önümüzdeki 30 günü hesaplıyor
+    her bir hisse için özel olarak eğitilen modeller otomatik olarak oluşuyor ve saklı tutuluyor
+    sanal borsa altyapısı ve portföy yönetimi
+    alım satımlarda bakiye kontrolü ve güvenlik önlemleri
+    eksik günlerin verileri otomatik şekilde alınıyor
+    frontend backend iletişimi için bazı CORS politikaları ve HttpClient bağımlılıkları
+    geçmiş verinin ve gelecek tahmininin birleştiği hibrit bir grafik
+    enum ile tip güvenliği
+    tablo çakışmaları önlendi
