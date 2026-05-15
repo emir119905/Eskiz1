@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Eskiz1.API.Models
 {
@@ -17,6 +18,8 @@ namespace Eskiz1.API.Models
         [Required]
         public string Email { get; set; } = string.Empty;
 
+        // ✅ Decimal precision uyarısını kapatır
+        [Column(TypeName = "decimal(18,2)")]
         public decimal Balance { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;

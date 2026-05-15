@@ -21,7 +21,7 @@ namespace Eskiz1.API.Services
             try
             {
                 // Senin ayarladığın gibi 1 yıllık veri çekiyoruz (range=1y)
-                string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1y";
+                string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=10y";
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");

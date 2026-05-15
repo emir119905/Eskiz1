@@ -3,48 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eskiz-1 | Yapay Zeka Destekli Borsa</title>
+    <title>Eskiz-1 | Yapay Zeka Destekli Borsa (Quant Edition)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 30px; }
-        .main-container { display: flex; gap: 20px; max-width: 1200px; margin: auto; }
-        .left-panel { flex: 2; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5); }
+        .main-container { display: flex; gap: 20px; max-width: 1400px; margin: auto; }
+        .left-panel { flex: 3; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5); }
         .right-panel { flex: 1; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 20px; }
-        
-        input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; outline: none; background-color: #2c2c2c; color: white; width: 100px;}
+
+        input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; outline: none; background-color: #2c2c2c; color: white; width: 100px; }
         button { padding: 10px 15px; font-size: 16px; font-weight: bold; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; }
         .btn-predict { background-color: #3b82f6; } .btn-predict:hover { background-color: #2563eb; }
         .btn-buy { background-color: #10b981; width: 100%; margin-top: 5px; } .btn-buy:hover { background-color: #059669; }
         .btn-sell { background-color: #ef4444; width: 100%; margin-top: 5px; } .btn-sell:hover { background-color: #dc2626; }
-        
+
         .wallet-box { background-color: #2c2c2c; padding: 15px; border-radius: 8px; border-left: 5px solid #10b981; }
         .wallet-box h3 { margin: 0 0 10px 0; font-size: 18px; color: #aaaaaa; }
         .wallet-box .balance { font-size: 28px; font-weight: bold; color: #10b981; }
-        
+
         .trade-box { background-color: #2c2c2c; padding: 15px; border-radius: 8px; }
         .trade-box h3 { margin: 0 0 15px 0; border-bottom: 1px solid #444; padding-bottom: 5px; }
-        
-        #messageBox { margin-top: 15px; font-style: italic; color: #aaaaaa; }
+
+        #messageBox { margin-top: 10px; font-style: italic; color: #aaaaaa; }
+        .confidence-badge { display: none; background-color: #10b981; color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; margin-left: 10px; font-size: 14px; }
+
+        /* Güven bandı açıklaması */
+        .band-legend { display: none; margin-top: 8px; font-size: 12px; color: #888; }
+        .band-legend span { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+
         ul { list-style-type: none; padding: 0; }
-        li { background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between;}
+        li { background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2>🚀 Eskiz-1 | Yapay Zeka Destekli Sanal Borsa</h2>
+        <h2>🚀 Eskiz-1 | Yapay Zeka Destekli Sanal Borsa (Quant Edition)</h2>
     </div>
 
     <div class="main-container">
         <div class="left-panel">
-            <h3>📈 Analiz Masası</h3>
-            <div>
+            <!-- Başlık: Python'dan gelen forecastDays'e göre dinamik güncelleniyor -->
+            <h3 id="chartTitle">📈 120 Günlük Panoramik Radar (90 Geçmiş + 30 Gelecek)</h3>
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <input type="number" id="stockInput" value="1" placeholder="Hisse ID">
-                <button class="btn-predict" onclick="getPrediction()">Geleceği Göster</button>
+                <button class="btn-predict" onclick="getPrediction()">Tahmin</button>
+                <span id="confidenceBadge" class="confidence-badge"></span>
             </div>
             <p id="messageBox">Model hazır bekliyor...</p>
-            <canvas id="predictionChart"></canvas>
+
+            <!-- Güven bandı açıklaması -->
+            <div class="band-legend" id="bandLegend">
+                <span style="background: rgba(59,130,246,0.25);"></span> Mavi bant: %10–%90 güven aralığı (Monte Carlo simülasyonu)
+            </div>
+
+            <canvas id="predictionChart" height="120"></canvas>
         </div>
 
         <div class="right-panel">
@@ -55,7 +69,6 @@
 
             <div class="trade-box">
                 <h3>⚖️ Hızlı İşlem</h3>
-                <p style="font-size: 14px; color: #aaa; margin-top:0;">(Seçili Hisse ID üzerinden işlem yapar)</p>
                 <input type="number" id="qtyInput" value="10" placeholder="Adet" style="width: 100%; box-sizing: border-box; margin-bottom: 10px;">
                 <button class="btn-buy" onclick="executeTrade(0)">🟢 AL (BUY)</button>
                 <button class="btn-sell" onclick="executeTrade(1)">🔴 SAT (SELL)</button>
@@ -63,112 +76,234 @@
 
             <div class="trade-box" style="flex-grow: 1;">
                 <h3>💼 Portföyüm</h3>
-                <ul id="portfolioList">
-                    <li style="color: #aaa;">Henüz hisse yok...</li>
-                </ul>
+                <ul id="portfolioList"><li style="color: #aaa;">Henüz hisse yok...</li></ul>
             </div>
         </div>
     </div>
 
     <script>
-        // LÜTFEN C# PORTUNU KENDİ PORTUNA GÖRE AYARLA!
-        const API_BASE = "http://localhost:5221/api"; 
-        const USER_ID = 1; // Şimdilik 1 numaralı kullanıcıyla işlem yapıyoruz
+        const API_BASE = "http://localhost:5221/api";
+        const USER_ID = 1;
         let myChart = null;
 
-        // Sayfa açıldığında cüzdanı yükle
         window.onload = () => { loadPortfolio(); };
 
-        // 1. Portföyü ve Bakiyeyi Getir
         async function loadPortfolio() {
             try {
                 const res = await fetch(`${API_BASE}/Portfolio/${USER_ID}`);
                 if (!res.ok) return;
                 const data = await res.json();
-                
+
                 document.getElementById('userName').innerText = data.adSoyad;
-                document.getElementById('userBalance').innerText = data.guncelBakiye.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺";
+                document.getElementById('userBalance').innerText =
+                    data.guncelBakiye.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺";
 
                 const pList = document.getElementById('portfolioList');
                 pList.innerHTML = '';
-                if(data.sahipOlunanHisseler.length === 0) {
+                if (data.sahipOlunanHisseler.length === 0) {
                     pList.innerHTML = '<li style="color: #aaa;">Henüz hisse yok...</li>';
                 } else {
                     data.sahipOlunanHisseler.forEach(h => {
-                        pList.innerHTML += `<li><span>${h.symbol}</span> <span><b>${h.totalQuantity} Lot</b></span></li>`;
+                        pList.innerHTML += `<li><span>${h.symbol}</span><span><b>${h.totalQuantity} Lot</b></span></li>`;
                     });
                 }
-            } catch(e) { console.error("Portföy yüklenemedi", e); }
+            } catch (e) { console.error("Portföy yüklenemedi", e); }
         }
 
-        // 2. Al / Sat İşlemi
         async function executeTrade(transactionType) {
             const stockId = parseInt(document.getElementById('stockInput').value);
             const qty = parseInt(document.getElementById('qtyInput').value);
-
             try {
                 const res = await fetch(`${API_BASE}/Transactions`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        UserID: USER_ID,
-                        StockID: stockId,
-                        TransactionType: transactionType, // 0 = BUY, 1 = SELL (C# Enum Karşılığı)
-                        Quantity: qty
-                    })
+                    body: JSON.stringify({ UserID: USER_ID, StockID: stockId, TransactionType: transactionType, Quantity: qty })
                 });
-
                 const result = await res.json();
-                if(res.ok) {
+                if (res.ok) {
                     alert(`✅ İşlem Başarılı!\n${result.mesaj}\nFiyat: ${result.gerceklesenFiyat} ₺`);
-                    loadPortfolio(); // İşlem bitince cüzdanı güncelle
+                    loadPortfolio();
                 } else {
-                    alert(`❌ Hata: ${result}`); // BadRequest mesajı düz metin dönebilir
+                    alert(`❌ Hata: ${JSON.stringify(result)}`);
                 }
-            } catch(e) { alert("Sistem hatası: " + e.message); }
+            } catch (e) { alert("Sistem hatası: " + e.message); }
         }
 
-        // 3. Yapay Zeka Tahmini Çiz (Mevcut Fonksiyonun Aynısı)
         async function getPrediction() {
             const stockId = document.getElementById('stockInput').value;
             const msgBox = document.getElementById('messageBox');
-            msgBox.innerHTML = "Aşçı mutfakta, veriler işleniyor... ⏳";
+            const badge = document.getElementById('confidenceBadge');
+            const bandLegend = document.getElementById('bandLegend');
+
+            msgBox.innerHTML = "Makine 10 yıllık veriyi okuyor, fanlar hızlandı... ⏳";
+            badge.style.display = 'none';
+            bandLegend.style.display = 'none';
 
             try {
                 const response = await fetch(`${API_BASE}/Prediction/${stockId}`);
-                if (!response.ok) throw new Error("API'ye ulaşılamadı! Python açık mı?");
-                
+                if (!response.ok) throw new Error("API'ye ulaşılamadı!");
+
                 const data = await response.json();
+                const forecastDays = data.forecastDays || 30;
+
+                // Başlığı dinamik güncelle
+                document.getElementById('chartTitle').innerText =
+                    `📈 ${90 + forecastDays} Günlük Panoramik Radar (90 Geçmiş + ${forecastDays} Gelecek)`;
+
                 msgBox.innerHTML = `✅ ${data.message}`;
-                drawAdvancedChart(data.pastData, data.predictions);
+
+                if (data.confidenceScore > 0) {
+                    badge.innerHTML = `🎯 Model Güven Skoru: %${data.confidenceScore}`;
+                    badge.style.display = 'inline-block';
+                }
+
+                // Güven bandı varsa açıklamayı göster
+                if (data.lowerBound && data.lowerBound.length > 0) {
+                    bandLegend.style.display = 'block';
+                }
+
+                drawAdvancedChart(
+                    data.pastData,
+                    data.pastPredictions,
+                    data.predictions,
+                    data.lowerBound,
+                    data.upperBound,
+                    forecastDays
+                );
 
             } catch (error) {
                 msgBox.innerHTML = "❌ Hata: " + error.message;
             }
         }
 
-        function drawAdvancedChart(pastData, futureData) {
+        function drawAdvancedChart(pastData, pastPredictions, futureData, lowerBound, upperBound, forecastDays) {
             const ctx = document.getElementById('predictionChart').getContext('2d');
-            const labels = [];
-            for(let i=30; i>0; i--) labels.push(`G-${i}`);
-            for(let i=1; i<=30; i++) labels.push(`T+${i}`);
+            const totalDays = 90 + forecastDays;
 
-            const pastPlot = [...pastData, ...Array(30).fill(null)]; 
-            const futurePlot = Array(29).fill(null);
-            futurePlot.push(pastData[pastData.length - 1]);
+            // X ekseni etiketleri
+            const labels = [];
+            for (let i = 90; i > 0; i--) labels.push(`G-${i}`);
+            for (let i = 1; i <= forecastDays; i++) labels.push(`T+${i}`);
+
+            // 1. Gerçekleşen fiyat (90 gün, sonrası null)
+            const realPlot = [...pastData, ...Array(forecastDays).fill(null)];
+
+            // 2. Backtest çizgisi (90 gün, sonrası null)
+            const aiPastPlot = (pastPredictions && pastPredictions.length > 0)
+                ? [...pastPredictions, ...Array(forecastDays).fill(null)]
+                : Array(totalDays).fill(null);
+
+            // 3. Gelecek ortalama tahmini — geçmişteki son noktaya bağla
+            const futurePlot = Array(89).fill(null);
+            futurePlot.push(pastData[pastData.length - 1]); // bağlantı noktası
             futurePlot.push(...futureData);
 
+            // 4. Güven bandı: üst sınır (fill: +1 dataset'e kadar)
+            const upperPlot = (upperBound && upperBound.length > 0)
+                ? [...Array(89).fill(null), pastData[pastData.length - 1], ...upperBound]
+                : Array(totalDays).fill(null);
+
+            // 5. Güven bandı: alt sınır (fill: bir önceki dataset'e kadar)
+            const lowerPlot = (lowerBound && lowerBound.length > 0)
+                ? [...Array(89).fill(null), pastData[pastData.length - 1], ...lowerBound]
+                : Array(totalDays).fill(null);
+
             if (myChart) myChart.destroy();
+
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Gerçekleşen Fiyat', data: pastPlot, borderColor: '#ffffff', borderWidth: 3, pointRadius: 0, tension: 0.2 },
-                        { label: 'Yapay Zeka Tahmini', data: futurePlot, borderColor: '#3b82f6', borderWidth: 3, borderDash: [5, 5], pointRadius: 0, tension: 0.2 }
+                        // Gerçekleşen fiyat — beyaz düz
+                        {
+                            label: 'Gerçekleşen Fiyat',
+                            data: realPlot,
+                            borderColor: '#ffffff',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            tension: 0.2,
+                            order: 1
+                        },
+                        // Backtest — kırmızı kesik
+                        {
+                            label: 'AI Geçmiş Test (Backtest)',
+                            data: aiPastPlot,
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0.2,
+                            order: 2
+                        },
+                        // Üst bant — şeffaf mavi (fill to dataset index 4 = lower)
+                        {
+                            label: 'İyimser Senaryo (%90)',
+                            data: upperPlot,
+                            borderColor: 'rgba(59,130,246,0.4)',
+                            borderWidth: 1,
+                            borderDash: [3, 3],
+                            pointRadius: 0,
+                            tension: 0.2,
+                            fill: '+1',  // bir sonraki dataset'e (lowerPlot) kadar doldur
+                            backgroundColor: 'rgba(59,130,246,0.12)',
+                            order: 4
+                        },
+                        // Alt bant — şeffaf mavi
+                        {
+                            label: 'Kötümser Senaryo (%10)',
+                            data: lowerPlot,
+                            borderColor: 'rgba(59,130,246,0.4)',
+                            borderWidth: 1,
+                            borderDash: [3, 3],
+                            pointRadius: 0,
+                            tension: 0.2,
+                            fill: false,
+                            order: 5
+                        },
+                        // Ortalama tahmin — mavi kesik, en üstte
+                        {
+                            label: 'AI Gelecek Tahmini (Ort.)',
+                            data: futurePlot,
+                            borderColor: '#3b82f6',
+                            borderWidth: 3,
+                            borderDash: [6, 3],
+                            pointRadius: 0,
+                            tension: 0.2,
+                            order: 3
+                        },
                     ]
                 },
-                options: { responsive: true, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { labels: { color: 'white' } } }, scales: { x: { ticks: { color: '#aaaaaa' }, grid: { color: '#333333' } }, y: { ticks: { color: '#aaaaaa' }, grid: { color: '#333333' } } } }
+                options: {
+                    responsive: true,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white',
+                                // Bant datasetslerini legend'dan gizle (çok kalabalık görünür)
+                                filter: (item) => !['İyimser Senaryo (%90)', 'Kötümser Senaryo (%10)'].includes(item.text)
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                // Tooltip'te bant değerlerini "Güven Aralığı" olarak göster
+                                label: function(context) {
+                                    const label = context.dataset.label;
+                                    const value = context.parsed.y;
+                                    if (value === null) return null;
+                                    if (label === 'İyimser Senaryo (%90)') return `📈 Üst Bant: ${value.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺`;
+                                    if (label === 'Kötümser Senaryo (%10)') return `📉 Alt Bant: ${value.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺`;
+                                    return `${label}: ${value.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#aaaaaa' }, grid: { color: '#333333' } },
+                        y: { ticks: { color: '#aaaaaa', callback: v => v.toLocaleString('tr-TR') }, grid: { color: '#333333' } }
+                    }
+                }
             });
         }
     </script>

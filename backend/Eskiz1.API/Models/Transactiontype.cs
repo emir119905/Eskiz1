@@ -7,4 +7,3 @@ namespace Eskiz1.API.Models
         SELL
     }
 }
- 
