@@ -22,6 +22,34 @@ namespace Eskiz1.API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Eskiz1.API.Models.ExternalData", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
+
+                    b.Property<decimal>("BIST100")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BrentOil")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Gold")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("USDTRY")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("ExternalData");
+                });
+
             modelBuilder.Entity("Eskiz1.API.Models.HistoricalData", b =>
                 {
                     b.Property<int>("DataID")

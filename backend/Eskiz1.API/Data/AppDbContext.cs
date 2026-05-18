@@ -13,5 +13,6 @@ namespace Eskiz1.API.Data
         public DbSet<Stock> Stocks { get; set; }
         public DbSet<HistoricalData> HistoricalData { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<ExternalData> ExternalData { get; set; } // ✅ Yeni tablo
     }
 }

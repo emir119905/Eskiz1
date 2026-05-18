@@ -3,16 +3,16 @@ using Eskiz1.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Adım 4: AddHttpClient() tek seferlik — duplicate temizlendi
 builder.Services.AddHttpClient(string.Empty, client =>
 {
-    // ✅ Timeout artırıldı: Model eğitimi + Monte Carlo simülasyonu uzun sürebilir
     client.Timeout = TimeSpan.FromMinutes(10);
 });
+
 builder.Services.AddScoped<Eskiz1.API.Services.YahooFinanceService>();
+builder.Services.AddScoped<Eskiz1.API.Services.ExternalDataService>(); // ✅ Yeni servis
+builder.Services.AddHostedService<Eskiz1.API.Services.DailyDataSyncService>();
 
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
