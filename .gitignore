@@ -1,1 +1,16 @@
-ai_service/venv/
+venv/
+__pycache__/
+*.pyc
+
+ai_models/
+*.keras
+*.gz
+
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+.DS_Store
+.vscode/
+.idea/
