@@ -1,8 +1,9 @@
+
 """
-Eskiz-1 v11.0 — Direct Multi-Horizon LSTM Quant Engine
+Eskiz-1 v11.3 — Horizon Metrics + Chart Contract Fix
 ======================================================
 
-Bu sürüm v10'daki auto-regressive / rolling forecast yaklaşımını kaldırır.
+Bu sürüm v11.1 Force External modelini korur; horizon-aligned backtest metriklerini ve frontend tarih/seri kontratını düzeltir.
 
 Ana değişiklikler:
   1. Rolling Forecast YOK:
@@ -23,6 +24,30 @@ Ana değişiklikler:
 
   6. Daha Dürüst Backtest:
      Son 90 gün holdout olarak ayrılır. Model bu bölgeyi eğitimde görmez.
+
+  7. Force External Features:
+     Dış/makro feature'lar korelasyon filtresine takılmadan modele dahil edilir.
+
+  8. Daha Sağlıklı Direction Metric:
+     Yatay günlerde sahte yön başarısını azaltmak için anlamlı hareket filtresi kullanılır.
+
+  9. Signal Quality:
+     Modelin yön olasılıkları, q50/q10/q90 ve risk/ödül yapısı özetlenir.
+
+  10. Horizon-Aligned Backtest:
+      T+1 interpolasyon backtest kaldırılır. Model hangi horizon için eğitildiyse
+      aynı horizon üzerinde değerlendirilir. Varsayılan: T+5.
+
+  11. Naive Baseline:
+      Model, "5 gün sonra fiyat bugünkü fiyata eşittir" baseline'ına karşı ölçülür.
+
+  12. Chart Contract:
+      Frontend tarihleri kendi uydurmaz; API, backtest ve forecast grafiği için
+      date-aligned chartData döndürür.
+
+  13. Horizon Metrics Fix:
+      Yön başarısı artık gerçek horizon getirisi üzerinden, origin -> target
+      mantığıyla raporlanır; sınıf dağılımları ve threshold bilgisi eklenir.
 """
 
 import os
@@ -37,6 +62,7 @@ import tensorflow as tf
 import uvicorn
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.layers import (
@@ -56,7 +82,19 @@ from tensorflow.keras.optimizers import Adam
 # ============================================================
 # APP
 # ============================================================
-app = FastAPI(title="Eskiz-1 v11.0 - Direct Multi-Horizon Quant Engine")
+app = FastAPI(title="Eskiz-1 v11.3 - Horizon Metrics + Chart Contract Fix")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 os.makedirs("ai_models", exist_ok=True)
 
 
@@ -85,6 +123,7 @@ EXTERNAL_FEATURES = [
 LOOKBACK = 90
 FORECAST = 30
 BACKTEST_DAYS = 90
+BACKTEST_HORIZON = 5  # Backtest artık T+1 değil, modelin gerçek T+5 hedefiyle hizalıdır.
 
 HORIZONS = np.array([5, 10, 20, 30], dtype=np.int32)
 N_HORIZONS = len(HORIZONS)
@@ -93,7 +132,7 @@ MAX_HORIZON = int(np.max(HORIZONS))
 QUANTILES = [0.10, 0.50, 0.90]
 N_QUANTILES = len(QUANTILES)
 
-CORR_THR = 0.15
+FEATURE_SELECTION_MODE = "force_external"
 MOMENTUM_WIN = 5
 
 # 30 günlük sınıflandırma eşiği:
@@ -104,7 +143,14 @@ CLASS_THRESHOLD_K = 0.75
 # Ölçeklenmiş target üzerinde çalışır.
 DIRECTION_SIGNIFICANCE_THR = 0.15
 
-MODEL_VERSION = "v11_direct_multi_horizon"
+DIRECTION_METRIC_THR = 0.002  # Günlük %0.2; horizon metriğinde sqrt(horizon) ile ölçeklenir.
+PRACTICAL_HORIZON_DIRECTION_THR = 0.01  # 5 günlük pratik yön eşiği: +/- %1
+SIGNAL_CONFIDENCE_THR = 0.45
+SIGNAL_EDGE_THR = 0.08
+
+# Eğitim/mimari versiyonu değişmedi; v11.1 modelleri tekrar kullanılabilir.
+MODEL_VERSION = "v11_1_force_external"
+EVALUATION_VERSION = "v11_3_horizon_metrics_chart_contract"
 
 
 # ============================================================
@@ -207,10 +253,21 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 # ============================================================
 def select_features(train_df: pd.DataFrame, stock_id: int) -> List[str]:
     """
-    Feature selection sadece train_df üzerinden yapılır.
-    Böylece holdout/test döneminden bilgi sızıntısı engellenir.
+    v11.1:
+    External feature'ları korelasyon filtresine takmadan dahil eder.
+
+    Neden?
+      v11 testlerinde 14 hisseden sadece KONTR external feature alabildi.
+      Aynı gün lineer korelasyon filtresi makro etkileri fazla agresif eliyordu.
+
+    Not:
+      Bu seçim yine sadece train_df üzerinden yapılır; holdout/test döneminden bilgi sızıntısı yoktur.
     """
-    aktif = [feat for feat in BASE_FEATURES if feat in train_df.columns]
+    aktif = []
+
+    for feat in BASE_FEATURES:
+        if feat in train_df.columns:
+            aktif.append(feat)
 
     if "Return" not in aktif:
         raise ValueError("Return feature listesinde yok. add_indicators kontrol edilmeli.")
@@ -219,28 +276,55 @@ def select_features(train_df: pd.DataFrame, stock_id: int) -> List[str]:
         if feat not in train_df.columns:
             continue
 
-        try:
-            kor = abs(train_df[feat].corr(train_df["Return"]))
-            if np.isfinite(kor) and kor >= CORR_THR:
-                aktif.append(feat)
-        except Exception:
-            pass
+        series = pd.to_numeric(train_df[feat], errors="coerce")
+        finite_count = int(np.isfinite(series).sum())
+        std_val = float(np.nanstd(series.values.astype(np.float64))) if finite_count > 0 else 0.0
+
+        # Tamamen boş/sabit external kolonları ekleme; onun dışındakileri force include et.
+        if finite_count >= 30 and np.isfinite(std_val) and std_val > 1e-12:
+            aktif.append(feat)
 
     return aktif
 
 
 def get_profile(df: pd.DataFrame) -> Dict[str, Any]:
-    vol = float(df["Return"].tail(252).std() * np.sqrt(252))
+    """
+    v11.1:
+    Sadece 252 günlük volatiliteye bakmak yerine 60 günlük yakın dönem volatilitesini de dikkate alır.
+    Böylece sonradan hareketlenen hisseler yanlışlıkla DUSUK_VOL'a sıkışmaz.
+    """
+    ret = df["Return"].astype(float)
 
-    if not np.isfinite(vol):
-        vol = 0.60
+    vol_252 = float(ret.tail(252).std() * np.sqrt(252))
+    vol_60 = float(ret.tail(60).std() * np.sqrt(252))
+
+    candidates = [v for v in [vol_252, vol_60] if np.isfinite(v)]
+    vol = max(candidates) if candidates else 0.60
 
     if vol < 0.30:
-        return {"batch": 64, "dropout": 0.15, "profil": "DUSUK_VOL"}
+        return {
+            "batch": 64,
+            "dropout": 0.18,
+            "profil": "DUSUK_VOL",
+            "annVol252": round(vol_252, 4) if np.isfinite(vol_252) else None,
+            "annVol60": round(vol_60, 4) if np.isfinite(vol_60) else None,
+        }
     elif vol < 0.60:
-        return {"batch": 32, "dropout": 0.20, "profil": "ORTA_VOL"}
+        return {
+            "batch": 32,
+            "dropout": 0.23,
+            "profil": "ORTA_VOL",
+            "annVol252": round(vol_252, 4) if np.isfinite(vol_252) else None,
+            "annVol60": round(vol_60, 4) if np.isfinite(vol_60) else None,
+        }
     else:
-        return {"batch": 16, "dropout": 0.25, "profil": "YUKSEK_VOL"}
+        return {
+            "batch": 16,
+            "dropout": 0.30,
+            "profil": "YUKSEK_VOL",
+            "annVol252": round(vol_252, 4) if np.isfinite(vol_252) else None,
+            "annVol60": round(vol_60, 4) if np.isfinite(vol_60) else None,
+        }
 
 
 # ============================================================
@@ -363,12 +447,11 @@ def build_model_v11(lookback: int, n_features: int, dropout: float) -> Model:
     model = Model(
         inputs=[enc_input, momentum_input],
         outputs=[quantile_output, direction_output],
-        name="Eskiz1_v11_DirectMultiHorizon",
+        name="Eskiz1_v11_1_ForceExternal",
     )
 
-    # Keras 3.x multi-output modellerde dict target/sample_weight bazen
-    # output isimleriyle eşleşme hatası çıkarabiliyor. Bu yüzden compile
-    # tarafında liste tabanlı loss kullanıyoruz. Output sırası:
+    # Keras 3.x multi-output dict eşleşme kaprislerinden kaçmak için liste tabanlı compile.
+    # Output sırası:
     #   0 -> quantiles
     #   1 -> direction
     model.compile(
@@ -414,6 +497,8 @@ def create_direct_horizon_dataset(
         raise ValueError(
             f"Yetersiz train verisi. Gerekli minimum yaklaşık {LOOKBACK + MAX_HORIZON + 50}, mevcut {len(train_df)}."
         )
+
+    n_features = len(features)
 
     x_scaler = MinMaxScaler(feature_range=(-1, 1))
     X_scaled = x_scaler.fit_transform(train_df[features].values.astype(np.float32))
@@ -498,14 +583,15 @@ def build_sample_weights(Y_cls: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 # 8. EĞİTİM / KAYDETME
 # ============================================================
 def model_paths(stock_id: int) -> Dict[str, str]:
+    # v11 baseline ile karışmasın diye ayrı kayıt adları.
     return {
-        "model": f"ai_models/model_v11_{stock_id}.keras",
-        "scaler": f"ai_models/scaler_v11_{stock_id}.gz",
-        "profil": f"ai_models/profil_v11_{stock_id}.gz",
-        "features": f"ai_models/features_v11_{stock_id}.gz",
-        "y_scale": f"ai_models/y_scale_v11_{stock_id}.gz",
-        "ret_sigma": f"ai_models/ret_sigma_v11_{stock_id}.gz",
-        "version": f"ai_models/version_v11_{stock_id}.gz",
+        "model": f"ai_models/model_v11_1_{stock_id}.keras",
+        "scaler": f"ai_models/scaler_v11_1_{stock_id}.gz",
+        "profil": f"ai_models/profil_v11_1_{stock_id}.gz",
+        "features": f"ai_models/features_v11_1_{stock_id}.gz",
+        "y_scale": f"ai_models/y_scale_v11_1_{stock_id}.gz",
+        "ret_sigma": f"ai_models/ret_sigma_v11_1_{stock_id}.gz",
+        "version": f"ai_models/version_v11_1_{stock_id}.gz",
     }
 
 
@@ -559,9 +645,7 @@ def train_and_save_model(
 
     sw_quantiles, sw_direction = build_sample_weights(Y_cls)
 
-    # validation_split + dict/list sample_weight kombinasyonu bazı Keras
-    # sürümlerinde eğitim başında 500'e düşüren yapı hatası üretebiliyor.
-    # Zaman serisi mantığını koruyarak validasyonu elle sondan ayırıyoruz.
+    # Zaman serisi mantığını korumak için validasyonu elle sondan ayırıyoruz.
     n_samples = len(X_enc)
     val_size = max(1, int(n_samples * 0.15))
     train_size = n_samples - val_size
@@ -792,9 +876,27 @@ def direct_horizon_forecast(
 
 
 # ============================================================
-# 11. BACKTEST
+# 11. BACKTEST — HORIZON-ALIGNED + NAIVE BASELINE
 # ============================================================
-def walk_forward_backtest_direct(
+def get_horizon_position(horizon: int) -> int:
+    matches = np.where(HORIZONS == int(horizon))[0]
+    if len(matches) == 0:
+        raise ValueError(f"BACKTEST_HORIZON={horizon} HORIZONS içinde yok: {HORIZONS.tolist()}")
+    return int(matches[0])
+
+
+def classify_returns(returns: np.ndarray, threshold: float) -> np.ndarray:
+    """
+    -1 = down, 0 = flat, 1 = up
+    """
+    returns = np.asarray(returns, dtype=np.float64)
+    out = np.zeros_like(returns, dtype=np.int32)
+    out[returns > threshold] = 1
+    out[returns < -threshold] = -1
+    return out
+
+
+def horizon_aligned_backtest(
     model: Model,
     x_scaler: MinMaxScaler,
     y_scale: np.ndarray,
@@ -802,29 +904,53 @@ def walk_forward_backtest_direct(
     df: pd.DataFrame,
     features: List[str],
     n_days: int = BACKTEST_DAYS,
-) -> List[float]:
+    horizon: int = BACKTEST_HORIZON,
+) -> Dict[str, Any]:
     """
-    Son n_days için 1 gün sonrası fiyat tahmini üretir.
-    Model T+1 eğitilmediği için T+5 q50 horizonundan lineer interpolasyonla gün-1 tahmini çıkarılır.
+    Direct multi-horizon model için doğru backtest.
 
-    Gerçek karşılaştırma:
-      base gün = t
-      tahmin = t+1 fiyatı
-      real = t+1 gerçek fiyatı
+    Eski sorun:
+      Model T+5/T+10/T+20/T+30 eğitildiği halde backtest grafiğinde T+1 interpolasyon kullanılıyordu.
+      Bu da kırmızı çizgiyi çoğu zaman gerçek fiyatın 1 günlük gecikmiş kopyasına benzetiyordu.
+
+    Yeni mantık:
+      Her target gün için, horizon gün önceki origin gününden gerçek T+horizon tahmini alınır.
+
+      origin_idx = target_idx - horizon
+      prediction = Close[origin_idx] * exp(predicted_cumulative_log_return_horizon)
+      real       = Close[target_idx]
+      naive      = Close[origin_idx]
     """
-    if len(df) < LOOKBACK + n_days + 1:
-        raise ValueError("Backtest için yeterli veri yok.")
+    horizon = int(horizon)
+    h_pos = get_horizon_position(horizon)
+
+    if len(df) < LOOKBACK + n_days + horizon:
+        raise ValueError("Horizon-aligned backtest için yeterli veri yok.")
 
     close_prices = df["ClosePrice"].values.astype(np.float64)
 
-    # n_days adet gerçek değer df.tail(n_days) olacak.
-    # Bu yüzden base indexler: len(df)-n_days-1 ... len(df)-2
-    start_base_idx = len(df) - n_days - 1
+    target_start = len(df) - n_days
+    target_end = len(df)  # exclusive
 
-    predictions = []
+    real_prices = []
+    model_predictions = []
+    naive_predictions = []
+    origin_prices = []
+    target_dates = []
+    origin_dates = []
+    predicted_log_returns = []
+    real_log_returns = []
 
-    for base_idx in range(start_base_idx, len(df) - 1):
-        end_idx_exclusive = base_idx + 1
+    date_values = None
+    if "Date" in df.columns:
+        date_values = df["Date"].astype(str).values
+
+    for target_idx in range(target_start, target_end):
+        origin_idx = target_idx - horizon
+        end_idx_exclusive = origin_idx + 1
+
+        if origin_idx < 0 or end_idx_exclusive < LOOKBACK:
+            continue
 
         seed_batch, seed_momentum = make_seed_inputs(
             df=df,
@@ -837,53 +963,316 @@ def walk_forward_backtest_direct(
         q_scaled, _ = model_predict_outputs(model, seed_batch, seed_momentum)
         q_real = q_scaled * y_scale.reshape(-1, 1)
 
-        q50 = q_real[:, 1]
-        q50_curve = interpolate_horizon_curve(q50)
+        pred_log_ret = float(q_real[h_pos, 1])  # q50, selected horizon
+        origin_price = float(close_prices[origin_idx])
+        real_price = float(close_prices[target_idx])
+        model_price = origin_price * float(np.exp(pred_log_ret))
+        naive_price = origin_price
 
-        # Gün-1 cumulative log return.
-        pred_log_ret_day1 = float(q50_curve[0])
-        base_price = float(close_prices[base_idx])
-        pred_price_day1 = base_price * float(np.exp(pred_log_ret_day1))
+        real_prices.append(real_price)
+        model_predictions.append(float(model_price))
+        naive_predictions.append(float(naive_price))
+        origin_prices.append(float(origin_price))
+        predicted_log_returns.append(pred_log_ret)
+        real_log_returns.append(float(np.log((real_price + 1e-12) / (origin_price + 1e-12))))
 
-        predictions.append(float(pred_price_day1))
+        if date_values is not None:
+            target_dates.append(str(date_values[target_idx]))
+            origin_dates.append(str(date_values[origin_idx]))
 
-    return predictions
+    return {
+        "mode": "horizon_aligned",
+        "horizon": horizon,
+        "horizonPosition": h_pos,
+        "real": real_prices,
+        "model": model_predictions,
+        "naive": naive_predictions,
+        "originPrices": origin_prices,
+        "targetDates": target_dates,
+        "originDates": origin_dates,
+        "predictedLogReturns": predicted_log_returns,
+        "realLogReturns": real_log_returns,
+    }
 
 
-def calculate_metrics(real: List[float], predicted: List[float]) -> Dict[str, float]:
+def class_distribution(classes: np.ndarray) -> Dict[str, float]:
+    classes = np.asarray(classes, dtype=np.int32)
+    n = max(1, len(classes))
+    return {
+        "downPct": round(float(np.mean(classes == -1) * 100.0), 2),
+        "flatPct": round(float(np.mean(classes == 0) * 100.0), 2),
+        "upPct": round(float(np.mean(classes == 1) * 100.0), 2),
+        "downCount": int(np.sum(classes == -1)),
+        "flatCount": int(np.sum(classes == 0)),
+        "upCount": int(np.sum(classes == 1)),
+        "samples": int(n),
+    }
+
+
+def safe_corr(a: np.ndarray, b: np.ndarray) -> float:
+    a = np.asarray(a, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
+    if len(a) < 2 or len(b) < 2:
+        return 0.0
+    if np.nanstd(a) < 1e-12 or np.nanstd(b) < 1e-12:
+        return 0.0
+    corr = float(np.corrcoef(a, b)[0, 1])
+    return corr if np.isfinite(corr) else 0.0
+
+
+def calculate_horizon_metrics(
+    real: List[float],
+    predicted: List[float],
+    origins: List[float],
+    horizon: int = BACKTEST_HORIZON,
+    direction_threshold: float = None,
+) -> Dict[str, Any]:
+    """
+    Horizon-aligned metrikler.
+
+    Doğru yön sorusu:
+      origin -> target gerçek hareketi ile origin -> model tahmini aynı sınıfta mı?
+
+    Eski hatadan kaçınır:
+      diff(real_target_series) vs diff(prediction_series) karşılaştırılmaz.
+    """
     real_arr = np.asarray(real, dtype=np.float64)
     pred_arr = np.asarray(predicted, dtype=np.float64)
+    origin_arr = np.asarray(origins, dtype=np.float64)
 
-    n = min(len(real_arr), len(pred_arr))
+    n = min(len(real_arr), len(pred_arr), len(origin_arr))
     real_arr = real_arr[:n]
     pred_arr = pred_arr[:n]
+    origin_arr = origin_arr[:n]
 
-    if n < 2:
+    if n == 0:
         return {
             "accuracyScore": 0.0,
             "directionScore": 0.0,
+            "rawDirectionScore": 0.0,
+            "threeClassAccuracy": 0.0,
+            "directionCoverage": 0.0,
+            "predictedActionRate": 0.0,
             "rmse": 0.0,
             "mape": 0.0,
+            "meanRealReturn": 0.0,
+            "meanPredictedReturn": 0.0,
+            "returnCorrelation": 0.0,
+            "directionThreshold": 0.0,
+            "samples": 0,
+            "actualClassDistribution": class_distribution(np.array([], dtype=np.int32)),
+            "predictedClassDistribution": class_distribution(np.array([], dtype=np.int32)),
         }
 
     mape = np.mean(np.abs(real_arr - pred_arr) / (np.abs(real_arr) + 1e-10))
     rmse = np.sqrt(np.mean((real_arr - pred_arr) ** 2))
 
-    real_dir = np.diff(real_arr) > 0
-    pred_dir = np.diff(pred_arr) > 0
-    direction_score = np.mean(real_dir == pred_dir) * 100.0
+    real_ret = (real_arr - origin_arr) / (np.abs(origin_arr) + 1e-10)
+    pred_ret = (pred_arr - origin_arr) / (np.abs(origin_arr) + 1e-10)
 
-    # Eski API uyumluluğu için accuracyScore bırakıldı.
-    # Ama finansal model kalitesini tek başına temsil etmez.
+    if direction_threshold is None:
+        # Günlük %0.2 eşiği horizon'a sqrt ölçekle taşınır.
+        direction_threshold = float(DIRECTION_METRIC_THR * np.sqrt(max(1, int(horizon))))
+    else:
+        direction_threshold = float(direction_threshold)
+
+    real_cls = classify_returns(real_ret, direction_threshold)
+    pred_cls = classify_returns(pred_ret, direction_threshold)
+
+    three_class_accuracy = np.mean(real_cls == pred_cls) * 100.0
+
+    # Direction score sadece gerçek anlamlı hareketlerde hesaplanır.
+    # Pred flat ise gerçek up/down karşısında yanlış sayılır; bu bilinçli ve dürüst alfa metriğidir.
+    significant_mask = real_cls != 0
+    direction_coverage = float(np.mean(significant_mask) * 100.0)
+
+    if np.sum(significant_mask) == 0:
+        direction_score = 0.0
+    else:
+        direction_score = np.mean(real_cls[significant_mask] == pred_cls[significant_mask]) * 100.0
+
+    predicted_action_rate = float(np.mean(pred_cls != 0) * 100.0)
+
+    # Eski field ismi API uyumu için kalsın; artık horizon 3-class accuracy anlamına gelir.
+    raw_direction_score = three_class_accuracy
+
     accuracy_score = max(0.0, min(100.0, (1.0 - float(mape)) * 100.0))
 
     return {
         "accuracyScore": round(float(accuracy_score), 2),
         "directionScore": round(float(direction_score), 2),
+        "rawDirectionScore": round(float(raw_direction_score), 2),
+        "threeClassAccuracy": round(float(three_class_accuracy), 2),
+        "directionCoverage": round(float(direction_coverage), 2),
+        "predictedActionRate": round(float(predicted_action_rate), 2),
         "rmse": round(float(rmse), 6),
         "mape": round(float(mape), 6),
+        "meanRealReturn": round(float(np.mean(real_ret)), 6),
+        "meanPredictedReturn": round(float(np.mean(pred_ret)), 6),
+        "medianRealReturn": round(float(np.median(real_ret)), 6),
+        "medianPredictedReturn": round(float(np.median(pred_ret)), 6),
+        "returnCorrelation": round(float(safe_corr(real_ret, pred_ret)), 6),
+        "directionThreshold": round(float(direction_threshold), 6),
+        "samples": int(n),
+        "actualClassDistribution": class_distribution(real_cls),
+        "predictedClassDistribution": class_distribution(pred_cls),
     }
 
+
+def calculate_skill_vs_naive(model_metrics: Dict[str, float], naive_metrics: Dict[str, float]) -> Dict[str, float]:
+    naive_mape = float(naive_metrics.get("mape", 0.0))
+    model_mape = float(model_metrics.get("mape", 0.0))
+
+    naive_rmse = float(naive_metrics.get("rmse", 0.0))
+    model_rmse = float(model_metrics.get("rmse", 0.0))
+
+    if naive_mape > 1e-12:
+        mape_skill = (naive_mape - model_mape) / naive_mape * 100.0
+    else:
+        mape_skill = 0.0
+
+    if naive_rmse > 1e-12:
+        rmse_skill = (naive_rmse - model_rmse) / naive_rmse * 100.0
+    else:
+        rmse_skill = 0.0
+
+    direction_skill = float(model_metrics.get("directionScore", 0.0)) - float(naive_metrics.get("directionScore", 0.0))
+    raw_direction_skill = float(model_metrics.get("rawDirectionScore", 0.0)) - float(naive_metrics.get("rawDirectionScore", 0.0))
+
+    return {
+        "mapeSkillPct": round(float(mape_skill), 2),
+        "rmseSkillPct": round(float(rmse_skill), 2),
+        "directionSkillPctPoint": round(float(direction_skill), 2),
+        "rawDirectionSkillPctPoint": round(float(raw_direction_skill), 2),
+        "beatsNaiveByMape": bool(mape_skill > 0),
+        "beatsNaiveByRmse": bool(rmse_skill > 0),
+    }
+
+
+def build_signal_quality(forecast: Dict[str, Any]) -> Dict[str, Any]:
+    probs = forecast["directionProbabilities"]
+    ordered_probs = [
+        ("down", float(probs["down"])),
+        ("flat", float(probs["flat"])),
+        ("up", float(probs["up"])),
+    ]
+    ordered_probs.sort(key=lambda x: x[1], reverse=True)
+
+    top_direction, top_prob = ordered_probs[0]
+    second_prob = ordered_probs[1][1]
+    prob_edge = top_prob - second_prob
+
+    q10_30 = float(forecast["horizonReturns"]["q10"][-1])
+    q50_30 = float(forecast["horizonReturns"]["q50"][-1])
+    q90_30 = float(forecast["horizonReturns"]["q90"][-1])
+
+    band_width_30 = q90_30 - q10_30
+    risk_adjusted_return = q50_30 / (band_width_30 + 1e-8)
+
+    is_direction_confident = bool(
+        top_prob >= SIGNAL_CONFIDENCE_THR and prob_edge >= SIGNAL_EDGE_THR
+    )
+
+    if is_direction_confident and top_direction == "up" and q50_30 > 0:
+        trade_bias = "LONG_CANDIDATE"
+    elif is_direction_confident and top_direction == "down" and q50_30 < 0:
+        trade_bias = "RISK_OFF_OR_SHORT_CANDIDATE"
+    else:
+        trade_bias = "LOW_CONFIDENCE_OR_NO_TRADE"
+
+    return {
+        "topDirection": top_direction,
+        "directionConfidence": round(float(top_prob), 4),
+        "directionEdge": round(float(prob_edge), 4),
+        "isDirectionConfident": is_direction_confident,
+        "q50_30d": round(float(q50_30), 6),
+        "q10_30d": round(float(q10_30), 6),
+        "q90_30d": round(float(q90_30), 6),
+        "bandWidth30d": round(float(band_width_30), 6),
+        "riskAdjustedReturn30d": round(float(risk_adjusted_return), 6),
+        "tradeBias": trade_bias,
+    }
+
+
+
+
+def next_business_day_strings(last_date: Any, n_days: int) -> List[str]:
+    try:
+        start = pd.to_datetime(last_date)
+        dates = pd.bdate_range(start=start + pd.offsets.BDay(1), periods=n_days)
+        return [d.date().isoformat() for d in dates]
+    except Exception:
+        return [f"T+{i}" for i in range(1, n_days + 1)]
+
+
+def build_chart_data(
+    backtest: Dict[str, Any],
+    forecast: Dict[str, Any],
+    df: pd.DataFrame,
+) -> Dict[str, Any]:
+    """
+    Frontend tarih uydurmasın diye tek doğru grafik kontratı.
+
+    backtest satırları targetDate üzerinde çizilir.
+    originDate sadece tooltip/debug içindir.
+    """
+    backtest_rows = []
+    n = min(
+        len(backtest.get("real", [])),
+        len(backtest.get("model", [])),
+        len(backtest.get("naive", [])),
+        len(backtest.get("originPrices", [])),
+    )
+
+    target_dates = backtest.get("targetDates", [])
+    origin_dates = backtest.get("originDates", [])
+    pred_log_returns = backtest.get("predictedLogReturns", [])
+    real_log_returns = backtest.get("realLogReturns", [])
+
+    for i in range(n):
+        origin_price = float(backtest["originPrices"][i])
+        real_price = float(backtest["real"][i])
+        model_price = float(backtest["model"][i])
+        naive_price = float(backtest["naive"][i])
+
+        backtest_rows.append({
+            "index": i,
+            "date": str(target_dates[i]) if i < len(target_dates) else str(i),
+            "targetDate": str(target_dates[i]) if i < len(target_dates) else str(i),
+            "originDate": str(origin_dates[i]) if i < len(origin_dates) else None,
+            "realPrice": real_price,
+            "modelPrediction": model_price,
+            "naivePrediction": naive_price,
+            "originPrice": origin_price,
+            "actualReturn": float((real_price - origin_price) / (abs(origin_price) + 1e-10)),
+            "predictedReturn": float((model_price - origin_price) / (abs(origin_price) + 1e-10)),
+            "actualLogReturn": float(real_log_returns[i]) if i < len(real_log_returns) else None,
+            "predictedLogReturn": float(pred_log_returns[i]) if i < len(pred_log_returns) else None,
+        })
+
+    if "Date" in df.columns:
+        last_date = df["Date"].iloc[-1]
+    else:
+        last_date = None
+
+    future_dates = next_business_day_strings(last_date, len(forecast.get("mean", [])))
+
+    forecast_rows = []
+    for i, mean_price in enumerate(forecast.get("mean", [])):
+        forecast_rows.append({
+            "forecastDay": i + 1,
+            "date": future_dates[i] if i < len(future_dates) else f"T+{i+1}",
+            "mean": float(mean_price),
+            "lower": float(forecast["lower"][i]),
+            "upper": float(forecast["upper"][i]),
+        })
+
+    return {
+        "backtest": backtest_rows,
+        "forecast": forecast_rows,
+        "contractVersion": "chart_contract_v1",
+        "xAxisRule": "Use backtest[].date and forecast[].date. Do not generate synthetic past dates in frontend.",
+    }
 
 # ============================================================
 # 12. ANA ENDPOINT
@@ -907,6 +1296,8 @@ def predict(stock_id: int):
         if len(active_features) == 0:
             return {"error": "Aktif feature bulunamadı."}
 
+        paths = model_paths(stock_id)
+
         if is_model_stale(stock_id, active_features):
             print(f"[EGITIM] {stock_id} egitiliyor... ({MODEL_VERSION})")
             model, x_scaler, y_scale, ret_sigma, profil = train_and_save_model(
@@ -915,20 +1306,20 @@ def predict(stock_id: int):
                 features=active_features,
             )
             message = (
-                f"v11 Direct Multi-Horizon Model egitildi. "
+                f"v11.1 Force External Model egitildi + v11.3 Horizon Metrics + Chart Fix. "
                 f"[{profil.get('profil', '?')}] ({len(active_features)} feat)"
             )
         else:
             model, x_scaler, y_scale, ret_sigma, profil, saved_features = load_saved_model_bundle(stock_id)
             active_features = saved_features
             message = (
-                f"Hafizadaki v11 Direct Multi-Horizon Model. "
+                f"Hafizadaki v11.1 Force External Model + v11.3 Horizon Metrics + Chart Fix. "
                 f"[{profil.get('profil', '?')}] ({len(active_features)} feat)"
             )
 
-        # Holdout backtest:
-        past_90_real = [float(x) for x in df["ClosePrice"].tail(BACKTEST_DAYS).values]
-        past_90_ai = walk_forward_backtest_direct(
+        # Holdout backtest — v11.2:
+        # T+1 interpolasyon yok. T+5 horizon-aligned değerlendirme var.
+        backtest = horizon_aligned_backtest(
             model=model,
             x_scaler=x_scaler,
             y_scale=y_scale,
@@ -936,9 +1327,45 @@ def predict(stock_id: int):
             df=df,
             features=active_features,
             n_days=BACKTEST_DAYS,
+            horizon=BACKTEST_HORIZON,
         )
 
-        metrics = calculate_metrics(past_90_real, past_90_ai)
+        past_90_real = backtest["real"]
+        past_90_ai = backtest["model"]
+        past_90_naive = backtest["naive"]
+
+        metrics = calculate_horizon_metrics(
+            real=past_90_real,
+            predicted=past_90_ai,
+            origins=backtest["originPrices"],
+            horizon=BACKTEST_HORIZON,
+        )
+        naive_metrics = calculate_horizon_metrics(
+            real=past_90_real,
+            predicted=past_90_naive,
+            origins=backtest["originPrices"],
+            horizon=BACKTEST_HORIZON,
+        )
+
+        # Daha pratik bir 5 günlük yön eşiği: +/- %1.
+        # Dashboard'da görülen directionScore bu daha anlaşılır ölçümden gelir.
+        practical_metrics = calculate_horizon_metrics(
+            real=past_90_real,
+            predicted=past_90_ai,
+            origins=backtest["originPrices"],
+            horizon=BACKTEST_HORIZON,
+            direction_threshold=PRACTICAL_HORIZON_DIRECTION_THR,
+        )
+        practical_naive_metrics = calculate_horizon_metrics(
+            real=past_90_real,
+            predicted=past_90_naive,
+            origins=backtest["originPrices"],
+            horizon=BACKTEST_HORIZON,
+            direction_threshold=PRACTICAL_HORIZON_DIRECTION_THR,
+        )
+
+        skill_vs_naive = calculate_skill_vs_naive(metrics, naive_metrics)
+        practical_skill_vs_naive = calculate_skill_vs_naive(practical_metrics, practical_naive_metrics)
 
         last_price = float(df["ClosePrice"].iloc[-1])
 
@@ -952,28 +1379,50 @@ def predict(stock_id: int):
             last_price=last_price,
         )
 
+        signal_quality = build_signal_quality(forecast)
+        chart_data = build_chart_data(backtest=backtest, forecast=forecast, df=df)
+
         return {
             "stockId": stock_id,
             "pastData": past_90_real,
             "pastPredictions": past_90_ai,
+            "naivePredictions": past_90_naive,
+            "backtestOriginPrices": backtest["originPrices"],
+            "backtestTargetDates": backtest["targetDates"],
+            "backtestOriginDates": backtest["originDates"],
             "predictions": forecast["mean"],
             "lowerBound": forecast["lower"],
             "upperBound": forecast["upper"],
             "directionProbabilities": forecast["directionProbabilities"],
             "horizonReturns": forecast["horizonReturns"],
             "confidenceScore": metrics["accuracyScore"],
-            "directionScore": metrics["directionScore"],
+            # Dashboard uyumluluğu: directionScore pratik +/- %1 horizon metriğidir.
+            "directionScore": practical_metrics["directionScore"],
+            "rawDirectionScore": practical_metrics["rawDirectionScore"],
+            "directionCoverage": practical_metrics["directionCoverage"],
+            "strictHorizonMetrics": metrics,
+            "practicalHorizonMetrics": practical_metrics,
+            "naiveMetrics": naive_metrics,
+            "practicalNaiveMetrics": practical_naive_metrics,
+            "skillVsNaive": skill_vs_naive,
+            "practicalSkillVsNaive": practical_skill_vs_naive,
+            "backtestMode": backtest["mode"],
+            "backtestHorizon": backtest["horizon"],
+            "chartData": chart_data,
+            "signalQuality": signal_quality,
             "rmse": metrics["rmse"],
             "mape": metrics["mape"],
             "forecastDays": FORECAST,
             "horizons": [int(x) for x in HORIZONS.tolist()],
             "activeFeatures": len(active_features),
             "activeFeatureNames": active_features,
+            "featureSelectionMode": FEATURE_SELECTION_MODE,
             "modelVersion": MODEL_VERSION,
-            "message": message,
+            "evaluationVersion": EVALUATION_VERSION,
+            "message": message.replace("v11.2 Horizon Backtest", "v11.3 Horizon Metrics + Chart Fix"),
             "note": (
-                "v11 rolling forecast kullanmaz. 30 gunluk cizgi, "
-                "T+5/T+10/T+20/T+30 cumulative return tahminlerinden interpolasyonla uretilir."
+                "v11.3: Model v11.1 Force External mimarisini kullanir; backtest T+1 interpolasyon degil, "
+                "T+5 horizon-aligned olarak hesaplanir. chartData alanindaki date degerleri frontend icin tek dogru eksendir."
             ),
         }
 
@@ -986,8 +1435,11 @@ def health():
     return {
         "status": "ok",
         "modelVersion": MODEL_VERSION,
+        "evaluationVersion": EVALUATION_VERSION,
+        "featureSelectionMode": FEATURE_SELECTION_MODE,
         "lookback": LOOKBACK,
         "forecast": FORECAST,
+        "backtestHorizon": BACKTEST_HORIZON,
         "horizons": [int(x) for x in HORIZONS.tolist()],
     }
 

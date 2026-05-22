@@ -2,40 +2,49 @@ import { Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Portfolio from './pages/Portfolio'
 import Admin from './pages/Admin'
+import { AnalysisProvider } from './context/AnalysisContext'
+import PersistentAnalysisDock from './components/PersistentAnalysisDock'
 
-// Yeni Dikey Navbar Linki
-function SidebarItem({ to, label }) {
+function SidebarItem({ to, label, sub }) {
   return (
     <NavLink
       to={to}
       style={({ isActive }) => ({
-        color: isActive ? '#3b82f6' : '#aaaaaa',
+        color: isActive ? '#ffffff' : '#9ca3af',
         textDecoration: 'none',
         fontWeight: isActive ? 'bold' : 'normal',
-        padding: '12px 20px',
-        borderRadius: '8px',
-        background: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+        padding: '12px 14px',
+        borderRadius: '12px',
+        background: isActive
+          ? 'linear-gradient(135deg, rgba(59,130,246,0.22), rgba(139,92,246,0.12))'
+          : 'transparent',
+        border: isActive ? '1px solid rgba(59,130,246,0.35)' : '1px solid transparent',
         display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
+        flexDirection: 'column',
+        gap: '2px',
         transition: 'all 0.2s',
-        marginBottom: '4px'
+        marginBottom: '6px'
       })}
     >
-      {label}
+      <span>{label}</span>
+      {sub && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'normal' }}>{sub}</span>}
     </NavLink>
   )
 }
 
-export default function App() {
+function Layout() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#0f0f0f', color: '#ffffff' }}>
-      
-      {/* SOL PROFSYONEL SİDEBAR MENÜ */}
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      background:
+        'radial-gradient(circle at top left, rgba(59,130,246,0.12), transparent 34%), #080b12',
+      color: '#ffffff'
+    }}>
       <aside style={{
         width: '260px',
-        background: '#1a1a1a',
-        borderRight: '1px solid #2a2a2a',
+        background: 'linear-gradient(180deg, #0d111c 0%, #090d16 100%)',
+        borderRight: '1px solid #1f2937',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
@@ -45,48 +54,80 @@ export default function App() {
         zIndex: 100,
         padding: '24px 16px'
       }}>
-        {/* Logo Bölümü */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px', 
-          marginBottom: '32px', 
-          paddingLeft: '12px' 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '30px',
+          padding: '8px 10px'
         }}>
-          <span style={{ fontSize: '24px' }}>🚀</span>
-          <span style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-            Eskiz-1
-          </span>
+          <div style={{
+            width: 42,
+            height: 42,
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 12px 26px rgba(59,130,246,0.26)',
+            fontSize: '23px'
+          }}>
+            🧭
+          </div>
+
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '0.3px' }}>
+              Pusula AI
+            </div>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+              Multi-Horizon Analytics
+            </div>
+          </div>
         </div>
 
-        {/* Menü Linkleri */}
         <nav style={{ flex: 1 }}>
-          <SidebarItem to="/"          label="📈 Dashboard" />
-          <SidebarItem to="/portfolio" label="💼 Portföyüm" />
-          <SidebarItem to="/admin"     label="🛠️ Admin Paneli" />
+          <SidebarItem to="/" label="📈 Analiz Paneli" sub="Tahmin, risk ve baseline" />
+          <SidebarItem to="/portfolio" label="💼 Portföy Simülasyonu" sub="Pozisyon ve işlem alanı" />
+          <SidebarItem to="/admin" label="🗄️ Veri Yönetimi" sub="Sync ve veri sağlığı" />
         </nav>
 
-        {/* Alt Bilgi / Sürüm */}
-        <div style={{ 
-          padding: '12px', 
-          borderTop: '1px solid #2a2a2a', 
-          color: '#555', 
+        <div style={{
+          padding: '14px 12px',
+          borderTop: '1px solid #1f2937',
+          color: '#6b7280',
           fontSize: '12px',
-          textAlign: 'center'
+          lineHeight: 1.55
         }}>
-          Quant Engine v7.0
+          <div style={{ color: '#9ca3af', fontWeight: 'bold' }}>Engine v11.3</div>
+          <div>Tahmin değil, ölçülebilir senaryo.</div>
+          <div style={{ marginTop: '8px', color: '#4b5563', fontSize: '11px' }}>
+            Eğitim amaçlıdır; yatırım tavsiyesi değildir.
+          </div>
         </div>
       </aside>
 
-      {/* SAĞ ANA İÇERİK ALANI (Sidebar genişliği kadar soldan margin verildi) */}
-      <main style={{ flex: 1, marginLeft: '260px', padding: '40px 48px', minWidth: 0 }}>
+      <main style={{
+        flex: 1,
+        marginLeft: '260px',
+        padding: '38px 48px 118px',
+        minWidth: 0
+      }}>
         <Routes>
-          <Route path="/"          element={<Dashboard />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/admin"     element={<Admin />}     />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </main>
 
+      <PersistentAnalysisDock />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AnalysisProvider>
+      <Layout />
+    </AnalysisProvider>
   )
 }
