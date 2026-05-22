@@ -4,6 +4,7 @@ import Portfolio from './pages/Portfolio'
 import Admin from './pages/Admin'
 import { AnalysisProvider } from './context/AnalysisContext'
 import PersistentAnalysisDock from './components/PersistentAnalysisDock'
+import ModelLab from './pages/ModelLab'
 
 const BLUE = '#3b82f6'
 const GREEN = '#10b981'
@@ -505,7 +506,7 @@ function AppShell() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/watchlist" element={<WatchlistPage />} />
-          <Route path="/lab" element={<ModelLabPage />} />
+          <Route path="/lab" element={<ModelLab />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>
