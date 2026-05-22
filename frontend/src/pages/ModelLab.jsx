@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getStocks, getPrediction } from '../api/client'
+import { getStocks, getPrediction, getBehaviorSignal } from '../api/client'
 import {
   pct,
   num,
@@ -44,8 +44,62 @@ function formatSmartPct(value, digits = 2) {
   // 34 gibi zaten yüzde gelirse olduğu gibi göster.
   return pct(n, digits)
 }
+function normalizeBehaviorSignal(payload) {
+  if (!payload) return null
 
-function getPredictionMetrics(stock, prediction) {
+  if (payload.error) {
+    return {
+      error: String(payload.error),
+      directionBias: null,
+      actionable: false,
+      warnings: []
+    }
+  }
+
+  return {
+    directionBias: payload.directionBias || null,
+    tradeBias: payload.tradeBias || null,
+    directionConfidence: payload.directionConfidence,
+    flatRisk: payload.flatRisk,
+    momentumScore: payload.momentumScore,
+    breakoutScore: payload.breakoutScore,
+    trendState: payload.trendState || null,
+    volatilityState: payload.volatilityState || null,
+    volumePressure: payload.volumePressure || null,
+    actionable: Boolean(payload.actionable),
+    warnings: Array.isArray(payload.warnings) ? payload.warnings : []
+  }
+}
+
+function getBehaviorColor(directionBias, actionable = false) {
+  if (directionBias === 'up') return actionable ? GREEN : '#86efac'
+  if (directionBias === 'down') return actionable ? RED : '#fca5a5'
+  if (directionBias === 'flat') return GRAY
+  return YELLOW
+}
+
+function getBehaviorLabel(directionBias) {
+  if (directionBias === 'up') return 'Yukarı Davranış'
+  if (directionBias === 'down') return 'Aşağı Davranış'
+  if (directionBias === 'flat') return 'Kararsız / Flat'
+  return 'Okunamadı'
+}
+
+function getRegimeLabel(value) {
+  const map = {
+    trend_following: 'Trend Takip',
+    mean_reverting: 'Ortalamaya Dönüş',
+    choppy: 'Kararsız',
+    choppy_high_vol: 'Kararsız / Yüksek Vol',
+    low: 'Düşük',
+    normal: 'Normal',
+    high: 'Yüksek'
+  }
+
+  return map[value] || value || '-'
+}
+
+function getPredictionMetrics(stock, prediction, behaviorSignal = null) {
   const pm = prediction?.practicalHorizonMetrics || {}
   const pn = prediction?.practicalNaiveMetrics || {}
   const skill = prediction?.practicalSkillVsNaive || {}
@@ -142,7 +196,7 @@ function getPredictionMetrics(stock, prediction) {
     signal.signalEdge,
     prediction?.signalEdge
   )
-
+  const behavior = normalizeBehaviorSignal(behaviorSignal)
   const riskTags = []
 
   if (safeNumber(actionRate) <= 1) {
@@ -168,7 +222,22 @@ function getPredictionMetrics(stock, prediction) {
   if (safeNumber(signalEdge) < 0.03) {
     riskTags.push('LOW_EDGE')
   }
+  if (
+    behavior?.actionable === true &&
+    behavior?.directionBias &&
+    behavior.directionBias !== 'flat' &&
+    safeNumber(actionRate) <= 1
+  ) {
+    riskTags.push('V12_DIVERGENCE')
+  }
 
+  if (behavior?.flatRisk != null && safeNumber(behavior.flatRisk) >= 75) {
+    riskTags.push('BEHAVIOR_FLAT_RISK')
+  }
+
+  if (behavior?.directionConfidence != null && safeNumber(behavior.directionConfidence) < 45) {
+    riskTags.push('BEHAVIOR_LOW_CONF')
+  }
   const quality =
     riskTags.includes('FLAT_COLLAPSE') || riskTags.includes('LOW_DIRECTION')
       ? 'problem'
@@ -225,6 +294,19 @@ function getPredictionMetrics(stock, prediction) {
 
     riskTags,
     quality,
+
+    behaviorDirectionBias: behavior?.directionBias,
+    behaviorTradeBias: behavior?.tradeBias,
+    behaviorConfidence: behavior?.directionConfidence,
+    behaviorFlatRisk: behavior?.flatRisk,
+    behaviorMomentumScore: behavior?.momentumScore,
+    behaviorBreakoutScore: behavior?.breakoutScore,
+    behaviorTrendState: behavior?.trendState,
+    behaviorVolatilityState: behavior?.volatilityState,
+    behaviorVolumePressure: behavior?.volumePressure,
+    behaviorActionable: behavior?.actionable,
+    behaviorWarnings: behavior?.warnings || [],
+    behaviorError: behavior?.error,
     error: null
   }
 }
@@ -252,7 +334,11 @@ function getRiskLabel(tag) {
     LOW_DIRECTION: 'Düşük Yön',
     LOSES_TO_NAIVE: 'Naive Altı',
     OVER_ACTIVE: 'Aşırı Aktif',
-    LOW_EDGE: 'Düşük Edge'
+    LOW_EDGE: 'Düşük Edge',
+    V12_DIVERGENCE: 'v12 Ayrışma',
+    BEHAVIOR_FLAT_RISK: 'Davranış Flat Riski',
+    BEHAVIOR_LOW_CONF: 'Davranış Güveni Düşük',
+    REQUEST_FAILED: 'İstek Hatası'
   }
 
   return map[tag] || tag
@@ -356,8 +442,16 @@ export default function ModelLab() {
       try {
         setMessage(`⏳ ${stock.symbol} analiz ediliyor... (${i + 1}/${selectedStocks.length})`)
 
-        const res = await getPrediction(stock.stockID)
-        const row = getPredictionMetrics(stock, res.data)
+        const [predictionRes, behaviorRes] = await Promise.all([
+          getPrediction(stock.stockID),
+          getBehaviorSignal(stock.stockID).catch(err => ({
+            data: {
+              error: err.response?.data?.detail || err.response?.data || err.message
+            }
+          }))
+        ])
+
+        const row = getPredictionMetrics(stock, predictionRes.data, behaviorRes.data)
 
         nextResults.push(row)
         setResults([...nextResults])
@@ -404,6 +498,16 @@ export default function ModelLab() {
       probFlat: r.probFlat,
       probUp: r.probUp,
       q50_30d: r.q50_30d,
+      behaviorDirectionBias: r.behaviorDirectionBias,
+      behaviorConfidence: r.behaviorConfidence,
+      behaviorFlatRisk: r.behaviorFlatRisk,
+      behaviorMomentumScore: r.behaviorMomentumScore,
+      behaviorBreakoutScore: r.behaviorBreakoutScore,
+      behaviorTrendState: r.behaviorTrendState,
+      behaviorVolatilityState: r.behaviorVolatilityState,
+      behaviorActionable: r.behaviorActionable,
+      behaviorWarnings: r.behaviorWarnings,
+      behaviorError: r.behaviorError,
       riskTags: r.riskTags,
       error: r.error
     }))
@@ -449,6 +553,8 @@ export default function ModelLab() {
       : 0
 
     const flatCollapse = results.filter(r => r.riskTags?.includes('FLAT_COLLAPSE')).length
+    const behaviorDivergence = results.filter(r => r.riskTags?.includes('V12_DIVERGENCE')).length
+    const behaviorActionable = results.filter(r => r.behaviorActionable === true).length
 
     return {
       total,
@@ -459,7 +565,9 @@ export default function ModelLab() {
       avgDirection,
       avgActionRate,
       avgMapeSkill,
-      flatCollapse
+      flatCollapse,
+      behaviorDivergence,
+      behaviorActionable
     }
   }, [results])
 
@@ -528,15 +636,21 @@ export default function ModelLab() {
       )}
 
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, minmax(140px, 1fr))',
-        gap: '14px',
-        marginBottom: '22px'
-      }}>
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  gap: '14px',
+  marginBottom: '22px'
+}}>
         <StatCard label="Analiz Edilen" value={resultStats.total} color={BLUE} icon="📦" />
         <StatCard label="Ortalama Yön" value={pct(resultStats.avgDirection)} color={resultStats.avgDirection >= 50 ? GREEN : YELLOW} icon="🧭" />
         <StatCard label="Ortalama Action" value={pct(resultStats.avgActionRate)} color={resultStats.avgActionRate > 0 ? PURPLE : GRAY} icon="⚡" />
         <StatCard label="Flat Collapse" value={resultStats.flatCollapse} color={resultStats.flatCollapse > 0 ? RED : GREEN} icon="🧊" />
+        <StatCard
+          label="v12 Ayrışma"
+          value={resultStats.behaviorDivergence}
+          color={resultStats.behaviorDivergence > 0 ? YELLOW : GREEN}
+          icon="🧪"
+        />
         <StatCard label="MAPE Skill Ort." value={pct(resultStats.avgMapeSkill)} color={resultStats.avgMapeSkill >= 0 ? GREEN : RED} icon="⚔️" />
       </div>
 
@@ -786,6 +900,7 @@ export default function ModelLab() {
                   <th style={th}>MAPE</th>
                   <th style={th}>30G q50</th>
                   <th style={th}>Down / Flat / Up</th>
+                  <th style={th}>v12-alpha Davranış</th>
                   <th style={th}>Risk Etiketleri</th>
                 </tr>
               </thead>
@@ -899,7 +1014,9 @@ export default function ModelLab() {
                           <span>U</span>
                         </div>
                       </td>
-
+                      <td style={td}>
+                        <BehaviorCell row={row} />
+                      </td>
                       <td style={td}>
                         {row.error ? (
                           <span style={{ color: RED }}>{row.error}</span>
@@ -1071,6 +1188,78 @@ function Badge({ children, color, bg }) {
     }}>
       {children}
     </span>
+  )
+}
+
+function BehaviorCell({ row }) {
+  if (row.behaviorError) {
+    return (
+      <div style={{ color: YELLOW, fontSize: '12px', maxWidth: 220, whiteSpace: 'normal' }}>
+        Behavior okunamadı: {row.behaviorError}
+      </div>
+    )
+  }
+
+  const color = getBehaviorColor(row.behaviorDirectionBias, row.behaviorActionable)
+
+  return (
+    <div style={{ minWidth: 185 }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '7px',
+        marginBottom: '6px'
+      }}>
+        <span style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: color,
+          boxShadow: `0 0 12px ${color}`
+        }} />
+
+        <strong style={{ color }}>
+          {getBehaviorLabel(row.behaviorDirectionBias)}
+        </strong>
+      </div>
+
+      <div style={{
+        color: '#9ca3af',
+        fontSize: '11px',
+        lineHeight: 1.45
+      }}>
+        Güven: {pct(row.behaviorConfidence)} · Flat Risk: {pct(row.behaviorFlatRisk)}
+      </div>
+
+      <div style={{
+        color: '#6b7280',
+        fontSize: '11px',
+        lineHeight: 1.45,
+        marginTop: 3
+      }}>
+        Mom {num(row.behaviorMomentumScore, 1)} · Break {num(row.behaviorBreakoutScore, 1)}
+      </div>
+
+      <div style={{
+        color: '#6b7280',
+        fontSize: '11px',
+        lineHeight: 1.45,
+        marginTop: 3
+      }}>
+        {getRegimeLabel(row.behaviorTrendState)} / {getRegimeLabel(row.behaviorVolatilityState)}
+      </div>
+
+      {row.behaviorActionable && (
+        <div style={{
+          color: '#c4b5fd',
+          fontSize: '11px',
+          marginTop: 5,
+          fontWeight: 'bold'
+        }}>
+          Deneysel aksiyon sinyali
+        </div>
+      )}
+    </div>
   )
 }
 

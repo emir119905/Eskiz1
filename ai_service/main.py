@@ -60,7 +60,7 @@ import pandas as pd
 import pyodbc
 import tensorflow as tf
 import uvicorn
-
+import math
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sklearn.preprocessing import MinMaxScaler
@@ -96,6 +96,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 os.makedirs("ai_models", exist_ok=True)
+
+DB_CONN_STR = (
+    r"DRIVER={ODBC Driver 17 for SQL Server};"
+    r"SERVER=localhost\SQLEXPRESS;"
+    r"DATABASE=Eskiz1DB;"
+    r"Trusted_Connection=yes;"
+    r"TrustServerCertificate=yes;"
+)
+
+
+def get_connection():
+    return pyodbc.connect(DB_CONN_STR)
 
 
 # ============================================================
@@ -158,14 +170,7 @@ EVALUATION_VERSION = "v11_3_horizon_metrics_chart_contract"
 # ============================================================
 def get_db_data(stock_id: int) -> pd.DataFrame:
     try:
-        conn_str = (
-            r"DRIVER={ODBC Driver 17 for SQL Server};"
-            r"SERVER=localhost\SQLEXPRESS;"
-            r"DATABASE=Eskiz1DB;"
-            r"Trusted_Connection=yes;"
-            r"TrustServerCertificate=yes;"
-        )
-        conn = pyodbc.connect(conn_str)
+        conn = get_connection()
 
         df_hisse = pd.read_sql(
             """
@@ -1429,6 +1434,404 @@ def predict(stock_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================================
+# v12-alpha Daily Behavior Signal
+# Rule-based daily behavior layer.
+# Ana tahmin motorunu bozmaz; yalnızca teşhis/yardımcı sinyal üretir.
+# ============================================================
+
+def _behavior_safe_float(value, default=0.0):
+    try:
+        if value is None:
+            return default
+        value = float(value)
+        if math.isnan(value) or math.isinf(value):
+            return default
+        return value
+    except Exception:
+        return default
+
+
+def _behavior_round(value, digits=4):
+    value = _behavior_safe_float(value, None)
+    if value is None:
+        return None
+    return round(value, digits)
+
+
+def _behavior_clip(value, low, high):
+    value = _behavior_safe_float(value, 0.0)
+    return max(low, min(high, value))
+
+
+def _behavior_tanh_score(value, scale=1.0):
+    value = _behavior_safe_float(value, 0.0)
+    if scale <= 0:
+        scale = 1.0
+    return float(np.tanh(value / scale) * 100.0)
+
+
+def _behavior_get_connection():
+    """
+    v12-alpha behavior endpoint için ana DB bağlantısını kullanır.
+    /predict endpoint'iyle aynı SQL Server connection string'i paylaşılır.
+    """
+    return get_connection()
+
+
+def _behavior_classify_volatility(vol20, vol60):
+    vol20 = _behavior_safe_float(vol20)
+    vol60 = _behavior_safe_float(vol60)
+
+    if vol60 <= 0:
+        return "unknown", 1.0
+
+    ratio = vol20 / vol60
+
+    if ratio >= 1.35:
+        return "high", ratio
+
+    if ratio <= 0.75:
+        return "low", ratio
+
+    return "normal", ratio
+
+
+def _behavior_classify_volume(volume_ratio):
+    volume_ratio = _behavior_safe_float(volume_ratio, 1.0)
+
+    if volume_ratio >= 1.50:
+        return "high"
+
+    if volume_ratio <= 0.70:
+        return "low"
+
+    return "normal"
+
+
+def _behavior_direction_label(score, flat_risk):
+    score = _behavior_safe_float(score)
+    flat_risk = _behavior_safe_float(flat_risk)
+
+    if score >= 18 and flat_risk <= 75:
+        return "up"
+
+    if score <= -18 and flat_risk <= 75:
+        return "down"
+
+    return "flat"
+
+
+def _behavior_trend_state(momentum_score, autocorr60, volatility_state):
+    momentum_score = _behavior_safe_float(momentum_score)
+    autocorr60 = _behavior_safe_float(autocorr60)
+
+    if abs(momentum_score) >= 35 and autocorr60 >= -0.15:
+        return "trend_following"
+
+    if autocorr60 <= -0.18:
+        return "mean_reverting"
+
+    if volatility_state == "high" and abs(momentum_score) < 30:
+        return "choppy_high_vol"
+
+    return "choppy"
+
+
+def _behavior_make_interpretation(direction_bias, trend_state, volatility_state, flat_risk, actionable):
+    if direction_bias == "flat":
+        if flat_risk >= 75:
+            return "Model davranış sinyali net yön üretmiyor; flat riski yüksek."
+        return "Davranış sinyali yatay/kararsız rejime işaret ediyor."
+
+    if direction_bias == "up":
+        if actionable:
+            return "Günlük davranış sinyali yukarı yönlü momentumu destekliyor."
+        return "Yukarı eğilim var ancak güven/flat riski nedeniyle ana sinyal değil."
+
+    if direction_bias == "down":
+        if actionable:
+            return "Günlük davranış sinyali aşağı yönlü baskıyı destekliyor."
+        return "Aşağı eğilim var ancak güven/flat riski nedeniyle ana sinyal değil."
+
+    return "Davranış sinyali yorumlanamadı."
+
+
+@app.get("/behavior-signal/{stock_id}")
+def get_behavior_signal(stock_id: int):
+    conn = None
+
+    try:
+        conn = _behavior_get_connection()
+
+        df = pd.read_sql(
+            """
+            SELECT 
+                Date,
+                OpenPrice,
+                ClosePrice,
+                Volume
+            FROM HistoricalData
+            WHERE StockID = ?
+            ORDER BY Date ASC
+            """,
+            conn,
+            params=[stock_id]
+        )
+
+        if df is None or df.empty:
+            return {
+                "stockId": stock_id,
+                "modelVersion": "v12_alpha_daily_behavior_signal",
+                "signalMode": "rule_based_daily",
+                "error": "Bu StockID için HistoricalData bulunamadı."
+            }
+
+        df = df.copy()
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["OpenPrice"] = pd.to_numeric(df["OpenPrice"], errors="coerce")
+        df["ClosePrice"] = pd.to_numeric(df["ClosePrice"], errors="coerce")
+        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
+
+        df = df.dropna(subset=["Date", "OpenPrice", "ClosePrice"])
+        df = df[df["ClosePrice"] > 0]
+        df = df.sort_values("Date").reset_index(drop=True)
+
+        if len(df) < 80:
+            return {
+                "stockId": stock_id,
+                "modelVersion": "v12_alpha_daily_behavior_signal",
+                "signalMode": "rule_based_daily",
+                "samples": int(len(df)),
+                "error": "Davranış sinyali için en az 80 günlük veri önerilir."
+            }
+
+        close = df["ClosePrice"].astype(float)
+        open_price = df["OpenPrice"].astype(float)
+        volume = df["Volume"].fillna(0).astype(float)
+
+        returns = close.pct_change().replace([np.inf, -np.inf], np.nan)
+        intraday_return = ((close / open_price) - 1.0).replace([np.inf, -np.inf], np.nan)
+
+        last_close = _behavior_safe_float(close.iloc[-1])
+        last_open = _behavior_safe_float(open_price.iloc[-1])
+        last_date = df["Date"].iloc[-1].date().isoformat()
+
+        def pct_change_window(window):
+            if len(close) <= window:
+                return 0.0
+            base = _behavior_safe_float(close.iloc[-window - 1])
+            if base <= 0:
+                return 0.0
+            return (last_close / base) - 1.0
+
+        mom5 = pct_change_window(5)
+        mom10 = pct_change_window(10)
+        mom20 = pct_change_window(20)
+        mom60 = pct_change_window(60)
+
+        ma5 = close.rolling(5).mean().iloc[-1]
+        ma20 = close.rolling(20).mean().iloc[-1]
+        ma50 = close.rolling(50).mean().iloc[-1]
+
+        ma20 = _behavior_safe_float(ma20)
+        ma50 = _behavior_safe_float(ma50)
+
+        ma_spread_20_50 = 0.0
+        if ma50 > 0:
+            ma_spread_20_50 = (ma20 / ma50) - 1.0
+
+        vol5 = _behavior_safe_float(returns.tail(5).std())
+        vol20 = _behavior_safe_float(returns.tail(20).std())
+        vol60 = _behavior_safe_float(returns.tail(60).std())
+
+        volatility_state, volatility_ratio = _behavior_classify_volatility(vol20, vol60)
+
+        volume20 = _behavior_safe_float(volume.tail(20).mean())
+        last_volume = _behavior_safe_float(volume.iloc[-1])
+        volume_ratio = 1.0
+
+        if volume20 > 0:
+            volume_ratio = last_volume / volume20
+
+        volume_pressure = _behavior_classify_volume(volume_ratio)
+
+        high60 = _behavior_safe_float(close.tail(60).max(), last_close)
+        low60 = _behavior_safe_float(close.tail(60).min(), last_close)
+
+        if high60 > low60:
+            range_position_60 = (last_close - low60) / (high60 - low60)
+        else:
+            range_position_60 = 0.5
+
+        range_position_60 = _behavior_clip(range_position_60, 0.0, 1.0)
+
+        breakout_pressure = (range_position_60 - 0.5) * 200.0
+        breakout_score = abs(breakout_pressure)
+
+        safe_vol20 = max(vol20, 0.0005)
+
+        z_mom5 = mom5 / (safe_vol20 * math.sqrt(5))
+        z_mom20 = mom20 / (safe_vol20 * math.sqrt(20))
+        z_ma = ma_spread_20_50 / max(safe_vol20 * 2.0, 0.0005)
+
+        z_mom5 = _behavior_clip(z_mom5, -3.0, 3.0)
+        z_mom20 = _behavior_clip(z_mom20, -3.0, 3.0)
+        z_ma = _behavior_clip(z_ma, -3.0, 3.0)
+
+        momentum_raw = (0.30 * z_mom5) + (0.45 * z_mom20) + (0.25 * z_ma)
+        momentum_score = _behavior_tanh_score(momentum_raw, scale=1.20)
+
+        autocorr60 = returns.tail(60).autocorr(lag=1)
+        autocorr60 = _behavior_safe_float(autocorr60, 0.0)
+
+        trend_state = _behavior_trend_state(momentum_score, autocorr60, volatility_state)
+
+        volume_support = 0.0
+        if volume_pressure == "high":
+            volume_support = np.sign(momentum_score) * min(22.0, abs(momentum_score) * 0.25)
+        elif volume_pressure == "low":
+            volume_support = -np.sign(momentum_score) * min(12.0, abs(momentum_score) * 0.15)
+
+        direction_composite = (
+            0.56 * momentum_score +
+            0.29 * breakout_pressure +
+            0.15 * volume_support
+        )
+
+        direction_composite = _behavior_clip(direction_composite, -100.0, 100.0)
+
+        flat_risk = 100.0 - abs(direction_composite)
+
+        if volatility_state == "low":
+            flat_risk += 10.0
+
+        if trend_state in ["choppy", "choppy_high_vol"]:
+            flat_risk += 12.0
+
+        if trend_state == "trend_following":
+            flat_risk -= 10.0
+
+        if breakout_score >= 65:
+            flat_risk -= 8.0
+
+        if volume_pressure == "high" and abs(momentum_score) >= 25:
+            flat_risk -= 6.0
+
+        flat_risk = _behavior_clip(flat_risk, 0.0, 100.0)
+
+        direction_bias = _behavior_direction_label(direction_composite, flat_risk)
+
+        direction_confidence = 45.0
+        direction_confidence += abs(direction_composite) * 0.42
+        direction_confidence -= flat_risk * 0.18
+
+        if trend_state == "trend_following":
+            direction_confidence += 8.0
+
+        if volume_pressure == "high":
+            direction_confidence += 4.0
+
+        if volatility_state == "high":
+            direction_confidence -= 3.0
+
+        direction_confidence = _behavior_clip(direction_confidence, 0.0, 100.0)
+
+        actionable = (
+            direction_bias != "flat"
+            and direction_confidence >= 55.0
+            and flat_risk <= 68.0
+        )
+
+        if actionable and direction_bias == "up":
+            trade_bias = "EXPERIMENTAL_UP_BIAS"
+        elif actionable and direction_bias == "down":
+            trade_bias = "EXPERIMENTAL_DOWN_BIAS"
+        else:
+            trade_bias = "LOW_CONFIDENCE_OR_NO_TRADE"
+
+        interpretation = _behavior_make_interpretation(
+            direction_bias=direction_bias,
+            trend_state=trend_state,
+            volatility_state=volatility_state,
+            flat_risk=flat_risk,
+            actionable=actionable
+        )
+
+        warnings = []
+
+        if flat_risk >= 75:
+            warnings.append("HIGH_FLAT_RISK")
+
+        if trend_state in ["choppy", "choppy_high_vol"]:
+            warnings.append("CHOPPY_REGIME")
+
+        if volatility_state == "high":
+            warnings.append("HIGH_VOLATILITY")
+
+        if direction_confidence < 50:
+            warnings.append("LOW_CONFIDENCE")
+
+        return {
+            "stockId": stock_id,
+            "modelVersion": "v12_alpha_daily_behavior_signal",
+            "signalMode": "rule_based_daily",
+            "description": "Günlük veriden üretilen deneysel davranış sinyali. Ana tahmin motoruna henüz bağlı değildir.",
+
+            "samples": int(len(df)),
+            "lastDate": last_date,
+            "lastOpen": _behavior_round(last_open, 4),
+            "lastClose": _behavior_round(last_close, 4),
+
+            "directionBias": direction_bias,
+            "directionComposite": _behavior_round(direction_composite, 2),
+            "directionConfidence": _behavior_round(direction_confidence, 2),
+            "flatRisk": _behavior_round(flat_risk, 2),
+            "actionable": bool(actionable),
+            "tradeBias": trade_bias,
+
+            "trendState": trend_state,
+            "volatilityState": volatility_state,
+            "volumePressure": volume_pressure,
+
+            "momentumScore": _behavior_round(momentum_score, 2),
+            "breakoutScore": _behavior_round(breakout_score, 2),
+            "breakoutPressure": _behavior_round(breakout_pressure, 2),
+            "rangePosition60": _behavior_round(range_position_60, 4),
+
+            "warnings": warnings,
+            "interpretation": interpretation,
+
+            "metrics": {
+                "mom5": _behavior_round(mom5, 5),
+                "mom10": _behavior_round(mom10, 5),
+                "mom20": _behavior_round(mom20, 5),
+                "mom60": _behavior_round(mom60, 5),
+                "intradayReturnLast": _behavior_round(intraday_return.iloc[-1], 5),
+                "maSpread20_50": _behavior_round(ma_spread_20_50, 5),
+                "vol5": _behavior_round(vol5, 5),
+                "vol20": _behavior_round(vol20, 5),
+                "vol60": _behavior_round(vol60, 5),
+                "volatilityRatio20_60": _behavior_round(volatility_ratio, 4),
+                "volumeRatio20": _behavior_round(volume_ratio, 4),
+                "returnAutocorr60": _behavior_round(autocorr60, 4)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "stockId": stock_id,
+            "modelVersion": "v12_alpha_daily_behavior_signal",
+            "signalMode": "rule_based_daily",
+            "error": str(e)
+        }
+
+    finally:
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:
+            pass
 
 @app.get("/health")
 def health():

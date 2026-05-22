@@ -21,6 +21,7 @@ export const addStock        = (stock)   => api.post('/stocks', stock)
 // TAHMİN
 // v11.3 için direkt Python motorundan çekiyoruz ki chartData/practicalHorizonMetrics kaybolmasın.
 export const getPrediction   = (stockId) => aiApi.get(`/predict/${stockId}`)
+export const getBehaviorSignal = (stockId) => aiApi.get(`/behavior-signal/${stockId}`)
 
 // PORTFÖY
 export const getPortfolio    = (userId)  => api.get(`/portfolio/${userId}`)
@@ -31,4 +32,4 @@ export const addTransaction  = (tx)      => api.post('/transactions', tx)
 // VERİTABANI DURUMU
 export const getDbStatus     = ()        => api.get('/historicaldata/status')
 export const syncStock       = (stockId) => api.post(`/historicaldata/sync/${stockId}`)
-export const syncAllStocks   = ()        => api.post('/historicaldata/syncall')
+export const syncAllStocks   = ()        => api.post('/historicaldata/syncall') 

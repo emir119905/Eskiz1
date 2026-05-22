@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { searchStocks } from '../api/client'
+import { useEffect, useMemo, useState } from 'react'
+import { getBehaviorSignal, searchStocks } from '../api/client'
 import { useAnalysis } from '../context/AnalysisContext'
 import {
   ResponsiveContainer,
@@ -34,6 +34,10 @@ const GRAY = '#6b7280'
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
+}
+
+function getStockId(stock) {
+  return stock?.stockID ?? stock?.StockID ?? stock?.stockId ?? stock?.id ?? null
 }
 
 function CustomTooltip({ active, payload, label, asset, mode }) {
@@ -92,11 +96,59 @@ export default function Dashboard() {
   const [chartView, setChartView] = useState('scenario')
   const [scaleMode, setScaleMode] = useState('price')
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [behaviorSignal, setBehaviorSignal] = useState(null)
+  const [behaviorLoading, setBehaviorLoading] = useState(false)
+  const [behaviorError, setBehaviorError] = useState(null)
+
+  const selectedStockId = getStockId(selectedStock)
 
   const pm = prediction?.practicalHorizonMetrics
   const pn = prediction?.practicalNaiveMetrics
   const skill = prediction?.practicalSkillVsNaive
   const signal = prediction?.signalQuality
+
+  useEffect(() => {
+    let alive = true
+
+    async function loadBehaviorSignal() {
+      if (!prediction || !selectedStockId) {
+        setBehaviorSignal(null)
+        setBehaviorError(null)
+        setBehaviorLoading(false)
+        return
+      }
+
+      setBehaviorLoading(true)
+      setBehaviorError(null)
+
+      try {
+        const res = await getBehaviorSignal(selectedStockId)
+
+        if (!alive) return
+
+        if (res.data?.error) {
+          setBehaviorSignal(null)
+          setBehaviorError(res.data.error)
+        } else {
+          setBehaviorSignal(res.data)
+        }
+      } catch (e) {
+        if (!alive) return
+
+        const err = e.response?.data?.detail || e.response?.data || e.message
+        setBehaviorSignal(null)
+        setBehaviorError(String(err))
+      } finally {
+        if (alive) setBehaviorLoading(false)
+      }
+    }
+
+    loadBehaviorSignal()
+
+    return () => {
+      alive = false
+    }
+  }, [prediction, selectedStockId])
 
   async function handleSearch(e) {
     const q = e.target.value
@@ -293,6 +345,13 @@ export default function Dashboard() {
             signal={signal}
             pm={pm}
             skill={skill}
+          />
+
+          <BehaviorSignalCard
+            selectedStock={selectedStock}
+            behaviorSignal={behaviorSignal}
+            loading={behaviorLoading}
+            error={behaviorError}
           />
 
           <div style={{
@@ -664,6 +723,345 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
     </div>
   )
 }
+
+function getBehaviorDirectionColor(directionBias) {
+  if (directionBias === 'up') return GREEN
+  if (directionBias === 'down') return RED
+  return YELLOW
+}
+
+function getBehaviorDirectionLabel(directionBias) {
+  if (directionBias === 'up') return 'Yukarı Davranış'
+  if (directionBias === 'down') return 'Aşağı Davranış'
+  return 'Kararsız / Flat'
+}
+
+function getBehaviorTrendLabel(trendState) {
+  const labels = {
+    trend_following: 'Trend Takibi',
+    mean_reverting: 'Ortalamaya Dönüş',
+    choppy_high_vol: 'Dalgalı / Yüksek Vol',
+    choppy: 'Kararsız Rejim',
+    unknown: 'Bilinmiyor'
+  }
+
+  return labels[trendState] || trendState || '-'
+}
+
+function getBehaviorVolLabel(volatilityState) {
+  const labels = {
+    low: 'Düşük',
+    normal: 'Normal',
+    high: 'Yüksek',
+    unknown: 'Bilinmiyor'
+  }
+
+  return labels[volatilityState] || volatilityState || '-'
+}
+
+function getBehaviorVolumeLabel(volumePressure) {
+  const labels = {
+    low: 'Düşük Hacim',
+    normal: 'Normal Hacim',
+    high: 'Yüksek Hacim'
+  }
+
+  return labels[volumePressure] || volumePressure || '-'
+}
+
+function getBehaviorWarningLabel(warning) {
+  const labels = {
+    HIGH_FLAT_RISK: 'Yüksek Flat Riski',
+    CHOPPY_REGIME: 'Kararsız Rejim',
+    LOW_CONFIDENCE: 'Düşük Güven',
+    HIGH_VOLATILITY: 'Yüksek Volatilite'
+  }
+
+  return labels[warning] || warning
+}
+
+function getBehaviorInterpretation(signal) {
+  if (!signal) return '-'
+
+  if (signal.directionBias === 'flat') {
+    if (safeNumber(signal.flatRisk) >= 75) {
+      return 'Günlük davranış katmanı net yön üretmiyor; flat riski yüksek. Ana model sinyali agresif yorumlanmamalı.'
+    }
+
+    return 'Günlük davranış katmanı yatay/kararsız bir rejime işaret ediyor.'
+  }
+
+  if (signal.directionBias === 'up') {
+    return signal.actionable
+      ? 'Günlük davranış katmanı yukarı yönlü momentumu destekliyor.'
+      : 'Yukarı eğilim var; ancak güven veya flat riski nedeniyle yardımcı sinyal olarak okunmalı.'
+  }
+
+  if (signal.directionBias === 'down') {
+    return signal.actionable
+      ? 'Günlük davranış katmanı aşağı yönlü baskıyı destekliyor.'
+      : 'Aşağı eğilim var; ancak güven veya flat riski nedeniyle yardımcı sinyal olarak okunmalı.'
+  }
+
+  return 'Davranış sinyali yorumlanamadı.'
+}
+
+function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
+  if (loading) {
+    return (
+      <Panel style={{ marginBottom: '18px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          color: '#9ca3af'
+        }}>
+          <span style={{ fontSize: 22 }}>⏳</span>
+          <div>
+            <strong style={{ color: '#e5e7eb' }}>v12-alpha davranış sinyali yükleniyor</strong>
+            <div style={{ fontSize: '12px', marginTop: 3 }}>
+              Günlük momentum, volatilite, hacim ve range davranışı okunuyor.
+            </div>
+          </div>
+        </div>
+      </Panel>
+    )
+  }
+
+  if (error) {
+    return (
+      <Panel style={{ marginBottom: '18px', borderColor: '#ef444466' }}>
+        <div style={{ color: '#fecaca', fontSize: '13px', lineHeight: 1.55 }}>
+          <strong>v12-alpha davranış sinyali alınamadı:</strong> {error}
+        </div>
+      </Panel>
+    )
+  }
+
+  if (!behaviorSignal) return null
+
+  const color = getBehaviorDirectionColor(behaviorSignal.directionBias)
+  const warnings = behaviorSignal.warnings || []
+  const metrics = behaviorSignal.metrics || {}
+
+  const confidence = safeNumber(behaviorSignal.directionConfidence)
+  const flatRisk = safeNumber(behaviorSignal.flatRisk)
+  const momentum = safeNumber(behaviorSignal.momentumScore)
+  const breakout = safeNumber(behaviorSignal.breakoutScore)
+  const composite = safeNumber(behaviorSignal.directionComposite)
+
+  return (
+    <div style={{
+      background: `radial-gradient(circle at top left, ${color}24, transparent 34%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      border: `1px solid ${color}66`,
+      borderRadius: '22px',
+      padding: '22px',
+      marginBottom: '18px',
+      boxShadow: `0 22px 52px ${color}10`,
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: '18px',
+        marginBottom: '18px',
+        flexWrap: 'wrap'
+      }}>
+        <div>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+            {selectedStock?.symbol || 'Seçili Varlık'} · Deneysel Davranış Katmanı
+          </div>
+
+          <div style={{
+            color,
+            fontWeight: 'bold',
+            fontSize: '25px',
+            letterSpacing: '-0.5px',
+            marginBottom: '7px'
+          }}>
+            {getBehaviorDirectionLabel(behaviorSignal.directionBias)}
+          </div>
+
+          <div style={{
+            color: '#d1d5db',
+            fontSize: '13px',
+            lineHeight: 1.6,
+            maxWidth: 760
+          }}>
+            {getBehaviorInterpretation(behaviorSignal)}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Badge color={behaviorSignal.actionable ? GREEN : YELLOW}>
+            {behaviorSignal.actionable ? 'Aksiyonlanabilir' : 'Yardımcı Sinyal'}
+          </Badge>
+
+          <Badge color={PURPLE}>
+            v12-alpha
+          </Badge>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1.1fr 0.9fr 0.9fr',
+        gap: '16px',
+        alignItems: 'stretch'
+      }}>
+        <div style={{
+          background: '#0b1220',
+          border: '1px solid #1f2937',
+          borderRadius: '16px',
+          padding: '15px'
+        }}>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+            Günlük Davranış Skorları
+          </div>
+
+          <BehaviorBar label="Composite" value={composite} color={color} />
+          <BehaviorBar label="Momentum" value={momentum} color={momentum >= 0 ? GREEN : RED} />
+          <BehaviorBar label="Breakout" value={breakout} color={BLUE} positiveOnly />
+        </div>
+
+        <div style={{
+          background: '#0b1220',
+          border: '1px solid #1f2937',
+          borderRadius: '16px',
+          padding: '15px'
+        }}>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+            Güven / Risk
+          </div>
+
+          <ScoreGauge
+            label="Davranış Güveni"
+            value={confidence}
+            color={confidence >= 55 ? GREEN : YELLOW}
+          />
+
+          <ScoreGauge
+            label="Flat Riski"
+            value={flatRisk}
+            color={flatRisk >= 75 ? RED : flatRisk >= 55 ? YELLOW : GREEN}
+          />
+        </div>
+
+        <div style={{
+          background: '#0b1220',
+          border: '1px solid #1f2937',
+          borderRadius: '16px',
+          padding: '15px'
+        }}>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+            Rejim Özeti
+          </div>
+
+          <BehaviorInfo label="Trend" value={getBehaviorTrendLabel(behaviorSignal.trendState)} />
+          <BehaviorInfo label="Volatilite" value={getBehaviorVolLabel(behaviorSignal.volatilityState)} />
+          <BehaviorInfo label="Hacim" value={getBehaviorVolumeLabel(behaviorSignal.volumePressure)} />
+          <BehaviorInfo
+            label="20G Hacim Oranı"
+            value={metrics.volumeRatio20 == null ? '-' : `${num(metrics.volumeRatio20, 2)}x`}
+          />
+        </div>
+      </div>
+
+      {warnings.length > 0 && (
+        <div style={{
+          borderTop: '1px solid #1f2937',
+          marginTop: '16px',
+          paddingTop: '14px',
+          display: 'flex',
+          gap: '7px',
+          flexWrap: 'wrap'
+        }}>
+          {warnings.map(w => (
+            <Badge key={w} color={w === 'HIGH_FLAT_RISK' ? RED : YELLOW}>
+              {getBehaviorWarningLabel(w)}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BehaviorInfo({ label, value }) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '10px',
+      color: '#d1d5db',
+      fontSize: '13px',
+      marginBottom: '9px'
+    }}>
+      <span style={{ color: '#6b7280' }}>{label}</span>
+      <strong style={{ textAlign: 'right' }}>{value}</strong>
+    </div>
+  )
+}
+
+function BehaviorBar({ label, value, color, positiveOnly = false }) {
+  const safe = positiveOnly
+    ? Math.max(0, Math.min(100, safeNumber(value)))
+    : Math.max(-100, Math.min(100, safeNumber(value)))
+
+  const width = positiveOnly
+    ? safe
+    : Math.abs(safe)
+
+  return (
+    <div style={{ marginBottom: '12px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        color: '#9ca3af',
+        fontSize: '12px',
+        marginBottom: 5
+      }}>
+        <span>{label}</span>
+        <strong style={{ color }}>{num(safe, 2)}</strong>
+      </div>
+
+      <div style={{
+        height: 9,
+        background: '#111827',
+        border: '1px solid #1f2937',
+        borderRadius: '999px',
+        overflow: 'hidden',
+        position: 'relative'
+      }}>
+        {!positiveOnly && (
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            top: 0,
+            bottom: 0,
+            width: 1,
+            background: '#374151'
+          }} />
+        )}
+
+        <div style={{
+          width: `${width / (positiveOnly ? 1 : 2)}%`,
+          height: '100%',
+          background: color,
+          borderRadius: '999px',
+          marginLeft: positiveOnly
+            ? 0
+            : safe >= 0
+              ? '50%'
+              : `${50 - width / 2}%`
+        }} />
+      </div>
+    </div>
+  )
+}
+
 
 function ModelVsNaiveCard({ pm, pn, skill, selectedStock }) {
   const mapeSkill = safeNumber(skill?.mapeSkillPct)
