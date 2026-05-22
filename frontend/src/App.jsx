@@ -5,6 +5,8 @@ import Admin from './pages/Admin'
 import { AnalysisProvider } from './context/AnalysisContext'
 import PersistentAnalysisDock from './components/PersistentAnalysisDock'
 import ModelLab from './pages/ModelLab'
+import Reports from './pages/Reports'
+import Watchlist from './pages/Watchlist'
 
 const BLUE = '#3b82f6'
 const GREEN = '#10b981'
@@ -22,37 +24,37 @@ const navItems = [
     to: '/',
     label: 'Dashboard',
     icon: '📈',
-    description: 'Analiz ve senaryo'
+    description: 'Canlı analiz radarı'
   },
   {
     to: '/portfolio',
     label: 'Portföy',
     icon: '💼',
-    description: 'Sanal işlem takibi'
+    description: 'Sanal portföy ve işlemler'
   },
   {
     to: '/watchlist',
     label: 'İzleme Listesi',
     icon: '👁️',
-    description: 'Yakında'
+    description: 'Favori varlık takibi'
   },
   {
     to: '/lab',
     label: 'Model Lab',
     icon: '🧪',
-    description: 'Test ve deney alanı'
+    description: 'Batch test ve metrikler'
   },
   {
     to: '/reports',
     label: 'Raporlar',
     icon: '📄',
-    description: 'Sunum çıktıları'
+    description: 'Proje ve sunum merkezi'
   },
   {
     to: '/admin',
     label: 'Veri Yönetimi',
     icon: '🗄️',
-    description: 'DB ve sync'
+    description: 'Veri durumu ve sync'
   }
 ]
 
@@ -505,9 +507,9 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/lab" element={<ModelLab />} />
-          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>
 
