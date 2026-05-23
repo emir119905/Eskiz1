@@ -3,7 +3,8 @@ import {
   getStocks,
   getDbStatus,
   syncStock,
-  syncAllStocks
+  syncAllStocks,
+  deleteStockHistoricalData
 } from '../api/client'
 
 const BLUE = '#3b82f6'
@@ -318,6 +319,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
   const [syncingAll, setSyncingAll] = useState(false)
   const [syncingId, setSyncingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [message, setMessage] = useState('')
   const [query, setQuery] = useState('')
   const [healthFilter, setHealthFilter] = useState('all')
@@ -377,6 +379,35 @@ export default function Admin() {
       setMessage('❌ Senkronizasyon hatası: ' + err)
     } finally {
       setSyncingId(null)
+    }
+  }
+
+
+  async function handleDeleteStockData(row) {
+    if (!row?.stockID) {
+      setMessage('❌ Bu kayıt için StockID bulunamadı.')
+      return
+    }
+
+    const ok = window.confirm(
+      `${row.symbol} hissesine ait tüm tarihsel fiyat verileri silinsin mi?\n\nBu işlem hisse kaydını silmez, sadece HistoricalData kayıtlarını temizler. Daha sonra Sync ile tekrar yüklenebilir.`
+    )
+
+    if (!ok) return
+
+    setDeletingId(row.stockID)
+    setMessage(`⏳ ${row.symbol} tarihsel verileri siliniyor...`)
+
+    try {
+      const res = await deleteStockHistoricalData(row.stockID)
+      const msg = res?.data?.mesaj || res?.data?.Mesaj || res?.data?.message || `${row.symbol} tarihsel verileri silindi.`
+      setMessage('✅ ' + msg)
+      await loadAdminData()
+    } catch (e) {
+      const err = e.response?.data?.detail || e.response?.data || e.message
+      setMessage('❌ Silme hatası: ' + err)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -592,6 +623,7 @@ export default function Admin() {
                 {filteredRows.map(row => {
                   const h = getHealth(row)
                   const isSyncing = syncingId === row.stockID
+                  const isDeleting = deletingId === row.stockID
 
                   return (
                     <tr
@@ -640,17 +672,31 @@ export default function Admin() {
                       </td>
 
                       <td style={{ ...td, textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleSyncStock(row)}
-                          disabled={syncingAll || isSyncing}
-                          style={{
-                            ...smallButton,
-                            opacity: syncingAll || isSyncing ? 0.65 : 1,
-                            cursor: syncingAll || isSyncing ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          {isSyncing ? 'Sync...' : 'Sync'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => handleSyncStock(row)}
+                            disabled={syncingAll || isSyncing || isDeleting}
+                            style={{
+                              ...smallButton,
+                              opacity: syncingAll || isSyncing || isDeleting ? 0.65 : 1,
+                              cursor: syncingAll || isSyncing || isDeleting ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {isSyncing ? 'Sync...' : 'Sync'}
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteStockData(row)}
+                            disabled={syncingAll || isSyncing || isDeleting || Number(row.rowCount || 0) === 0}
+                            style={{
+                              ...dangerSmallButton,
+                              opacity: syncingAll || isSyncing || isDeleting || Number(row.rowCount || 0) === 0 ? 0.55 : 1,
+                              cursor: syncingAll || isSyncing || isDeleting || Number(row.rowCount || 0) === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {isDeleting ? 'Siliniyor...' : 'Veriyi Sil'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -913,6 +959,17 @@ const smallButton = {
   border: '1px solid #2563eb55',
   borderRadius: '10px',
   background: '#2563eb',
+  fontWeight: 'bold',
+  fontSize: '12px'
+}
+
+
+const dangerSmallButton = {
+  padding: '8px 12px',
+  color: '#fecaca',
+  border: '1px solid #ef444455',
+  borderRadius: '10px',
+  background: '#ef444418',
   fontWeight: 'bold',
   fontSize: '12px'
 }

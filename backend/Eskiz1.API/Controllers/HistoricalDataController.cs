@@ -59,6 +59,47 @@ namespace Eskiz1.API.Controllers
             return Ok(results);
         }
 
+
+        // DELETE: api/historicaldata/stock/1 -> Seçili hissenin tarihsel verilerini sil
+        // Not: Hisse kaydını veya kullanıcı işlemlerini silmez. Yalnızca HistoricalData kayıtlarını temizler.
+        [HttpDelete("stock/{stockId}")]
+        public async Task<IActionResult> DeleteHistoricalDataByStock(int stockId)
+        {
+            var stock = await _context.Stocks.FindAsync(stockId);
+            if (stock == null)
+            {
+                return NotFound($"StockID {stockId} için hisse bulunamadı.");
+            }
+
+            var records = await _context.HistoricalData
+                .Where(h => h.StockID == stockId)
+                .ToListAsync();
+
+            var deletedCount = records.Count;
+
+            if (deletedCount == 0)
+            {
+                return Ok(new
+                {
+                    Mesaj = $"{stock.Symbol} için silinecek tarihsel veri bulunamadı.",
+                    StockID = stockId,
+                    Symbol = stock.Symbol,
+                    DeletedCount = 0
+                });
+            }
+
+            _context.HistoricalData.RemoveRange(records);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Mesaj = $"{stock.Symbol} için {deletedCount} tarihsel veri kaydı silindi.",
+                StockID = stockId,
+                Symbol = stock.Symbol,
+                DeletedCount = deletedCount
+            });
+        }
+
         // GET: api/historicaldata/status -> Veritabanı durumu (hangi hissede ne kadar veri var)
         [HttpGet("status")]
         public async Task<IActionResult> GetDatabaseStatus()
