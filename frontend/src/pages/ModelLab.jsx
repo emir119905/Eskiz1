@@ -222,13 +222,29 @@ function getPredictionMetrics(stock, prediction, behaviorSignal = null) {
   if (safeNumber(signalEdge) < 0.03) {
     riskTags.push('LOW_EDGE')
   }
-  if (
+
+  const behaviorHasActionableDirection = (
     behavior?.actionable === true &&
     behavior?.directionBias &&
-    behavior.directionBias !== 'flat' &&
-    safeNumber(actionRate) <= 1
-  ) {
+    behavior.directionBias !== 'flat'
+  )
+
+  // Sert ayrışma: ana model tamamen flat/action yok, behavior katmanı net yön görüyor.
+  if (behaviorHasActionableDirection && safeNumber(actionRate) <= 1) {
     riskTags.push('V12_DIVERGENCE')
+  }
+
+  // Daha yumuşak ayrışma: ana model zayıf ama behavior katmanı güçlü yön sinyali veriyor.
+  if (
+    behaviorHasActionableDirection &&
+    safeNumber(actionRate) > 1 &&
+    (
+      safeNumber(directionScore) < 25 ||
+      safeNumber(actionRate) < 35 ||
+      safeNumber(mapeSkill) < 0
+    )
+  ) {
+    riskTags.push('BEHAVIOR_STRONG_MODEL_WEAK')
   }
 
   if (behavior?.flatRisk != null && safeNumber(behavior.flatRisk) >= 75) {
@@ -338,6 +354,7 @@ function getRiskLabel(tag) {
     V12_DIVERGENCE: 'v12 Ayrışma',
     BEHAVIOR_FLAT_RISK: 'Davranış Flat Riski',
     BEHAVIOR_LOW_CONF: 'Davranış Güveni Düşük',
+    BEHAVIOR_STRONG_MODEL_WEAK: 'Davranış Güçlü / Model Zayıf',
     REQUEST_FAILED: 'İstek Hatası'
   }
 
@@ -577,6 +594,13 @@ export default function ModelLab() {
       if (resultFilter === 'problem') return r.quality === 'problem'
       if (resultFilter === 'good') return r.quality === 'good'
       if (resultFilter === 'flat') return r.riskTags?.includes('FLAT_COLLAPSE') || safeNumber(r.predictedFlatPct) >= 85
+      if (resultFilter === 'behavior') {
+        return (
+          r.riskTags?.includes('V12_DIVERGENCE') ||
+          r.riskTags?.includes('BEHAVIOR_STRONG_MODEL_WEAK') ||
+          r.behaviorActionable === true
+        )
+      }
       if (resultFilter === 'naive') return safeNumber(r.mapeSkill) < 0
       return true
     })
@@ -848,9 +872,10 @@ export default function ModelLab() {
                 ['all', 'Tümü'],
                 ['problem', 'Problem'],
                 ['flat', 'Flat'],
+                ['behavior', 'Davranış'],
                 ['naive', 'Naive Altı'],
                 ['good', 'İyi']
-              ]}
+              ]}  
             />
 
             <select
@@ -1023,9 +1048,26 @@ export default function ModelLab() {
                         ) : row.riskTags?.length > 0 ? (
                           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                             {row.riskTags.map(tag => (
-                              <Badge key={tag} color={tag === 'LOW_EDGE' ? YELLOW : RED} bg={tag === 'LOW_EDGE' ? '#f59e0b18' : '#ef444418'}>
+                              <Badge
+                                key={tag}
+                                color={
+                                  tag === 'LOW_EDGE' || tag === 'BEHAVIOR_STRONG_MODEL_WEAK'
+                                    ? YELLOW
+                                    : tag === 'V12_DIVERGENCE'
+                                      ? PURPLE
+                                      : RED
+                                }
+                                bg={
+                                  tag === 'LOW_EDGE' || tag === 'BEHAVIOR_STRONG_MODEL_WEAK'
+                                    ? '#f59e0b18'
+                                    : tag === 'V12_DIVERGENCE'
+                                      ? '#8b5cf618'
+                                      : '#ef444418'
+                                }
+                              >
                                 {getRiskLabel(tag)}
                               </Badge>
+                                
                             ))}
                           </div>
                         ) : (
