@@ -1,4 +1,5 @@
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Portfolio from './pages/Portfolio'
 import Admin from './pages/Admin'
@@ -485,6 +486,60 @@ function ReportsPage() {
   )
 }
 
+
+const keepAlivePages = [
+  { path: '/', Component: Dashboard },
+  { path: '/portfolio', Component: Portfolio },
+  { path: '/watchlist', Component: Watchlist },
+  { path: '/lab', Component: ModelLab },
+  { path: '/reports', Component: Reports },
+  { path: '/admin', Component: Admin }
+]
+
+function getKnownPath(pathname) {
+  return keepAlivePages.some(page => page.path === pathname)
+    ? pathname
+    : '/'
+}
+
+function KeepAlivePages() {
+  const location = useLocation()
+  const activePath = getKnownPath(location.pathname)
+  const [mountedPaths, setMountedPaths] = useState(() => new Set([activePath]))
+
+  useEffect(() => {
+    setMountedPaths(prev => {
+      if (prev.has(activePath)) return prev
+
+      const next = new Set(prev)
+      next.add(activePath)
+      return next
+    })
+  }, [activePath])
+
+  return (
+    <>
+      {keepAlivePages.map(({ path, Component }) => {
+        if (!mountedPaths.has(path)) return null
+
+        const active = activePath === path
+
+        return (
+          <section
+            key={path}
+            aria-hidden={!active}
+            style={{
+              display: active ? 'block' : 'none'
+            }}
+          >
+            <Component />
+          </section>
+        )
+      })}
+    </>
+  )
+}
+
 function AppShell() {
   return (
     <div style={{
@@ -504,14 +559,7 @@ function AppShell() {
       }}>
         <TopStatusBar />
 
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/watchlist" element={<Watchlist />} />
-          <Route path="/lab" element={<ModelLab />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
+        <KeepAlivePages />
 
         <Footer />
       </main>

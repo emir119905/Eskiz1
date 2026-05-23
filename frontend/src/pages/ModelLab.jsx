@@ -16,6 +16,58 @@ const PURPLE = '#8b5cf6'
 const GRAY = '#6b7280'
 
 const PROBLEM_SET_IDS = [31, 32, 34, 4, 6, 28, 21, 3, 33]
+const DYNAMIC_PROBLEM_STORAGE_KEY = 'pusula_ai_model_lab_dynamic_problem_ids_v1'
+
+const DYNAMIC_PROBLEM_RISK_TAGS = new Set([
+  'FLAT_COLLAPSE',
+  'HIGH_FLAT_RATE',
+  'LOW_DIRECTION',
+  'LOSES_TO_NAIVE',
+  'V12_DIVERGENCE',
+  'BEHAVIOR_STRONG_MODEL_WEAK'
+])
+
+function loadDynamicProblemIds() {
+  try {
+    if (typeof window === 'undefined') return []
+
+    const raw = window.localStorage.getItem(DYNAMIC_PROBLEM_STORAGE_KEY)
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+
+    return parsed
+      .map(Number)
+      .filter(Number.isFinite)
+  } catch {
+    return []
+  }
+}
+
+function saveDynamicProblemIds(ids) {
+  try {
+    if (typeof window === 'undefined') return
+
+    const cleanIds = [...ids]
+      .map(Number)
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b)
+
+    window.localStorage.setItem(DYNAMIC_PROBLEM_STORAGE_KEY, JSON.stringify(cleanIds))
+  } catch {
+    // localStorage kapalıysa uygulama çalışmaya devam etsin.
+  }
+}
+
+function isDynamicProblemRow(row) {
+  if (!row || row.error) return false
+
+  if (row.quality === 'problem') return true
+
+  const tags = Array.isArray(row.riskTags) ? row.riskTags : []
+  return tags.some(tag => DYNAMIC_PROBLEM_RISK_TAGS.has(tag))
+}
 
 function firstDefined(...values) {
   return values.find(v => v !== undefined && v !== null && v !== '')
@@ -365,6 +417,7 @@ export default function ModelLab() {
   const [stocks, setStocks] = useState([])
   const [loadingStocks, setLoadingStocks] = useState(true)
   const [selectedIds, setSelectedIds] = useState(new Set(PROBLEM_SET_IDS))
+  const [dynamicProblemIds, setDynamicProblemIds] = useState(() => new Set(loadDynamicProblemIds()))
   const [query, setQuery] = useState('')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
@@ -420,6 +473,34 @@ export default function ModelLab() {
     setSelectedIds(ids)
   }
 
+  function selectDynamicProblemSet() {
+    const ids = new Set(
+      stocks
+        .filter(s => dynamicProblemIds.has(s.stockID))
+        .map(s => s.stockID)
+    )
+
+    if (ids.size === 0) {
+      setMessage('ℹ️ Dinamik problem havuzu boş. Önce batch analiz çalıştır.')
+      return
+    }
+
+    setSelectedIds(ids)
+    setMessage(`✅ Dinamik problem set seçildi: ${ids.size} hisse.`)
+  }
+
+  function clearDynamicProblemSet() {
+    if (dynamicProblemIds.size === 0) return
+
+    const ok = window.confirm('Dinamik problem havuzu temizlensin mi? Bu işlem sadece localStorage kaydını siler.')
+    if (!ok) return
+
+    const empty = new Set()
+    setDynamicProblemIds(empty)
+    saveDynamicProblemIds(empty)
+    setMessage('🧹 Dinamik problem havuzu temizlendi.')
+  }
+
   function selectVisible() {
     setSelectedIds(new Set(filteredStocks.map(s => s.stockID)))
   }
@@ -430,6 +511,23 @@ export default function ModelLab() {
 
   function clearSelection() {
     setSelectedIds(new Set())
+  }
+
+  function clearBatchResults() {
+    if (running) {
+      setMessage('ℹ️ Analiz devam ederken tablo temizlenemez.')
+      return
+    }
+
+    if (results.length === 0) {
+      setMessage('ℹ️ Temizlenecek batch sonucu yok.')
+      return
+    }
+
+    setResults([])
+    setProgress({ done: 0, total: 0 })
+    setResultFilter('all')
+    setMessage('🧹 Batch analiz tablosu temizlendi.')
   }
 
   async function runBatch() {
@@ -491,8 +589,24 @@ export default function ModelLab() {
       }
     }
 
+    const dynamicRows = nextResults.filter(isDynamicProblemRow)
+    const dynamicIds = [...new Set(dynamicRows.map(r => Number(r.stockID)).filter(Number.isFinite))]
+
+    if (dynamicIds.length > 0) {
+      setDynamicProblemIds(prev => {
+        const next = new Set(prev)
+        dynamicIds.forEach(id => next.add(id))
+        saveDynamicProblemIds(next)
+        return next
+      })
+    }
+
     setRunning(false)
-    setMessage('✅ Batch analiz tamamlandı.')
+    setMessage(
+      dynamicIds.length > 0
+        ? `✅ Batch analiz tamamlandı. Dinamik problem havuzu güncellendi (${dynamicIds.length} aday).`
+        : '✅ Batch analiz tamamlandı. Dinamik problem havuzuna yeni aday eklenmedi.'
+    )
   }
 
   async function copyResultsJson() {
@@ -675,6 +789,12 @@ export default function ModelLab() {
           color={resultStats.behaviorDivergence > 0 ? YELLOW : GREEN}
           icon="🧪"
         />
+        <StatCard
+          label="Dinamik Problem"
+          value={dynamicProblemIds.size}
+          color={dynamicProblemIds.size > 0 ? RED : GREEN}
+          icon="📌"
+        />
         <StatCard label="MAPE Skill Ort." value={pct(resultStats.avgMapeSkill)} color={resultStats.avgMapeSkill >= 0 ? GREEN : RED} icon="⚔️" />
       </div>
 
@@ -702,13 +822,23 @@ export default function ModelLab() {
               lineHeight: 1.55
             }}>
               Birden fazla hisseyi sırayla analiz ederek directionScore, actionRate, MAPE skill ve tradeBias değerlerini karşılaştırır.
-              Özellikle flat’e kaçan veya naive baseline’ı yenemeyen hisseleri hızlıca yakalamak için tasarlandı.
+              Özellikle flat’e kaçan veya naive baseline’ı yenemeyen hisseleri hızlıca yakalar; problemli çıkan hisseleri dinamik problem havuzuna kaydeder.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button onClick={selectProblemSet} disabled={running} style={secondaryButton}>
               Problem Set
+            </button>
+            <button
+              onClick={selectDynamicProblemSet}
+              disabled={running || dynamicProblemIds.size === 0}
+              style={{
+                ...secondaryButton,
+                opacity: running || dynamicProblemIds.size === 0 ? 0.6 : 1
+              }}
+            >
+              Dinamik Problem ({dynamicProblemIds.size})
             </button>
             <button onClick={selectVisible} disabled={running} style={secondaryButton}>
               Görünenleri Seç
@@ -717,7 +847,17 @@ export default function ModelLab() {
               Tümünü Seç
             </button>
             <button onClick={clearSelection} disabled={running} style={secondaryButton}>
-              Temizle
+              Seçimi Temizle
+            </button>
+            <button
+              onClick={clearDynamicProblemSet}
+              disabled={running || dynamicProblemIds.size === 0}
+              style={{
+                ...dangerGhostButton,
+                opacity: running || dynamicProblemIds.size === 0 ? 0.55 : 1
+              }}
+            >
+              Dinamik Seti Temizle
             </button>
           </div>
         </div>
@@ -792,6 +932,7 @@ export default function ModelLab() {
           }}>
             {filteredStocks.map(stock => {
               const selected = selectedIds.has(stock.stockID)
+              const dynamicProblem = dynamicProblemIds.has(stock.stockID)
 
               return (
                 <button
@@ -800,8 +941,16 @@ export default function ModelLab() {
                   disabled={running}
                   style={{
                     textAlign: 'left',
-                    background: selected ? '#2563eb22' : '#0b1220',
-                    border: selected ? '1px solid #3b82f6' : '1px solid #1f2937',
+                    background: selected
+                      ? '#2563eb22'
+                      : dynamicProblem
+                        ? '#f59e0b12'
+                        : '#0b1220',
+                    border: selected
+                      ? '1px solid #3b82f6'
+                      : dynamicProblem
+                        ? '1px solid #f59e0b55'
+                        : '1px solid #1f2937',
                     borderRadius: '14px',
                     padding: '12px',
                     color: '#d1d5db',
@@ -818,10 +967,10 @@ export default function ModelLab() {
                       {stock.symbol}
                     </strong>
                     <span style={{
-                      color: selected ? GREEN : GRAY,
+                      color: selected ? GREEN : dynamicProblem ? YELLOW : GRAY,
                       fontSize: '12px'
                     }}>
-                      {selected ? 'Seçili' : 'Boş'}
+                      {selected ? 'Seçili' : dynamicProblem ? 'Problem' : 'Boş'}
                     </span>
                   </div>
 
@@ -899,6 +1048,18 @@ export default function ModelLab() {
               }}
             >
               JSON Kopyala
+            </button>
+
+            <button
+              onClick={clearBatchResults}
+              disabled={running || results.length === 0}
+              style={{
+                ...dangerGhostButton,
+                opacity: running || results.length === 0 ? 0.55 : 1,
+                cursor: running || results.length === 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Tabloyu Temizle
             </button>
           </div>
         </div>
@@ -1407,6 +1568,17 @@ const secondaryButton = {
   fontWeight: 'bold',
   fontSize: '13px',
   background: '#0b1220',
+  cursor: 'pointer'
+}
+
+const dangerGhostButton = {
+  padding: '11px 14px',
+  color: '#fecaca',
+  border: '1px solid #ef444455',
+  borderRadius: '13px',
+  fontWeight: 'bold',
+  fontSize: '13px',
+  background: '#ef444418',
   cursor: 'pointer'
 }
 
