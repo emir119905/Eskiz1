@@ -20,8 +20,8 @@ namespace Eskiz1.API.Models
 
         public decimal OpenPrice { get; set; }
 
-        // OHLCV veri zemini için eklendi.
-        // Eski kayıtların migration sonrası backfill edilebilmesi için nullable tutuluyor.
+        // ohlcv veri zemini için eklendi.
+        // eski kayıtların migration sonrası güncellenebilmesi için nullable tutulur.
         [Column(TypeName = "decimal(18,4)")]
         public decimal? HighPrice { get; set; }
 

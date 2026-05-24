@@ -1,8 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-using Eskiz1.API.Models;
-
 namespace Eskiz1.API.Models
 {
     public class Transaction
@@ -11,7 +9,7 @@ namespace Eskiz1.API.Models
         public int UserID { get; set; }
         public int StockID { get; set; }
 
-        // ✅ Adım 5: string → enum. "buy ", "BUY", "Buy" karışıklığı bitti.
+        // işlem tipi enum olarak tutulur; böylece yazım farklılıklarından kaynaklanan hatalar azaltılır.
         public TransactionType TransactionType { get; set; }
 
         public int Quantity { get; set; }

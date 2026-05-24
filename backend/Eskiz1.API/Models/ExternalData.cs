@@ -12,19 +12,19 @@ namespace Eskiz1.API.Models
         [Required]
         public DateTime Date { get; set; }
 
-        // Dolar/TL kuru
+        // dolar/tl kuru
         [Column(TypeName = "decimal(18,4)")]
         public decimal USDTRY { get; set; }
 
-        // BIST100 endeksi
+        // bist100 endeksi
         [Column(TypeName = "decimal(18,2)")]
         public decimal BIST100 { get; set; }
 
-        // Altın (ileride lazım olur)
+        // altın fiyat verisi
         [Column(TypeName = "decimal(18,2)")]
         public decimal Gold { get; set; }
 
-        // Brent petrol (TUPRS gibi hisseler için)
+        // brent petrol fiyat verisi
         [Column(TypeName = "decimal(18,2)")]
         public decimal BrentOil { get; set; }
     }

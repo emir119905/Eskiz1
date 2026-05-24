@@ -49,13 +49,13 @@ const navItems = [
     to: '/reports',
     label: 'Raporlar',
     icon: '📄',
-    description: 'Proje ve sunum merkezi'
+    description: 'Proje brifingi'
   },
   {
     to: '/admin',
     label: 'Veri Yönetimi',
     icon: '🗄️',
-    description: 'Veri durumu ve sync'
+    description: 'Veri durumu ve senkronizasyon'
   }
 ]
 
@@ -276,7 +276,7 @@ function TopStatusBar() {
         <StatusPill color={GREEN} label="Frontend" value="Online" />
         <StatusPill color={GREEN} label=".NET API" value="5221" />
         <StatusPill color={BLUE} label="AI API" value="8000" />
-        <StatusPill color={YELLOW} label="Mode" value="Demo" />
+        <StatusPill color={YELLOW} label="Kapsam" value="Akademik" />
       </div>
     </div>
   )
@@ -327,165 +327,11 @@ function Footer() {
       </div>
 
       <div>
-        Bu sistem yatırım tavsiyesi değildir. Çıktılar akademik/demo amaçlıdır.
+        Bu sistem yatırım tavsiyesi değildir. Çıktılar akademik ve deneysel amaçlıdır.
       </div>
     </footer>
   )
 }
-
-function PlaceholderPage({ icon, title, subtitle, bullets, accent = BLUE }) {
-  return (
-    <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
-      <div style={{
-        background: `radial-gradient(circle at top left, ${accent}28, transparent 34%), linear-gradient(135deg, #111827, #0b1220)`,
-        border: `1px solid ${accent}55`,
-        borderRadius: '24px',
-        padding: '28px',
-        boxShadow: `0 22px 52px ${accent}10`,
-        marginBottom: '22px'
-      }}>
-        <div style={{
-          fontSize: '42px',
-          marginBottom: '14px'
-        }}>
-          {icon}
-        </div>
-
-        <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: 6 }}>
-          Pusula AI · Yakında
-        </div>
-
-        <h2 style={{
-          margin: 0,
-          fontSize: '31px',
-          letterSpacing: '-0.8px'
-        }}>
-          {title}
-        </h2>
-
-        <p style={{
-          color: '#9ca3af',
-          maxWidth: '760px',
-          marginTop: '10px',
-          lineHeight: 1.65
-        }}>
-          {subtitle}
-        </p>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))',
-        gap: '16px'
-      }}>
-        {bullets.map((b, i) => (
-          <div
-            key={i}
-            style={{
-              background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)',
-              border: '1px solid #1f2937',
-              borderRadius: '18px',
-              padding: '18px',
-              minHeight: '130px'
-            }}
-          >
-            <div style={{
-              color: accent,
-              fontWeight: 'bold',
-              fontSize: '13px',
-              marginBottom: '9px'
-            }}>
-              {b.label}
-            </div>
-            <div style={{
-              color: '#d1d5db',
-              fontSize: '14px',
-              lineHeight: 1.55
-            }}>
-              {b.text}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function WatchlistPage() {
-  return (
-    <PlaceholderPage
-      icon="👁️"
-      title="İzleme Listesi"
-      accent={BLUE}
-      subtitle="Kullanıcının takip etmek istediği hisseleri tek ekranda izleyebileceği alan. Şimdilik placeholder; teslim sonrasında favori varlıklar ve hızlı analiz butonları buraya taşınabilir."
-      bullets={[
-        {
-          label: 'Favori Hisseler',
-          text: 'THYAO.IS, ASELS.IS, KONTR.IS gibi takip edilen varlıklar burada listelenebilir.'
-        },
-        {
-          label: 'Hızlı Sinyal',
-          text: 'Her varlık için son model sinyali, tradeBias ve güven seviyesi özetlenebilir.'
-        },
-        {
-          label: 'Alarm Mantığı',
-          text: 'Fiyat, getiri veya model sinyali değiştiğinde uyarı üretmek için temel alan hazırlanır.'
-        }
-      ]}
-    />
-  )
-}
-
-function ModelLabPage() {
-  return (
-    <PlaceholderPage
-      icon="🧪"
-      title="Model Laboratuvarı"
-      accent={PURPLE}
-      subtitle="v7, v10, v11 ve gelecekteki v12 motorlarının kıyaslanacağı deney alanı. Özellikle yön skoru, flat kaçış problemi ve naive baseline karşılaştırmaları burada incelenir."
-      bullets={[
-        {
-          label: 'Batch Test',
-          text: 'Birden fazla hisse için MAPE, RMSE, directionScore ve actionRate toplu şekilde karşılaştırılır.'
-        },
-        {
-          label: 'v12 Directional Engine',
-          text: 'Teslim sonrasında hourly/daily behavior signal ve classification head deneyleri burada izlenir.'
-        },
-        {
-          label: 'Model Günlüğü',
-          text: 'Her sürümde ne değişti, hangi hisselerde iyileşti veya kötüleşti, burada notlanır.'
-        }
-      ]}
-    />
-  )
-}
-
-function ReportsPage() {
-  return (
-    <PlaceholderPage
-      icon="📄"
-      title="Raporlar"
-      accent={GREEN}
-      subtitle="Proje raporu, sunum notları ve model çıktılarının özetlenebileceği alan. Demo sırasında teknik kazanımlar ve sınırlılıklar buradan anlatılabilir."
-      bullets={[
-        {
-          label: 'Proje Özeti',
-          text: 'Amaç, veri seti, model mimarisi ve frontend/backend mimarisi kısa kartlarla sunulabilir.'
-        },
-        {
-          label: 'Model Limitleri',
-          text: 'Düz çizgi problemi, noisy finansal seri ve yön skoru darboğazı dürüstçe açıklanabilir.'
-        },
-        {
-          label: 'Gelecek Çalışma',
-          text: 'v12 yön motoru, saatlik veri, multi-timeframe sinyal ve classification head yol haritası eklenebilir.'
-        }
-      ]}
-    />
-  )
-}
-
 
 const keepAlivePages = [
   { path: '/', Component: Dashboard },

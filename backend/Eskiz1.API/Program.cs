@@ -9,7 +9,7 @@ builder.Services.AddHttpClient(string.Empty, client =>
 });
 
 builder.Services.AddScoped<Eskiz1.API.Services.YahooFinanceService>();
-builder.Services.AddScoped<Eskiz1.API.Services.ExternalDataService>(); // ✅ Yeni servis
+builder.Services.AddScoped<Eskiz1.API.Services.ExternalDataService>();
 builder.Services.AddHostedService<Eskiz1.API.Services.DailyDataSyncService>();
 
 builder.Services.AddControllers();

@@ -19,7 +19,7 @@ namespace Eskiz1.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // High/Low yeni eklendiği için nullable kalıyor; eski kayıtlar Yahoo sync ile backfill edilecek.
+            // high/low alanları eski kayıtların güncellenebilmesi için nullable tutulur.
             modelBuilder.Entity<HistoricalData>()
                 .Property(h => h.HighPrice)
                 .HasPrecision(18, 4);

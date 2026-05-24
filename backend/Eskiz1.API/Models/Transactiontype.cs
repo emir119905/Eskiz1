@@ -1,6 +1,6 @@
 namespace Eskiz1.API.Models
 {
-    // ✅ Adım 5: String yerine enum — yazım hatası artık mümkün değil
+    // işlem tipi sabit değerlerle sınırlandırılır.
     public enum TransactionType
     {
         BUY,

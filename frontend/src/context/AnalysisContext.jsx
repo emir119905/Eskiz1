@@ -35,7 +35,7 @@ export function AnalysisProvider({ children }) {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
     } catch {
-      // sessionStorage dolu/kapalı olabilir; uygulamayı bozma.
+      // sessionStorage kullanılamazsa uygulama çalışmaya devam eder.
     }
   }, [selectedStock, prediction, lastUpdatedAt])
 
@@ -120,7 +120,7 @@ export function AnalysisProvider({ children }) {
 export function useAnalysis() {
   const ctx = useContext(AnalysisContext)
   if (!ctx) {
-    throw new Error('useAnalysis must be used inside AnalysisProvider')
+    throw new Error('useAnalysis, AnalysisProvider içinde kullanılmalıdır.')
   }
   return ctx
 }
