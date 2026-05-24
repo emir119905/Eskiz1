@@ -118,7 +118,7 @@ export default function Watchlist() {
   }
 
   function clearWatchlist() {
-    const ok = window.confirm('İzleme listesini tamamen temizlemek istiyor musun?')
+    const ok = window.confirm('İzleme listesini tamamen temizlemek istediğinizden emin misiniz?')
     if (!ok) return
 
     setWatchIds(new Set())
@@ -252,8 +252,8 @@ export default function Watchlist() {
               maxWidth: 720,
               lineHeight: 1.55
             }}>
-              Takip etmek istediğin hisseleri buraya ekle. Liste tarayıcıda saklanır; backend’e dokunmaz.
-              Bir varlığı Dashboard’da açarak hızlıca analiz başlatabilirsin.
+              Takip etmek istediğiniz hisseleri buraya ekleyebilirsiniz. Liste tarayıcıda saklanır; backend verilerini değiştirmez.
+              Bir varlığı Dashboard’da açarak hızlıca analiz başlatabilirsiniz.
             </p>
           </div>
 
@@ -444,7 +444,7 @@ export default function Watchlist() {
           <InfoBlock
             icon="💾"
             title="LocalStorage"
-            text="Bu liste şimdilik tarayıcıda saklanır. Veritabanına yazmaz, demo için risksizdir."
+            text="Bu liste tarayıcıda saklanır. Veritabanına yazılmaz ve uygulama verilerini değiştirmez."
           />
 
           <InfoBlock
@@ -493,7 +493,7 @@ function Header() {
         maxWidth: '860px',
         lineHeight: 1.6
       }}>
-        Takip ettiğin varlıkları tek ekranda topla, hızlıca Dashboard’a taşı ve analiz akışını hızlandır.
+        Takip ettiğiniz varlıkları tek ekranda toplayabilir, hızlıca Dashboard’a taşıyabilir ve analiz akışını hızlandırabilirsiniz.
       </p>
     </div>
   )

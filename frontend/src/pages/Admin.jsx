@@ -40,7 +40,7 @@ function asArray(payload) {
     payload.hisseler,
     payload.Hisseler,
 
-    // Bizim .NET endpoint tam olarak bunu dönüyor:
+    // .net endpointinin döndürdüğü alan adı.
     payload.hisseDurumlari,
     payload.HisseDurumlari,
 
@@ -141,7 +141,7 @@ function normalizeStatusRow(row) {
       row?.priceCount,
       row?.PriceCount,
 
-      // Bizim endpoint:
+      // mevcut endpointin döndürdüğü alan adı.
       row?.kayitSayisi,
       row?.KayitSayisi
     ),
@@ -155,7 +155,7 @@ function normalizeStatusRow(row) {
       row?.oldestDate,
       row?.OldestDate,
 
-      // Bizim endpoint:
+      // mevcut endpointin döndürdüğü alan adı.
       row?.ilkTarih,
       row?.IlkTarih
     ),
@@ -171,7 +171,7 @@ function normalizeStatusRow(row) {
       row?.newestDate,
       row?.NewestDate,
 
-      // Bizim endpoint:
+      // mevcut endpointin döndürdüğü alan adı.
       row?.sonTarih,
       row?.SonTarih
     ),
@@ -183,7 +183,7 @@ function normalizeStatusRow(row) {
       row?.health,
       row?.Health,
 
-      // Bizim endpoint:
+      // mevcut endpointin döndürdüğü alan adı.
       row?.durum,
       row?.Durum
     ),
@@ -434,7 +434,7 @@ export default function Admin() {
 
     try {
       await addStock(payload)
-      setMessage(`✅ ${payload.symbol} eklendi. İstersen şimdi Sync ile tarihsel verilerini çekebilirsin.`)
+      setMessage(`✅ ${payload.symbol} eklendi. Tarihsel veriler için senkronizasyon işlemi başlatılabilir.`)
       setNewStock({ symbol: '', companyName: '', sector: '' })
       await loadAdminData()
     } catch (e) {
@@ -475,7 +475,7 @@ export default function Admin() {
     }
 
     const ok = window.confirm(
-      `${row.symbol} hissesine ait tüm tarihsel fiyat verileri silinsin mi?\n\nBu işlem hisse kaydını silmez, sadece HistoricalData kayıtlarını temizler. Daha sonra Sync ile tekrar yüklenebilir.`
+      `${row.symbol} hissesine ait tüm tarihsel fiyat verileri silinsin mi?\n\nBu işlem hisse kaydını silmez, sadece HistoricalData kayıtlarını temizler. Daha sonra senkronizasyon ile tekrar yüklenebilir.`
     )
 
     if (!ok) return
@@ -631,7 +631,7 @@ export default function Admin() {
               maxWidth: 700,
               lineHeight: 1.55
             }}>
-              Yeni bir hisse kaydı oluşturur. Kayıt eklendikten sonra tablodaki Sync butonu ile tarihsel verileri çekilebilir.
+              Yeni bir hisse kaydı oluşturur. Kayıt eklendikten sonra tablodaki senkronizasyon butonu ile tarihsel veriler alınabilir.
             </p>
           </div>
         </div>
@@ -732,7 +732,7 @@ export default function Admin() {
                 cursor: loading || syncingAll ? 'not-allowed' : 'pointer'
               }}
             >
-              {syncingAll ? '⏳ Toplu Sync...' : '🚀 Tümünü Senkronize Et'}
+              {syncingAll ? '⏳ Toplu Senkronizasyon...' : '🚀 Tümünü Senkronize Et'}
             </button>
           </div>
         </div>
@@ -865,7 +865,7 @@ export default function Admin() {
                               cursor: syncingAll || isSyncing || isDeleting ? 'not-allowed' : 'pointer'
                             }}
                           >
-                            {isSyncing ? 'Sync...' : 'Sync'}
+                            {isSyncing ? 'Senkronize Ediliyor...' : 'Senkronize Et'}
                           </button>
 
                           <button
@@ -913,7 +913,7 @@ export default function Admin() {
           <InfoBlock
             icon="⚠️"
             title="Operasyon Notu"
-            text="Toplu senkronizasyon uzun sürebilir. Demo öncesinde tekil problemli hisseleri senkronize etmek daha güvenlidir."
+            text="Toplu senkronizasyon uzun sürebilir. Öncelikle eksik veya problemli hisseleri tekil olarak senkronize etmek daha güvenlidir."
           />
         </div>
       </Panel>

@@ -94,14 +94,14 @@ export default function Portfolio() {
 
   async function executeTrade(type) {
     if (!selectedStock) {
-      setMessage('❌ Önce bir hisse seç.')
+      setMessage('❌ Önce bir hisse seçin.')
       return
     }
 
     const safeQty = Number(qty)
 
     if (!safeQty || safeQty <= 0) {
-      setMessage('❌ Geçerli bir adet gir.')
+      setMessage('❌ Geçerli bir adet girin.')
       return
     }
 
@@ -142,7 +142,7 @@ export default function Portfolio() {
           💼 Portföy Simülasyonu
         </h2>
         <p style={{ color: '#9ca3af', marginTop: '8px', maxWidth: '720px', lineHeight: 1.55 }}>
-          Sanal portföyünüzü takip edin, pozisyon dağılımını inceleyin ve hızlı al/sat işlemleriyle senaryoları test edin.
+          Sanal portföyünüzü takip edin, pozisyon dağılımını inceleyin ve hızlı alım/satım işlemleriyle senaryoları test edin.
         </p>
       </div>
 

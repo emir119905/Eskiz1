@@ -785,7 +785,7 @@ function getBehaviorInterpretation(signal) {
 
   if (signal.directionBias === 'flat') {
     if (safeNumber(signal.flatRisk) >= 75) {
-      return 'Günlük davranış katmanı net yön üretmiyor; flat riski yüksek. Ana model sinyali agresif yorumlanmamalı.'
+      return 'Günlük davranış katmanı net yön üretmiyor; flat riski yüksek. Ana model sinyali temkinli yorumlanmalıdır.'
     }
 
     return 'Günlük davranış katmanı yatay/kararsız bir rejime işaret ediyor.'
@@ -896,7 +896,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Badge color={behaviorSignal.actionable ? GREEN : YELLOW}>
-            {behaviorSignal.actionable ? 'Aksiyonlanabilir' : 'Yardımcı Sinyal'}
+            {behaviorSignal.actionable ? 'Aksiyon Üretebilir' : 'Yardımcı Sinyal'}
           </Badge>
 
           <Badge color={PURPLE}>
@@ -1211,7 +1211,7 @@ function ChartPanel({
           </h3>
 
           <p style={{ color: '#6b7280', fontSize: '12px', margin: 0 }}>
-            Backend’den gelen gerçek tarihli chartData kontratı kullanılır. Frontend tarih uydurmaz.
+            Analiz servisinden gelen gerçek tarihli chartData verisi kullanılır. Arayüz tarafında tarih üretilmez.
           </p>
         </div>
 
@@ -1443,7 +1443,7 @@ function DistributionMiniPanel({ data }) {
         </div>
 
         <div style={{ color: '#6b7280', fontSize: '12px', maxWidth: 420, lineHeight: 1.5 }}>
-          Modelin flat’e kaçıp kaçmadığını veya tek yöne aşırı yüklenip yüklenmediğini burada okuyabilirsiniz.
+          Modelin flat sınıfına yoğunlaşıp yoğunlaşmadığını veya tek yöne aşırı yüklenip yüklenmediğini burada okuyabilirsiniz.
         </div>
       </div>
 

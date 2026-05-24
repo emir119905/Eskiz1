@@ -56,7 +56,7 @@ function saveDynamicProblemIds(ids) {
 
     window.localStorage.setItem(DYNAMIC_PROBLEM_STORAGE_KEY, JSON.stringify(cleanIds))
   } catch {
-    // localStorage kapalıysa uygulama çalışmaya devam etsin.
+    // localStorage kullanılamazsa uygulama çalışmaya devam eder.
   }
 }
 
@@ -90,10 +90,10 @@ function formatSmartPct(value, digits = 2) {
 
   const n = Number(value)
 
-  // 0.34 gibi probability gelirse yüzdeye çevir.
+  // 0.34 gibi olasılık değeri gelirse yüzdeye çevrilir.
   if (Math.abs(n) <= 1) return pct(n * 100, digits)
 
-  // 34 gibi zaten yüzde gelirse olduğu gibi göster.
+  // 34 gibi yüzde değeri gelirse olduğu gibi gösterilir.
   return pct(n, digits)
 }
 function normalizeBehaviorSignal(payload) {
@@ -281,12 +281,12 @@ function getPredictionMetrics(stock, prediction, behaviorSignal = null) {
     behavior.directionBias !== 'flat'
   )
 
-  // Sert ayrışma: ana model tamamen flat/action yok, behavior katmanı net yön görüyor.
+  // sert ayrışma: ana model aksiyon üretmezken davranış katmanı net yön sinyali verir.
   if (behaviorHasActionableDirection && safeNumber(actionRate) <= 1) {
     riskTags.push('V12_DIVERGENCE')
   }
 
-  // Daha yumuşak ayrışma: ana model zayıf ama behavior katmanı güçlü yön sinyali veriyor.
+  // yumuşak ayrışma: ana model zayıfken davranış katmanı güçlü yön sinyali verir.
   if (
     behaviorHasActionableDirection &&
     safeNumber(actionRate) > 1 &&
@@ -481,7 +481,7 @@ export default function ModelLab() {
     )
 
     if (ids.size === 0) {
-      setMessage('ℹ️ Dinamik problem havuzu boş. Önce batch analiz çalıştır.')
+      setMessage('ℹ️ Dinamik problem havuzu boş. Önce toplu analiz çalıştırın.')
       return
     }
 
@@ -520,33 +520,33 @@ export default function ModelLab() {
     }
 
     if (results.length === 0) {
-      setMessage('ℹ️ Temizlenecek batch sonucu yok.')
+      setMessage('ℹ️ Temizlenecek toplu analiz sonucu yok.')
       return
     }
 
     setResults([])
     setProgress({ done: 0, total: 0 })
     setResultFilter('all')
-    setMessage('🧹 Batch analiz tablosu temizlendi.')
+    setMessage('🧹 Toplu analiz tablosu temizlendi.')
   }
 
   async function runBatch() {
     const selectedStocks = stocks.filter(s => selectedIds.has(s.stockID))
 
     if (selectedStocks.length === 0) {
-      setMessage('❌ Önce en az bir hisse seç.')
+      setMessage('❌ Önce en az bir hisse seçin.')
       return
     }
 
     const ok = window.confirm(
-      `${selectedStocks.length} hisse analiz edilecek. İlk kez çalışıyorsa bazı modeller yeniden eğitilebilir ve işlem uzun sürebilir. Başlayalım mı?`
+      `${selectedStocks.length} hisse analiz edilecek. İlk kez çalışıyorsa bazı modeller yeniden eğitilebilir ve işlem uzun sürebilir. İşlem başlatılsın mı?`
     )
 
     if (!ok) return
 
     setRunning(true)
     setResults([])
-    setMessage('⏳ Batch analiz başladı...')
+    setMessage('⏳ Toplu analiz başladı...')
     setProgress({ done: 0, total: selectedStocks.length })
 
     const nextResults = []
@@ -604,8 +604,8 @@ export default function ModelLab() {
     setRunning(false)
     setMessage(
       dynamicIds.length > 0
-        ? `✅ Batch analiz tamamlandı. Dinamik problem havuzu güncellendi (${dynamicIds.length} aday).`
-        : '✅ Batch analiz tamamlandı. Dinamik problem havuzuna yeni aday eklenmedi.'
+        ? `✅ Toplu analiz tamamlandı. Dinamik problem havuzu güncellendi (${dynamicIds.length} aday).`
+        : '✅ Toplu analiz tamamlandı. Dinamik problem havuzuna yeni aday eklenmedi.'
     )
   }
 
@@ -809,7 +809,7 @@ export default function ModelLab() {
         }}>
           <div>
             <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
-              Batch Test Alanı
+              Toplu Test Alanı
             </div>
             <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
               Model Laboratuvarı
@@ -1047,7 +1047,7 @@ export default function ModelLab() {
                 opacity: results.length === 0 ? 0.6 : 1
               }}
             >
-              JSON Kopyala
+              Sonuç JSON'unu Kopyala
             </button>
 
             <button
@@ -1284,7 +1284,7 @@ function Header() {
         maxWidth: '860px',
         lineHeight: 1.6
       }}>
-        Model sürümlerinin davranışını toplu test etmek, flat kaçışlarını yakalamak ve v12 yön motoru için problemli hisseleri işaretlemek amacıyla hazırlanmış deney paneli.
+        Model sürümlerinin davranışını toplu test etmek, flat davranışlarını tespit etmek ve v12 yön motoru için problemli hisseleri işaretlemek amacıyla hazırlanmış deney paneli.
       </p>
     </div>
   )
