@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Eskiz1.API.Data;    // AppDbContext buradan geliyor
-using Eskiz1.API.Models;  // ✅ AiPredictionResponse artık kendi dosyasında
+using Eskiz1.API.Data;
+using Eskiz1.API.Models;
 
 namespace Eskiz1.API.Controllers
 {
@@ -17,7 +17,7 @@ namespace Eskiz1.API.Controllers
     {
         private readonly HttpClient _httpClient;
         private readonly AppDbContext _context;
-        private readonly Eskiz1.API.Services.YahooFinanceService _yahooService; // ✅ Adım 3: Yahoo sync için eklendi
+        private readonly Eskiz1.API.Services.YahooFinanceService _yahooService;
 
         public PredictionController(HttpClient httpClient, AppDbContext context, Eskiz1.API.Services.YahooFinanceService yahooService)
         {
@@ -33,32 +33,32 @@ namespace Eskiz1.API.Controllers
 
             try
             {
-                // 1. Veritabanındaki en son verinin tarihini bul
+                // veritabanındaki en son tarihsel veri tarihi bulunur.
                 var lastDataDate = await _context.HistoricalData
-                    .Where(h => h.StockID == stockId)  // ✅ Düzeltildi: StockId → StockID
+                    .Where(h => h.StockID == stockId)
                     .MaxAsync(h => (DateTime?)h.Date);
 
                 var today = DateTime.Today;
 
-                // 2. Veri eskiyse Yahoo'dan çek ve SQL'e yaz
+                // veri güncel değilse yahoo finance üzerinden senkronizasyon yapılır.
                 if (lastDataDate == null || lastDataDate.Value.Date < today.AddDays(-1))
                 {
                     var stock = await _context.Stocks.FindAsync(stockId);
                     if (stock == null)
                         return NotFound("Hisse bulunamadı.");
 
-                    // ✅ Adım 3: Artık gerçekten sync yapıyor, yorum satırı değil
+                    // eksik tarihsel veriler analizden önce güncellenir.
                     await _yahooService.FetchAndSaveHistoricalDataAsync(stock.Symbol, stock.StockID);
-                    Console.WriteLine($"[SİSTEM] {stock.Symbol} için eksik veriler Yahoo Finance'den güncellendi.");
+                    Console.WriteLine($"[Sistem] {stock.Symbol} için eksik veriler Yahoo Finance üzerinden güncellendi.");
                 }
 
-                // 3. Python motoruna istek at
+                // analiz servisine tahmin isteği gönderilir.
                 var response = await _httpClient.GetAsync(pythonApiUrl);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    return StatusCode((int)response.StatusCode, new { message = "Python motoru hata döndürdü.", detail = errorContent });
+                    return StatusCode((int)response.StatusCode, new { message = "Analiz servisi hata döndürdü.", detail = errorContent });
                 }
 
                 var jsonResult = await response.Content.ReadAsStringAsync();
@@ -70,7 +70,7 @@ namespace Eskiz1.API.Controllers
             }
             catch (HttpRequestException ex)
             {
-                return StatusCode(500, new { message = "Python sunucusuna ulaşılamıyor. Uvicorn çalışıyor mu?", error = ex.Message });
+                return StatusCode(500, new { message = "Analiz servisine ulaşılamıyor. Lütfen Python API servisinin çalıştığını kontrol edin.", error = ex.Message });
             }
         }
     }

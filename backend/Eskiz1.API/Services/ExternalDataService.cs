@@ -11,7 +11,7 @@ namespace Eskiz1.API.Services
         private readonly AppDbContext _context;
         private readonly ILogger<ExternalDataService> _logger;
 
-        // Çekeceğimiz dış veri sembolleri
+        // senkronize edilecek dış piyasa veri sembolleri.
         private static readonly Dictionary<string, string> Symbols = new()
         {
             { "USDTRY",   "USDTRY=X"  },
@@ -31,7 +31,7 @@ namespace Eskiz1.API.Services
         {
             try
             {
-                // Her sembol için veri çek
+                // her sembol için veri alınır.
                 var seriler = new Dictionary<string, Dictionary<DateTime, decimal>>();
 
                 foreach (var (alan, sembol) in Symbols)
@@ -44,16 +44,16 @@ namespace Eskiz1.API.Services
                 }
 
                 if (seriler.Count == 0)
-                    return "HATA: Hiçbir dış veri çekilemedi.";
+                    return "HATA: Dış veri alınamadı.";
 
-                // Ortak tarihleri bul
+                // tüm serilerde bulunan tarih kümesi oluşturulur.
                 var tumTarihler = seriler.Values
                     .SelectMany(s => s.Keys)
                     .Distinct()
                     .OrderBy(d => d)
                     .ToList();
 
-                // Veritabanındaki mevcut tarihleri çek
+                // veritabanındaki mevcut dış veri tarihleri alınır.
                 var mevcutTarihler = await _context.ExternalData
                     .Select(e => e.Date.Date)
                     .ToListAsync();
@@ -64,7 +64,7 @@ namespace Eskiz1.API.Services
                 {
                     if (mevcutTarihler.Contains(tarih.Date)) continue;
 
-                    // O tarihe ait değerleri al, yoksa 0 koy
+                    // ilgili tarihe ait değer bulunamazsa varsayılan değer olarak 0 kullanılır.
                     var kayit = new ExternalData
                     {
                         Date     = tarih.Date,

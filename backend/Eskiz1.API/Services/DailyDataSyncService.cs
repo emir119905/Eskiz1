@@ -1,5 +1,4 @@
 using Eskiz1.API.Data;
-using Eskiz1.API.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eskiz1.API.Services
@@ -19,59 +18,96 @@ namespace Eskiz1.API.Services
         {
             _logger.LogInformation("[OtomatikSync] Servis başlatıldı.");
 
-            // Uygulama açılınca hemen sync yap
+            // uygulama başlatıldığında ilk veri senkronizasyonu yapılır.
             await SyncAll();
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var simdi         = DateTime.Now;
-                var geceyarisi    = DateTime.Today.AddDays(1);
-                var beklemeZamani = geceyarisi - simdi;
+                var simdi = DateTime.Now;
+                var geceYarisi = DateTime.Today.AddDays(1);
+                var beklemeZamani = geceYarisi - simdi;
 
-                _logger.LogInformation("[OtomatikSync] Sonraki sync: {zaman}", geceyarisi.ToString("dd.MM.yyyy HH:mm"));
+                _logger.LogInformation("[OtomatikSync] Sonraki senkronizasyon: {zaman}", geceYarisi.ToString("dd.MM.yyyy HH:mm"));
                 await Task.Delay(beklemeZamani, stoppingToken);
 
                 if (!stoppingToken.IsCancellationRequested)
+                {
                     await SyncAll();
+                }
             }
         }
 
         private async Task SyncAll()
         {
-            using var scope          = _serviceProvider.CreateScope();
-            var context              = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var yahooService         = scope.ServiceProvider.GetRequiredService<YahooFinanceService>();
-            var externalDataService  = scope.ServiceProvider.GetRequiredService<ExternalDataService>();
+            using var scope = _serviceProvider.CreateScope();
 
-            // 1. Hisse verileri
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var yahooService = scope.ServiceProvider.GetRequiredService<YahooFinanceService>();
+            var externalDataService = scope.ServiceProvider.GetRequiredService<ExternalDataService>();
+
+            // kayıtlı hisseler için tarihsel fiyat verileri güncellenir.
             var stocks = await context.Stocks.ToListAsync();
-            _logger.LogInformation("[OtomatikSync] {sayi} hisse sync ediliyor...", stocks.Count);
+
+            _logger.LogInformation("[OtomatikSync] {sayi} hisse senkronize ediliyor.", stocks.Count);
 
             int toplamYeni = 0;
+            int toplamGuncellenen = 0;
+
             foreach (var stock in stocks)
             {
                 try
                 {
                     var sonuc = await yahooService.FetchAndSaveHistoricalDataAsync(stock.Symbol, stock.StockID);
+
                     if (sonuc.StartsWith("OK_"))
                     {
-                        int yeni = int.Parse(sonuc.Split('_')[1]);
+                        var parts = sonuc.Split('_', StringSplitOptions.RemoveEmptyEntries);
+
+                        int yeni = 0;
+                        int guncellenen = 0;
+
+                        if (parts.Length > 1)
+                        {
+                            int.TryParse(parts[1], out yeni);
+                        }
+
+                        if (parts.Length > 2)
+                        {
+                            int.TryParse(parts[2], out guncellenen);
+                        }
+
                         toplamYeni += yeni;
-                        _logger.LogInformation("[OtomatikSync] {sembol}: {yeni} yeni kayıt.", stock.Symbol, yeni);
+                        toplamGuncellenen += guncellenen;
+
+                        _logger.LogInformation(
+                            "[OtomatikSync] {sembol}: {yeni} yeni kayıt, {guncellenen} güncellenen kayıt.",
+                            stock.Symbol,
+                            yeni,
+                            guncellenen
+                        );
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[OtomatikSync] {sembol}: senkronizasyon tamamlanamadı. Detay: {detay}", stock.Symbol, sonuc);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("[OtomatikSync] {sembol} hata: {hata}", stock.Symbol, ex.Message);
+                    _logger.LogError("[OtomatikSync] {sembol} için senkronizasyon hatası: {hata}", stock.Symbol, ex.Message);
                 }
             }
 
-            // 2. Dış veriler (USDTRY, BIST100, Altın, Brent)
-            _logger.LogInformation("[OtomatikSync] Dış veriler sync ediliyor...");
-            var externalSonuc = await externalDataService.SyncExternalDataAsync();
-            _logger.LogInformation("[OtomatikSync] Dış veri: {sonuc}", externalSonuc);
+            // dış piyasa verileri güncellenir.
+            _logger.LogInformation("[OtomatikSync] Dış veriler senkronize ediliyor.");
 
-            _logger.LogInformation("[OtomatikSync] Tamamlandı. Hisse: {toplam} yeni kayıt.", toplamYeni);
+            var externalSonuc = await externalDataService.SyncExternalDataAsync();
+
+            _logger.LogInformation("[OtomatikSync] Dış veri sonucu: {sonuc}", externalSonuc);
+            _logger.LogInformation(
+                "[OtomatikSync] Tamamlandı. Hisse verileri: {toplamYeni} yeni kayıt, {toplamGuncellenen} güncellenen kayıt.",
+                toplamYeni,
+                toplamGuncellenen
+            );
         }
     }
 }

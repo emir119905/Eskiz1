@@ -40,28 +40,28 @@ namespace Eskiz1.API.Controllers
         {
             if (added > 0 && updated > 0)
             {
-                return $"{symbol} için {added} yeni veri eklendi, {updated} mevcut kaydın High/Low verisi backfill edildi.";
+                return $"{symbol} için {added} yeni veri eklendi, {updated} mevcut kaydın high/low verisi güncellendi.";
             }
 
             if (added > 0)
             {
-                return $"{symbol} için {added} adet yeni OHLCV veri eklendi.";
+                return $"{symbol} için {added} adet yeni OHLCV verisi eklendi.";
             }
 
             if (updated > 0)
             {
-                return $"{symbol} için {updated} mevcut kaydın High/Low verisi backfill edildi.";
+                return $"{symbol} için {updated} mevcut kaydın high/low verisi güncellendi.";
             }
 
             return $"{symbol} zaten güncel.";
         }
 
-        // POST: api/historicaldata/sync/1 -> Yahoo'dan OHLCV veri çek / eksik High-Low alanlarını backfill et
+        // post: api/historicaldata/sync/1 -> yahoo finance üzerinden ohlcv verisini senkronize eder ve eksik high/low alanlarını günceller.
         [HttpPost("sync/{stockId}")]
         public async Task<IActionResult> SyncDataFromYahoo(int stockId)
         {
             var stock = await _context.Stocks.FindAsync(stockId);
-            if (stock == null) return NotFound("Hisse bulunamadı!");
+            if (stock == null) return NotFound("Hisse bulunamadı.");
 
             var resultMessage = await _yahooService.FetchAndSaveHistoricalDataAsync(stock.Symbol, stock.StockID);
             var parsed = ParseYahooResult(resultMessage);
@@ -77,10 +77,10 @@ namespace Eskiz1.API.Controllers
                 });
             }
 
-            return BadRequest($"Hata: {resultMessage}");
+            return BadRequest($"İşlem sırasında hata oluştu: {resultMessage}");
         }
 
-        // POST: api/historicaldata/syncall -> Tüm hisseler için Yahoo'dan OHLCV veri çek / backfill et
+        // post: api/historicaldata/syncall -> tüm hisseler için ohlcv verisini senkronize eder ve eksik high/low alanlarını günceller.
         [HttpPost("syncall")]
         public async Task<IActionResult> SyncAllStocks()
         {
@@ -105,8 +105,8 @@ namespace Eskiz1.API.Controllers
             return Ok(results);
         }
 
-        // DELETE: api/historicaldata/stock/1 -> Seçili hissenin tarihsel verilerini sil
-        // Not: Hisse kaydını veya kullanıcı işlemlerini silmez. Yalnızca HistoricalData kayıtlarını temizler.
+        // delete: api/historicaldata/stock/1 -> seçili hissenin tarihsel verilerini siler.
+        // not: hisse kaydını veya kullanıcı işlemlerini silmez; yalnızca historicaldata kayıtlarını temizler.
         [HttpDelete("stock/{stockId}")]
         public async Task<IActionResult> DeleteHistoricalDataByStock(int stockId)
         {
@@ -145,7 +145,7 @@ namespace Eskiz1.API.Controllers
             });
         }
 
-        // GET: api/historicaldata/status -> Veritabanı durumu (hangi hissede ne kadar veri var)
+        // get: api/historicaldata/status -> hisse bazında veritabanı durumunu özetler.
         [HttpGet("status")]
         public async Task<IActionResult> GetDatabaseStatus()
         {
@@ -187,8 +187,8 @@ namespace Eskiz1.API.Controllers
                 var sonTarih = dates.Last();
                 var gunFarki = (sonTarih - ilkTarih).Days;
 
-                // Beklenen iş günü sayısı vs gerçek kayıt sayısı karşılaştır.
-                // Hafta sonu ~2/7 oranında iş günü değil, kabaca tolerans %85.
+                // beklenen iş günü sayısı ile gerçek kayıt sayısı karşılaştırılır.
+                // hafta sonları işlem günü olmadığı için yaklaşık yüzde 85 tolerans kullanılır.
                 int beklenenIsGunu = (int)(gunFarki * 5.0 / 7.0);
                 bool boslukVar = records.Count < (int)(beklenenIsGunu * 0.85);
 

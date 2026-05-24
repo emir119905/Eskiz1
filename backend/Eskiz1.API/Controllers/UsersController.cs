@@ -16,7 +16,7 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // GET: api/users -> Sistemdeki tüm kullanıcıları listeler
+        // get: api/users -> sistemdeki tüm kullanıcıları listeler.
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
@@ -24,7 +24,7 @@ namespace Eskiz1.API.Controllers
             return Ok(users);
         }
 
-        // POST: api/users -> Yeni kullanıcı kaydı açar
+        // post: api/users -> yeni kullanıcı kaydı oluşturur.
         [HttpPost]
         public async Task<IActionResult> AddUser(User user)
         {

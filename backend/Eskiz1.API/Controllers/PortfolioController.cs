@@ -16,7 +16,7 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // GET: api/portfolio/1 -> Kullanıcının portföy özeti (kar/zarar dahil)
+        // get: api/portfolio/1 -> kullanıcının portföy özetini kar/zarar bilgisiyle birlikte döndürür.
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetPortfolioSummary(int userId)
         {
@@ -40,12 +40,12 @@ namespace Eskiz1.API.Controllers
                 int netLot = buyTxs.Sum(t => t.Quantity) - sellTxs.Sum(t => t.Quantity);
                 if (netLot <= 0) continue;
 
-                // Ortalama maliyet: toplam ödenen / toplam alınan lot
+                // ortalama maliyet, toplam ödenen tutarın toplam alınan lot miktarına bölünmesiyle hesaplanır.
                 decimal toplamOdenen   = buyTxs.Sum(t => t.Quantity * t.PriceAtTransaction);
                 int     toplamAlinan   = buyTxs.Sum(t => t.Quantity);
                 decimal ortMaliyet     = toplamAlinan > 0 ? toplamOdenen / toplamAlinan : 0;
 
-                // Anlık fiyat: veritabanındaki en son kapanış
+                // güncel değer hesabında veritabanındaki en son kapanış fiyatı kullanılır.
                 var sonFiyatKaydi = await _context.HistoricalData
                     .Where(h => h.StockID == group.Key)
                     .OrderByDescending(h => h.Date)

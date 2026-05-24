@@ -16,7 +16,7 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // GET: api/stocks -> Tüm hisseleri listele
+        // get: api/stocks -> tüm hisseleri listeler.
         [HttpGet]
         public async Task<IActionResult> GetStocks()
         {
@@ -24,8 +24,8 @@ namespace Eskiz1.API.Controllers
             return Ok(stocks);
         }
 
-        // GET: api/stocks/search?q=turk -> Hisse ara (sembol veya şirket adına göre)
-        // React arama çubuğu bu endpoint'i kullanacak
+        // get: api/stocks/search?q=turk -> sembol veya şirket adına göre hisse arar.
+        // frontend arama alanı bu endpoint üzerinden sonuç alır.
         [HttpGet("search")]
         public async Task<IActionResult> SearchStocks([FromQuery] string q)
         {
@@ -37,15 +37,15 @@ namespace Eskiz1.API.Controllers
             var results = await _context.Stocks
                 .Where(s =>
                     s.Symbol.Contains(query) ||
-                    s.CompanyName.ToUpper().Contains(query) ||
-                    s.Sector.ToUpper().Contains(query))
+                    (s.CompanyName ?? string.Empty).ToUpper().Contains(query) ||
+                    (s.Sector ?? string.Empty).ToUpper().Contains(query))
                 .OrderBy(s => s.Symbol)
                 .ToListAsync();
 
             return Ok(results);
         }
 
-        // GET: api/stocks/1 -> Tek hisse detayı
+        // get: api/stocks/1 -> tek hisse detayını döndürür.
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStock(int id)
         {
@@ -54,11 +54,11 @@ namespace Eskiz1.API.Controllers
             return Ok(stock);
         }
 
-        // POST: api/stocks -> Yeni hisse ekle
+        // post: api/stocks -> yeni hisse kaydı oluşturur.
         [HttpPost]
         public async Task<IActionResult> AddStock(Stock stock)
         {
-            // Aynı sembol zaten varsa ekleme
+            // aynı sembol zaten kayıtlıysa tekrar eklenmez.
             var existing = await _context.Stocks
                 .FirstOrDefaultAsync(s => s.Symbol == stock.Symbol.ToUpper());
             if (existing != null)

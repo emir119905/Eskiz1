@@ -27,7 +27,7 @@ namespace Eskiz1.API.Controllers
         public async Task<IActionResult> AddTransaction(Transaction transaction)
         {
             if (transaction.Quantity <= 0)
-                return BadRequest("Miktar 0'dan büyük olmalı.");
+                return BadRequest("Miktar 0'dan büyük olmalıdır.");
 
             var user = await _context.Users.FindAsync(transaction.UserID);
             if (user == null) return NotFound("Kullanıcı bulunamadı.");
@@ -38,12 +38,12 @@ namespace Eskiz1.API.Controllers
                 .FirstOrDefaultAsync();
 
             if (latestPriceData == null)
-                return BadRequest("Bu hisse için fiyat verisi bulunamadı. Önce Yahoo Finance üzerinden verileri eşitleyin.");
+                return BadRequest("Bu hisse için fiyat verisi bulunamadı. Önce Yahoo Finance üzerinden verileri senkronize edin.");
 
             transaction.PriceAtTransaction = latestPriceData.ClosePrice;
             decimal totalAmount = transaction.Quantity * transaction.PriceAtTransaction;
 
-            // ✅ Adım 5: .ToUpper() == "BUY" yerine direkt enum karşılaştırması
+            // işlem tipi enum değeri üzerinden kontrol edilir.
             if (transaction.TransactionType == TransactionType.BUY)
             {
                 if (user.Balance < totalAmount)
@@ -68,7 +68,7 @@ namespace Eskiz1.API.Controllers
                 var currentStockCount = totalBought - totalSold;
 
                 if (currentStockCount < transaction.Quantity)
-                    return BadRequest($"Açığa satış yasak. Elinizdeki lot: {currentStockCount}, Satmaya çalıştığınız: {transaction.Quantity}");
+                    return BadRequest($"Satış miktarı mevcut lot miktarını aşamaz. Mevcut lot: {currentStockCount}, istenen satış miktarı: {transaction.Quantity}");
 
                 user.Balance += totalAmount;
             }
@@ -82,7 +82,7 @@ namespace Eskiz1.API.Controllers
 
             return Ok(new
             {
-                Mesaj = "İşlem gerçek piyasa fiyatı üzerinden başarıyla gerçekleşti.",
+                Mesaj = "İşlem son kapanış fiyatı üzerinden başarıyla gerçekleşti.",
                 GerceklesenFiyat = transaction.PriceAtTransaction,
                 ToplamTutar = totalAmount,
                 YeniBakiye = user.Balance

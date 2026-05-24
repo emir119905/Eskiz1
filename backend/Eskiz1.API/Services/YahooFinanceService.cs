@@ -57,7 +57,7 @@ namespace Eskiz1.API.Services
             if (!current.HasValue) return true;
             if (current.GetValueOrDefault() <= 0m) return true;
 
-            // Yahoo değerleri birkaç ondalık farklı dönebilir. 4 hane DB için yeterli tolerans.
+            // yahoo finance değerleri küçük ondalık farklarla dönebildiği için dört haneli tolerans kullanılır.
             return Math.Abs(current.GetValueOrDefault() - incoming) > 0.0001m;
         }
 
@@ -70,9 +70,9 @@ namespace Eskiz1.API.Services
         {
             try
             {
-                // Önce mevcut kayıtları tracking açık şekilde alıyoruz.
-                // Eski 10y range yaklaşımı bazı 2016 başlangıç satırlarını dışarıda bırakıyordu.
-                // Bu yüzden period1/period2 ile, mevcut en eski DB tarihinden itibaren çekiyoruz.
+                // mevcut kayıtlar güncellenebilmesi için tracking açık şekilde alınır.
+                // eski 10y range yaklaşımı bazı başlangıç tarihlerini dışarıda bırakabildiği için kullanılmaz.
+                // period1/period2 ile mevcut en eski veritabanı tarihinden itibaren veri alınır.
                 var existingRows = await _context.HistoricalData
                     .Where(h => h.StockID == stockId)
                     .AsTracking()
@@ -101,7 +101,7 @@ namespace Eskiz1.API.Services
                 var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
-                    return $"HTTP Hatası: {response.StatusCode} - {response.ReasonPhrase} (Sembol: {symbol})";
+                    return $"HTTP hatası: {response.StatusCode} - {response.ReasonPhrase} (Sembol: {symbol})";
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync();
@@ -111,20 +111,20 @@ namespace Eskiz1.API.Services
 
                 if (chart.TryGetProperty("error", out var errorElement) && errorElement.ValueKind != JsonValueKind.Null)
                 {
-                    return $"Yahoo error döndü. (Sembol: {symbol})";
+                    return $"Yahoo Finance hata yanıtı döndürdü. (Sembol: {symbol})";
                 }
 
                 var resultArray = chart.GetProperty("result");
                 if (resultArray.GetArrayLength() == 0)
                 {
-                    return $"Yahoo result boş döndü. (Sembol: {symbol})";
+                    return $"Yahoo Finance sonuç verisi boş döndü. (Sembol: {symbol})";
                 }
 
                 var result = resultArray[0];
 
                 if (!result.TryGetProperty("timestamp", out var timestampElement))
                 {
-                    return $"Yahoo timestamp dönmedi. (Sembol: {symbol})";
+                    return $"Yahoo Finance zaman bilgisi döndürmedi. (Sembol: {symbol})";
                 }
 
                 var timestamps = timestampElement.EnumerateArray().ToList();
@@ -178,8 +178,8 @@ namespace Eskiz1.API.Services
                     {
                         bool changed = false;
 
-                        // Eski kayıtlar için gerçek Yahoo High/Low ile backfill.
-                        // NULL/0 da güncellenir; daha önce placeholder dolduysa ve Yahoo farklıysa o da güncellenir.
+                        // eski kayıtlar gerçek yahoo finance high/low değerleriyle güncellenir.
+                        // null veya 0 değerler güncellenir; geçici değerler varsa ve yahoo finance farklı değer döndürüyorsa onlar da güncellenir.
                         if (DecimalChanged(existing.HighPrice, highPrice))
                         {
                             existing.HighPrice = highPrice;
@@ -192,7 +192,7 @@ namespace Eskiz1.API.Services
                             changed = true;
                         }
 
-                        // Temel alanları sadece bozuksa düzelt.
+                        // temel fiyat ve hacim alanları yalnızca hatalıysa düzeltilir.
                         if (existing.OpenPrice <= 0m)
                         {
                             existing.OpenPrice = openPrice;
@@ -247,7 +247,7 @@ namespace Eskiz1.API.Services
             }
             catch (Exception ex)
             {
-                return $"Kod Patladı: {ex.Message}";
+                return $"İşlem sırasında hata oluştu: {ex.Message}";
             }
         }
     }

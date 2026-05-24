@@ -18,7 +18,7 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // POST: api/externaldata/sync -> Dış verileri Yahoo'dan çek
+        // post: api/externaldata/sync -> dış piyasa verilerini yahoo finance üzerinden senkronize eder.
         [HttpPost("sync")]
         public async Task<IActionResult> Sync()
         {
@@ -26,12 +26,12 @@ namespace Eskiz1.API.Controllers
             if (sonuc.StartsWith("OK_"))
             {
                 int sayi = int.Parse(sonuc.Split('_')[1]);
-                return Ok($"Dış veri sync tamamlandı. {sayi} yeni kayıt eklendi.");
+                return Ok($"Dış veri senkronizasyonu tamamlandı. {sayi} yeni kayıt eklendi.");
             }
             return BadRequest(sonuc);
         }
 
-        // GET: api/externaldata/status -> Dış veri durumu
+        // get: api/externaldata/status -> dış veri durumunu özetler.
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
