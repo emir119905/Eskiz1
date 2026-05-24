@@ -4,7 +4,8 @@ import {
   getDbStatus,
   syncStock,
   syncAllStocks,
-  deleteStockHistoricalData
+  deleteStockHistoricalData,
+  addStock
 } from '../api/client'
 
 const BLUE = '#3b82f6'
@@ -79,6 +80,14 @@ function formatDate(value) {
 function formatNumber(value) {
   if (value === undefined || value === null || Number.isNaN(Number(value))) return '-'
   return Number(value).toLocaleString('tr-TR')
+}
+
+function formatPercent(value) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return '-'
+  return `${Number(value).toLocaleString('tr-TR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })}%`
 }
 
 function getStockId(x) {
@@ -189,6 +198,24 @@ function normalizeStatusRow(row) {
       row?.HasGap,
       row?.boslukVar,
       row?.BoslukVar
+    ),
+    ohlcMissingCount: firstDefined(
+      row?.ohlcMissingCount,
+      row?.OhlcMissingCount,
+      row?.ohlcEksikSayisi,
+      row?.OhlcEksikSayisi
+    ),
+    ohlcCompleteCount: firstDefined(
+      row?.ohlcCompleteCount,
+      row?.OhlcCompleteCount,
+      row?.ohlcTamSayisi,
+      row?.OhlcTamSayisi
+    ),
+    ohlcCompletenessPct: firstDefined(
+      row?.ohlcCompletenessPct,
+      row?.OhlcCompletenessPct,
+      row?.ohlcTamlikYuzde,
+      row?.OhlcTamlikYuzde
     )
   }
 }
@@ -219,7 +246,10 @@ function buildRows(stocksPayload, statusPayload) {
         lastDate: status.lastDate,
         status: status.status,
         gapDays: status.gapDays,
-        hasGap: status.hasGap
+        hasGap: status.hasGap,
+        ohlcMissingCount: status.ohlcMissingCount,
+        ohlcCompleteCount: status.ohlcCompleteCount,
+        ohlcCompletenessPct: status.ohlcCompletenessPct
       }
     })
   }
@@ -234,7 +264,10 @@ function buildRows(stocksPayload, statusPayload) {
     lastDate: s.lastDate,
     status: s.status,
     gapDays: s.gapDays,
-    hasGap: s.hasGap
+    hasGap: s.hasGap,
+    ohlcMissingCount: s.ohlcMissingCount,
+    ohlcCompleteCount: s.ohlcCompleteCount,
+    ohlcCompletenessPct: s.ohlcCompletenessPct
   }))
 }
 
@@ -253,6 +286,22 @@ function normalizeStatusText(value) {
 function getHealth(row) {
   const count = Number(row.rowCount || 0)
   const status = normalizeStatusText(row.status)
+
+  if (status.includes('OHLC')) {
+    return {
+      label: 'OHLC Eksik',
+      color: YELLOW,
+      bg: '#f59e0b18'
+    }
+  }
+
+  if (Number(row.ohlcMissingCount || 0) > 0) {
+    return {
+      label: 'OHLC Eksik',
+      color: YELLOW,
+      bg: '#f59e0b18'
+    }
+  }
 
   if (status.includes('SAGLIKLI') || status.includes('HEALTHY')) {
     return {
@@ -323,6 +372,12 @@ export default function Admin() {
   const [message, setMessage] = useState('')
   const [query, setQuery] = useState('')
   const [healthFilter, setHealthFilter] = useState('all')
+  const [addingStock, setAddingStock] = useState(false)
+  const [newStock, setNewStock] = useState({
+    symbol: '',
+    companyName: '',
+    sector: ''
+  })
 
   useEffect(() => {
     loadAdminData()
@@ -357,6 +412,36 @@ export default function Admin() {
       setMessage('❌ Veri yönetimi bilgileri alınamadı: ' + e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleAddStock(e) {
+    e.preventDefault()
+
+    const payload = {
+      symbol: newStock.symbol.trim(),
+      companyName: newStock.companyName.trim(),
+      sector: newStock.sector.trim()
+    }
+
+    if (!payload.symbol || !payload.companyName) {
+      setMessage('❌ Sembol ve şirket adı zorunlu.')
+      return
+    }
+
+    setAddingStock(true)
+    setMessage(`⏳ ${payload.symbol} hisse kaydı ekleniyor...`)
+
+    try {
+      await addStock(payload)
+      setMessage(`✅ ${payload.symbol} eklendi. İstersen şimdi Sync ile tarihsel verilerini çekebilirsin.`)
+      setNewStock({ symbol: '', companyName: '', sector: '' })
+      await loadAdminData()
+    } catch (e) {
+      const err = e.response?.data?.detail || e.response?.data || e.message
+      setMessage('❌ Hisse ekleme hatası: ' + err)
+    } finally {
+      setAddingStock(false)
     }
   }
 
@@ -447,7 +532,7 @@ export default function Admin() {
       const matchesHealth =
         healthFilter === 'all' ||
         (healthFilter === 'healthy' && h.label === 'Sağlıklı') ||
-        (healthFilter === 'warning' && (h.label === 'Eksik / Kontrol' || h.label === 'Boşluk Var')) ||
+        (healthFilter === 'warning' && (h.label === 'Eksik / Kontrol' || h.label === 'Boşluk Var' || h.label === 'OHLC Eksik')) ||
         (healthFilter === 'empty' && h.label === 'Veri Yok')
 
       return matchesQuery && matchesHealth
@@ -459,11 +544,16 @@ export default function Admin() {
     const healthy = rows.filter(r => getHealth(r).label === 'Sağlıklı').length
     const warning = rows.filter(r => {
       const label = getHealth(r).label
-      return label === 'Eksik / Kontrol' || label === 'Boşluk Var'
+      return label === 'Eksik / Kontrol' || label === 'Boşluk Var' || label === 'OHLC Eksik'
     }).length
     const empty = rows.filter(r => getHealth(r).label === 'Veri Yok').length
 
     const fallbackRows = rows.reduce((acc, r) => acc + Number(r.rowCount || 0), 0)
+    const ohlcMissing = firstDefined(
+      statusPayload?.toplamOhlcEksik,
+      statusPayload?.ToplamOhlcEksik,
+      rows.reduce((acc, r) => acc + Number(r.ohlcMissingCount || 0), 0)
+    )
 
     const dates = rows
       .map(r => r.lastDate)
@@ -481,6 +571,7 @@ export default function Admin() {
       warning,
       empty,
       totalRows: getTopLevelTotalRows(statusPayload, fallbackRows),
+      ohlcMissing,
       lastDate
     }
   }, [rows, statusPayload])
@@ -505,7 +596,7 @@ export default function Admin() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, minmax(140px, 1fr))',
+        gridTemplateColumns: 'repeat(6, minmax(130px, 1fr))',
         gap: '14px',
         marginBottom: '22px'
       }}>
@@ -514,7 +605,86 @@ export default function Admin() {
         <StatCard label="Kontrol" value={formatNumber(stats.warning)} color={YELLOW} icon="⚠️" />
         <StatCard label="Veri Yok" value={formatNumber(stats.empty)} color={RED} icon="⛔" />
         <StatCard label="Toplam Satır" value={formatNumber(stats.totalRows)} color={PURPLE} icon="🗄️" />
+        <StatCard label="OHLC Eksik" value={formatNumber(stats.ohlcMissing)} color={stats.ohlcMissing > 0 ? YELLOW : GREEN} icon="🕯️" />
       </div>
+
+      <Panel>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: '16px',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          marginBottom: '18px'
+        }}>
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+              Hisse Evreni
+            </div>
+            <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
+              ➕ Yeni Hisse Ekle
+            </h3>
+            <p style={{
+              color: '#9ca3af',
+              fontSize: '13px',
+              marginTop: '7px',
+              maxWidth: 700,
+              lineHeight: 1.55
+            }}>
+              Yeni bir hisse kaydı oluşturur. Kayıt eklendikten sonra tablodaki Sync butonu ile tarihsel verileri çekilebilir.
+            </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleAddStock}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(170px, 0.9fr) minmax(240px, 1.5fr) minmax(160px, 0.8fr) auto',
+            gap: '12px',
+            alignItems: 'center'
+          }}
+        >
+          <input
+            placeholder="Sembol (örn: THYAO.IS)"
+            value={newStock.symbol}
+            onChange={e => setNewStock(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
+            required
+            disabled={addingStock}
+            style={inputStyle}
+          />
+
+          <input
+            placeholder="Şirket adı"
+            value={newStock.companyName}
+            onChange={e => setNewStock(prev => ({ ...prev, companyName: e.target.value }))}
+            required
+            disabled={addingStock}
+            style={inputStyle}
+          />
+
+          <input
+            placeholder="Sektör"
+            value={newStock.sector}
+            onChange={e => setNewStock(prev => ({ ...prev, sector: e.target.value }))}
+            disabled={addingStock}
+            style={inputStyle}
+          />
+
+          <button
+            type="submit"
+            disabled={addingStock}
+            style={{
+              ...primaryButton,
+              opacity: addingStock ? 0.65 : 1,
+              cursor: addingStock ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {addingStock ? 'Ekleniyor...' : 'Hisse Ekle'}
+          </button>
+        </form>
+      </Panel>
 
       <Panel>
         <div style={{
@@ -539,8 +709,8 @@ export default function Admin() {
               maxWidth: 660,
               lineHeight: 1.55
             }}>
-              Bu panel hisse listesini, tarihsel veri doluluğunu ve senkronizasyon işlemlerini yönetir.
-              AI motorunun sağlıklı çalışması için güncel ve yeterli geçmiş veri gerekir.
+              Bu panel hisse listesini, tarihsel veri doluluğunu ve OHLCV senkronizasyon işlemlerini yönetir.
+              AI motorunun sağlıklı çalışması için Open/High/Low/Close/Volume alanlarının eksiksiz olması gerekir.
             </p>
           </div>
 
@@ -612,6 +782,7 @@ export default function Admin() {
                   <th style={th}>Şirket</th>
                   <th style={th}>Sektör</th>
                   <th style={th}>Satır</th>
+                  <th style={th}>OHLC</th>
                   <th style={th}>İlk Tarih</th>
                   <th style={th}>Son Tarih</th>
                   <th style={th}>Durum</th>
@@ -645,6 +816,18 @@ export default function Admin() {
                       <td style={td}>{row.companyName || '-'}</td>
                       <td style={td}>{row.sector || '-'}</td>
                       <td style={td}>{formatNumber(row.rowCount)}</td>
+                      <td style={td}>
+                        <div style={{ fontWeight: 'bold', color: Number(row.ohlcMissingCount || 0) > 0 ? YELLOW : GREEN }}>
+                          {row.ohlcCompletenessPct !== undefined && row.ohlcCompletenessPct !== null
+                            ? formatPercent(row.ohlcCompletenessPct)
+                            : Number(row.rowCount || 0) > 0 ? 'Eski şema' : '-'}
+                        </div>
+                        {Number(row.ohlcMissingCount || 0) > 0 && (
+                          <div style={{ color: '#9ca3af', fontSize: '12px' }}>
+                            Eksik: {formatNumber(row.ohlcMissingCount)}
+                          </div>
+                        )}
+                      </td>
                       <td style={td}>{formatDate(row.firstDate)}</td>
                       <td style={td}>{formatDate(row.lastDate)}</td>
 

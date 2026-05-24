@@ -121,6 +121,14 @@ BASE_FEATURES = [
     "MA50_norm",
     "RSI14",
     "Volatility",
+    "TrueRangePct",
+    "ATR14Pct",
+    "IntradayRangePct",
+    "UpperWickPct",
+    "LowerWickPct",
+    "BodyPct",
+    "CloseLocationValue",
+    "GapReturn",
 ]
 
 EXTERNAL_FEATURES = [
@@ -161,8 +169,8 @@ SIGNAL_CONFIDENCE_THR = 0.45
 SIGNAL_EDGE_THR = 0.08
 
 # Eğitim/mimari versiyonu değişmedi; v11.1 modelleri tekrar kullanılabilir.
-MODEL_VERSION = "v11_1_force_external"
-EVALUATION_VERSION = "v11_3_horizon_metrics_chart_contract"
+MODEL_VERSION = "v11_2_ohlcv_features"
+EVALUATION_VERSION = "v11_4_ohlcv_atr_features"
 
 
 # ============================================================
@@ -174,7 +182,7 @@ def get_db_data(stock_id: int) -> pd.DataFrame:
 
         df_hisse = pd.read_sql(
             """
-            SELECT Date, ClosePrice, OpenPrice, Volume
+            SELECT Date, ClosePrice, OpenPrice, HighPrice, LowPrice, Volume
             FROM HistoricalData
             WHERE StockID = ?
             ORDER BY Date ASC
@@ -225,6 +233,48 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     close = df["ClosePrice"].astype(float)
     open_ = df["OpenPrice"].astype(float)
+
+    # High/Low kolonları yeni eklendiği için eski/eksik kayıtlarda güvenli fallback kullanıyoruz.
+    if "HighPrice" in df.columns:
+        high = pd.to_numeric(df["HighPrice"], errors="coerce").astype(float)
+    else:
+        high = pd.Series(np.nan, index=df.index, dtype=float)
+
+    if "LowPrice" in df.columns:
+        low = pd.to_numeric(df["LowPrice"], errors="coerce").astype(float)
+    else:
+        low = pd.Series(np.nan, index=df.index, dtype=float)
+
+    high = high.fillna(np.maximum(open_, close))
+    low = low.fillna(np.minimum(open_, close))
+
+    high = np.maximum(high, np.maximum(open_, close))
+    low = np.minimum(low, np.minimum(open_, close))
+
+    prev_close = close.shift(1)
+
+    true_range = pd.concat(
+        [
+            (high - low).abs(),
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    intraday_range = (high - low).replace(0, np.nan)
+    candle_body = (close - open_).abs()
+
+    df["TrueRange"] = true_range
+    df["TrueRangePct"] = true_range / close.replace(0, np.nan)
+    df["ATR14"] = true_range.rolling(14).mean()
+    df["ATR14Pct"] = df["ATR14"] / close.replace(0, np.nan)
+    df["IntradayRangePct"] = intraday_range / close.replace(0, np.nan)
+    df["UpperWickPct"] = (high - np.maximum(open_, close)).clip(lower=0) / close.replace(0, np.nan)
+    df["LowerWickPct"] = (np.minimum(open_, close) - low).clip(lower=0) / close.replace(0, np.nan)
+    df["BodyPct"] = candle_body / close.replace(0, np.nan)
+    df["CloseLocationValue"] = ((close - low) / intraday_range).clip(0, 1).fillna(0.5)
+    df["GapReturn"] = (open_ / prev_close.replace(0, np.nan)) - 1.0
 
     df["Return"] = close.pct_change()
     df["OpenReturn"] = open_.pct_change()
@@ -590,13 +640,13 @@ def build_sample_weights(Y_cls: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 def model_paths(stock_id: int) -> Dict[str, str]:
     # v11 baseline ile karışmasın diye ayrı kayıt adları.
     return {
-        "model": f"ai_models/model_v11_1_{stock_id}.keras",
-        "scaler": f"ai_models/scaler_v11_1_{stock_id}.gz",
-        "profil": f"ai_models/profil_v11_1_{stock_id}.gz",
-        "features": f"ai_models/features_v11_1_{stock_id}.gz",
-        "y_scale": f"ai_models/y_scale_v11_1_{stock_id}.gz",
-        "ret_sigma": f"ai_models/ret_sigma_v11_1_{stock_id}.gz",
-        "version": f"ai_models/version_v11_1_{stock_id}.gz",
+        "model": f"ai_models/model_v11_2_{stock_id}.keras",
+        "scaler": f"ai_models/scaler_v11_2_{stock_id}.gz",
+        "profil": f"ai_models/profil_v11_2_{stock_id}.gz",
+        "features": f"ai_models/features_v11_2_{stock_id}.gz",
+        "y_scale": f"ai_models/y_scale_v11_2_{stock_id}.gz",
+        "ret_sigma": f"ai_models/ret_sigma_v11_2_{stock_id}.gz",
+        "version": f"ai_models/version_v11_2_{stock_id}.gz",
     }
 
 

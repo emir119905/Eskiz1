@@ -18,7 +18,45 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // POST: api/historicaldata/sync/1 -> Yahoo'dan veri çek
+        private static (bool Ok, int Added, int Updated) ParseYahooResult(string resultMessage)
+        {
+            if (string.IsNullOrWhiteSpace(resultMessage) || !resultMessage.StartsWith("OK_"))
+            {
+                return (false, 0, 0);
+            }
+
+            var parts = resultMessage.Split('_', StringSplitOptions.RemoveEmptyEntries);
+
+            int added = 0;
+            int updated = 0;
+
+            if (parts.Length > 1) int.TryParse(parts[1], out added);
+            if (parts.Length > 2) int.TryParse(parts[2], out updated);
+
+            return (true, added, updated);
+        }
+
+        private static string BuildSyncMessage(string symbol, int added, int updated)
+        {
+            if (added > 0 && updated > 0)
+            {
+                return $"{symbol} için {added} yeni veri eklendi, {updated} mevcut kaydın High/Low verisi backfill edildi.";
+            }
+
+            if (added > 0)
+            {
+                return $"{symbol} için {added} adet yeni OHLCV veri eklendi.";
+            }
+
+            if (updated > 0)
+            {
+                return $"{symbol} için {updated} mevcut kaydın High/Low verisi backfill edildi.";
+            }
+
+            return $"{symbol} zaten güncel.";
+        }
+
+        // POST: api/historicaldata/sync/1 -> Yahoo'dan OHLCV veri çek / eksik High-Low alanlarını backfill et
         [HttpPost("sync/{stockId}")]
         public async Task<IActionResult> SyncDataFromYahoo(int stockId)
         {
@@ -26,18 +64,23 @@ namespace Eskiz1.API.Controllers
             if (stock == null) return NotFound("Hisse bulunamadı!");
 
             var resultMessage = await _yahooService.FetchAndSaveHistoricalDataAsync(stock.Symbol, stock.StockID);
+            var parsed = ParseYahooResult(resultMessage);
 
-            if (resultMessage.StartsWith("OK_"))
+            if (parsed.Ok)
             {
-                int count = int.Parse(resultMessage.Split('_')[1]);
-                return Ok(count > 0
-                    ? $"{stock.Symbol} için {count} adet yeni veri eklendi."
-                    : $"{stock.Symbol} zaten güncel.");
+                return Ok(new
+                {
+                    Mesaj = BuildSyncMessage(stock.Symbol, parsed.Added, parsed.Updated),
+                    Symbol = stock.Symbol,
+                    AddedCount = parsed.Added,
+                    UpdatedCount = parsed.Updated
+                });
             }
+
             return BadRequest($"Hata: {resultMessage}");
         }
 
-        // POST: api/historicaldata/syncall -> Tüm hisseler için Yahoo'dan veri çek
+        // POST: api/historicaldata/syncall -> Tüm hisseler için Yahoo'dan OHLCV veri çek / backfill et
         [HttpPost("syncall")]
         public async Task<IActionResult> SyncAllStocks()
         {
@@ -47,18 +90,20 @@ namespace Eskiz1.API.Controllers
             foreach (var stock in stocks)
             {
                 var result = await _yahooService.FetchAndSaveHistoricalDataAsync(stock.Symbol, stock.StockID);
-                int count = result.StartsWith("OK_") ? int.Parse(result.Split('_')[1]) : -1;
+                var parsed = ParseYahooResult(result);
+
                 results.Add(new
                 {
                     Symbol = stock.Symbol,
-                    Status = result.StartsWith("OK_") ? "OK" : "HATA",
-                    YeniKayit = count,
-                    Detay = result.StartsWith("OK_") ? null : result
+                    Status = parsed.Ok ? "OK" : "HATA",
+                    YeniKayit = parsed.Ok ? parsed.Added : -1,
+                    GuncellenenKayit = parsed.Ok ? parsed.Updated : -1,
+                    Detay = parsed.Ok ? BuildSyncMessage(stock.Symbol, parsed.Added, parsed.Updated) : result
                 });
             }
+
             return Ok(results);
         }
-
 
         // DELETE: api/historicaldata/stock/1 -> Seçili hissenin tarihsel verilerini sil
         // Not: Hisse kaydını veya kullanıcı işlemlerini silmez. Yalnızca HistoricalData kayıtlarını temizler.
@@ -106,6 +151,8 @@ namespace Eskiz1.API.Controllers
         {
             var stocks = await _context.Stocks.ToListAsync();
             var statusList = new List<object>();
+            int totalRecords = 0;
+            int totalOhlcMissing = 0;
 
             foreach (var stock in stocks)
             {
@@ -117,45 +164,75 @@ namespace Eskiz1.API.Controllers
                 {
                     statusList.Add(new
                     {
-                        StockID   = stock.StockID,
-                        Symbol    = stock.Symbol,
-                        Durum     = "VERİ YOK",
+                        StockID = stock.StockID,
+                        Symbol = stock.Symbol,
+                        Durum = "VERİ YOK",
                         KayitSayisi = 0,
-                        IlkTarih  = (DateTime?)null,
-                        SonTarih  = (DateTime?)null,
-                        GunFarki  = (int?)null,
+                        OhlcEksikSayisi = 0,
+                        OhlcTamSayisi = 0,
+                        OhlcTamlikYuzde = 0.0,
+                        IlkTarih = (DateTime?)null,
+                        SonTarih = (DateTime?)null,
+                        GunFarki = (int?)null,
                         BoslukVar = (bool?)null
                     });
+
                     continue;
                 }
 
-                var dates     = records.Select(r => r.Date.Date).OrderBy(d => d).ToList();
-                var ilkTarih  = dates.First();
-                var sonTarih  = dates.Last();
-                var gunFarki  = (sonTarih - ilkTarih).Days;
+                totalRecords += records.Count;
 
-                // Beklenen iş günü sayısı vs gerçek kayıt sayısı karşılaştır
-                // Hafta sonu ~2/7 oranında iş günü değil, kabaca tolerans %85
+                var dates = records.Select(r => r.Date.Date).OrderBy(d => d).ToList();
+                var ilkTarih = dates.First();
+                var sonTarih = dates.Last();
+                var gunFarki = (sonTarih - ilkTarih).Days;
+
+                // Beklenen iş günü sayısı vs gerçek kayıt sayısı karşılaştır.
+                // Hafta sonu ~2/7 oranında iş günü değil, kabaca tolerans %85.
                 int beklenenIsGunu = (int)(gunFarki * 5.0 / 7.0);
                 bool boslukVar = records.Count < (int)(beklenenIsGunu * 0.85);
 
+                int ohlcEksikSayisi = records.Count(r =>
+                    !r.HighPrice.HasValue ||
+                    !r.LowPrice.HasValue ||
+                    r.HighPrice.GetValueOrDefault() <= 0m ||
+                    r.LowPrice.GetValueOrDefault() <= 0m
+                );
+
+                int ohlcTamSayisi = records.Count - ohlcEksikSayisi;
+                totalOhlcMissing += ohlcEksikSayisi;
+
+                double ohlcTamlikYuzde = records.Count == 0
+                    ? 0.0
+                    : Math.Round((double)ohlcTamSayisi / records.Count * 100.0, 2);
+
+                string durum = boslukVar
+                    ? "BOŞLUK VAR"
+                    : ohlcEksikSayisi > 0
+                        ? "OHLC EKSİK"
+                        : "SAĞLIKLI";
+
                 statusList.Add(new
                 {
-                    StockID     = stock.StockID,
-                    Symbol      = stock.Symbol,
-                    Durum       = boslukVar ? "BOŞLUK VAR" : "SAĞLIKLI",
+                    StockID = stock.StockID,
+                    Symbol = stock.Symbol,
+                    Durum = durum,
                     KayitSayisi = records.Count,
-                    IlkTarih    = ilkTarih,
-                    SonTarih    = sonTarih,
-                    GunFarki    = gunFarki,
-                    BoslukVar   = boslukVar
+                    OhlcEksikSayisi = ohlcEksikSayisi,
+                    OhlcTamSayisi = ohlcTamSayisi,
+                    OhlcTamlikYuzde = ohlcTamlikYuzde,
+                    IlkTarih = ilkTarih,
+                    SonTarih = sonTarih,
+                    GunFarki = gunFarki,
+                    BoslukVar = boslukVar
                 });
             }
 
             return Ok(new
             {
-                ToplamHisse    = stocks.Count,
-                ToplamKayit    = statusList.Sum(s => (int)s.GetType().GetProperty("KayitSayisi").GetValue(s)),
+                ToplamHisse = stocks.Count,
+                ToplamKayit = totalRecords,
+                ToplamOhlcEksik = totalOhlcMissing,
                 HisseDurumlari = statusList
             });
         }
