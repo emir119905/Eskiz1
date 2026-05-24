@@ -1,48 +1,17 @@
-import { useMemo, useState } from 'react'
 
 const BLUE = '#3b82f6'
 const GREEN = '#10b981'
 const YELLOW = '#f59e0b'
-const RED = '#ef4444'
 const PURPLE = '#8b5cf6'
-const GRAY = '#6b7280'
 
 const PROJECT_NAME = 'Pusula AI'
 const CURRENT_VERSION = 'v11.3'
 const NEXT_VERSION = 'v12 Directional Engine'
 
 export default function Reports() {
-  const [message, setMessage] = useState('')
-
-  const reportText = useMemo(() => buildReportText(), [])
-  const presentationText = useMemo(() => buildPresentationText(), [])
-
-  async function copyText(text, successMessage) {
-    try {
-      await navigator.clipboard.writeText(text)
-      setMessage(successMessage)
-    } catch {
-      setMessage('❌ Metin panoya kopyalanamadı.')
-    }
-  }
-
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
       <Header />
-
-      {message && (
-        <div style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
-          borderRadius: '14px',
-          padding: '13px 16px',
-          marginBottom: '20px',
-          color: '#d1d5db',
-          boxShadow: '0 14px 32px rgba(0,0,0,0.18)'
-        }}>
-          {message}
-        </div>
-      )}
 
       <div style={{
         display: 'grid',
@@ -89,11 +58,11 @@ export default function Reports() {
         }}>
           <div>
             <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
-              Teslim Paketi
+              Proje Brifingi
             </div>
 
             <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
-              Proje Rapor Merkezi
+              Portföy Yönetimi ve Varlık Tahmin Sistemi
             </h3>
 
             <p style={{
@@ -103,26 +72,11 @@ export default function Reports() {
               maxWidth: 760,
               lineHeight: 1.6
             }}>
-              Bu sayfa proje raporu, sunum konuşması, teknik mimari özeti ve gelecek çalışma planı için hazırlandı.
-              Rapor/sunum hazırlığında buradaki metinler doğrudan kullanılabilir veya düzenlenebilir.
+              Bu sayfa; projenin amacını, veritabanı yapısını, uygulama mimarisini,
+              veri yönetimi işlemlerini ve analiz modülünü özetleyen profesyonel bir brifing alanı olarak düzenlenmiştir.
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => copyText(reportText, '✅ Rapor metni panoya kopyalandı.')}
-              style={primaryButton}
-            >
-              📄 Rapor Metnini Kopyala
-            </button>
-
-            <button
-              onClick={() => copyText(presentationText, '✅ Sunum konuşma metni panoya kopyalandı.')}
-              style={secondaryButton}
-            >
-              🎤 Sunum Metnini Kopyala
-            </button>
-          </div>
         </div>
       </Panel>
 
@@ -139,42 +93,41 @@ export default function Reports() {
             accent={BLUE}
           >
             <p style={p}>
-              <strong>{PROJECT_NAME}</strong>, BIST ve yabancı hisse verileri üzerinde çalışan,
-              derin öğrenme destekli bir finansal analiz ve karar destek platformudur. Proje, kullanıcıya doğrudan
-              al/sat tavsiyesi vermek yerine, model çıktısını ölçülebilir metriklerle birlikte sunar.
+              <strong>{PROJECT_NAME}</strong>, hisse senedi verilerinin saklanması, portföy işlemlerinin yönetilmesi,
+              tarihsel fiyat verilerinin izlenmesi ve yapay zekâ destekli analiz çıktılarının görüntülenmesi için
+              geliştirilen çok katmanlı bir web uygulamasıdır.
             </p>
 
             <p style={p}>
-              Sistem günlük fiyat verileri, hacim, teknik göstergeler ve dış piyasa değişkenlerini kullanarak
-              çok ufuklu senaryo üretir. Ana hedef, finansal zaman serilerinde sık görülen “düz çizgi / mean reversion”
-              problemini ölçmek, görünür kılmak ve sonraki sürümlerde daha güçlü yön tahmini mekanizmaları geliştirmektir.
+              Proje, kullanıcıya doğrudan yatırım tavsiyesi vermek yerine; veritabanı üzerinde tutulan tarihsel verileri,
+              portföy kayıtlarını ve model çıktılarıyla oluşan karar destek göstergelerini tek panelde sunar.
             </p>
           </ReportSection>
 
           <ReportSection
             eyebrow="02"
-            title="Veri Seti ve Kapsam"
+            title="Veritabanı Yapısı"
             accent={GREEN}
           >
             <p style={p}>
-              Projede kullanılan ana veri tabanı; hisse bilgileri, tarihsel fiyat verileri, kullanıcı portföyü,
-              işlemler ve dış piyasa verilerinden oluşur. Tarihsel veri tarafında günlük açılış fiyatı, kapanış fiyatı
-              ve hacim bilgisi kullanılmaktadır.
+              Sistemde temel veri saklama katmanı SQL Server üzerinde tasarlanmıştır. Tablolar; kullanıcı bilgileri,
+              hisse tanımları, tarihsel fiyat kayıtları, dış piyasa verileri ve portföy işlemleri üzerine kuruludur.
             </p>
 
             <DataTable
               rows={[
                 ['Stocks', 'StockID, Symbol, CompanyName, Sector'],
-                ['HistoricalData', 'Date, OpenPrice, ClosePrice, Volume'],
+                ['HistoricalData', 'DataID, StockID, Date, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume'],
                 ['ExternalData', 'USDTRY, BIST100, Gold, BrentOil'],
-                ['Transactions', 'Kullanıcı al/sat işlemleri'],
-                ['Users', 'Kullanıcı ve bakiye bilgileri']
+                ['Transactions', 'TransactionID, UserID, StockID, TransactionType, Quantity, PriceAtTransaction, TransactionDate'],
+                ['Users', 'UserID, FirstName, LastName, Email, Balance, CreatedAt, PasswordHash']
               ]}
             />
 
             <p style={p}>
-              Mevcut veri yapısında saatlik veri bulunmamaktadır. Bu nedenle kısa vadeli intraday yön motoru,
-              proje sonrası geliştirme hedefi olarak v12 planına alınmıştır.
+              HistoricalData tablosu OHLCV yapısına geçirilmiştir. Böylece yalnızca açılış ve kapanış fiyatları değil,
+              gün içi en yüksek ve en düşük değerler de saklanarak ATR, mum gövdesi ve fitil oranı gibi ek analiz
+              özelliklerinin hesaplanması mümkün hale gelmiştir.
             </p>
           </ReportSection>
 
@@ -184,23 +137,21 @@ export default function Reports() {
             accent={PURPLE}
           >
             <p style={p}>
-              Güncel motor, geçmiş fiyat davranışını doğrudan günlük fiyat çizgisi olarak üretmek yerine,
-              çok ufuklu hedefler üzerinden değerlendirir. Model; 5, 10, 20 ve 30 günlük ufuklarda getiri tahmini,
-              belirsizlik bandı ve yön davranışı çıktıları üretir.
+              Uygulama; React tabanlı frontend, .NET tabanlı backend API, SQL Server veritabanı ve Python tabanlı
+              analiz servisi olmak üzere dört ana parçadan oluşur.
             </p>
 
             <ArchitectureGrid />
 
             <p style={p}>
-              Bu yapı, önceki sürümlerde yaşanan rolling forecast feedback loop ve quantile megaphone etkisini azaltmak
-              için tercih edilmiştir. Mevcut sürümde amaç yalnızca tahmin çizgisi üretmek değil, aynı zamanda modelin
-              naive baseline karşısındaki gerçek katkısını ölçmektir.
+              Frontend kullanıcı arayüzünü sağlar. Backend API veritabanı işlemlerini ve iş kurallarını yönetir.
+              Python AI API ise model analizi ve deneysel sinyal üretimi için ayrı servis olarak konumlandırılmıştır.
             </p>
           </ReportSection>
 
           <ReportSection
             eyebrow="04"
-            title="Sürüm Gelişimi"
+            title="Model ve Analiz Modülü"
             accent={YELLOW}
           >
             <Timeline />
@@ -220,59 +171,59 @@ export default function Reports() {
             <StatusItem
               label="Güçlü Taraf"
               color={GREEN}
-              text="Frontend, veri yönetimi, portföy simülasyonu, dashboard ve batch test laboratuvarı stabil çalışıyor."
+              text="Frontend, veri yönetimi, portföy simülasyonu, dashboard ve batch test laboratuvarı stabil çalışmaktadır."
             />
 
             <StatusItem
-              label="Ölçüm Kazanımı"
+              label="Veritabanı Kapsamı"
               color={BLUE}
-              text="Backtest gerçek tarihli horizon hizalamasıyla okunuyor; naive baseline karşılaştırması görünür durumda."
+              text="Hisse, tarihsel veri, kullanıcı, işlem ve dış piyasa tabloları uygulama içinde aktif kullanılmaktadır."
             />
 
             <StatusItem
-              label="Açık Problem"
+              label="Açık Geliştirme Alanı"
               color={YELLOW}
-              text="Yön tahmini hâlâ her hissede tatmin edici değil. Bazı örneklerde model flat davranışına kaçabiliyor."
+              text="Yön tahmini ve işlem sinyali tarafı deneysel olarak değerlendirilmektedir. Model çıktıları yatırım tavsiyesi olarak konumlandırılmamıştır."
             />
 
             <StatusItem
-              label="Karar"
+              label="Konumlandırma"
               color={PURPLE}
-              text="v11.3 stabil demo ve ölçüm altyapısıdır; nihai alfa motoru değildir."
+              text="Mevcut sürüm, veritabanı yönetimi ve karar destek arayüzü bulunan stabil bir akademik proje demosudur."
             />
           </Panel>
 
           <Panel>
             <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
-              Metrik Mantığı
+              Ana Modüller
             </div>
 
             <h3 style={{ margin: 0, letterSpacing: '-0.4px', marginBottom: '16px' }}>
-              Model Nasıl Okunmalı?
+              Uygulama Ekranları
             </h3>
 
-            <MetricExplanation
-              title="MAPE / RMSE"
-              text="Fiyat tahmin hatasını ölçer. Ancak finansal serilerde tek başına yeterli değildir."
+            <ModuleItem
+              title="Dashboard"
+              text="Seçili hisse için model çıktıları, grafikler ve temel metrikler görüntülenir."
               color={BLUE}
             />
 
-            <MetricExplanation
-              title="Direction Score"
-              text="Modelin hareket yönünü ne kadar doğru yakaladığını gösterir. Projenin en kritik geliştirme alanıdır."
+            <ModuleItem
+              title="Portföy"
+              text="Kullanıcı bakiyesi, sahip olunan hisseler, alım-satım işlemleri ve kâr/zarar durumu izlenir."
               color={GREEN}
             />
 
-            <MetricExplanation
-              title="Action Rate"
-              text="Modelin up/down aksiyon üretme oranını gösterir. Sıfıra yaklaşması flat collapse belirtisidir."
-              color={YELLOW}
+            <ModuleItem
+              title="Model Lab"
+              text="Birden fazla hisse için batch analiz, model kalite etiketi ve problem grupları takip edilir."
+              color={PURPLE}
             />
 
-            <MetricExplanation
-              title="Naive Baseline"
-              text="Modelin basit 'fiyat değişmez' varsayımına karşı gerçek katkısını ölçmek için kullanılır."
-              color={PURPLE}
+            <ModuleItem
+              title="Veri Yönetimi"
+              text="Hisse ekleme, veri senkronizasyonu, veri sağlığı ve tarihsel kayıt silme işlemleri yapılır."
+              color={YELLOW}
             />
           </Panel>
 
@@ -287,55 +238,31 @@ export default function Reports() {
 
             <RoadmapItem
               number="1"
-              title="Regresyon ve yön tahminini ayır"
-              text="Fiyat/getiri tahmini ayrı, up/flat/down classification head ayrı çalışmalı."
+              title="Global Panel Screener"
+              text="Tek tek hisse modellemek yerine BIST hisselerini ortak panel veri setiyle sıralama yaklaşımı test edilecektir."
             />
 
             <RoadmapItem
               number="2"
-              title="Flat kaçışını cezalandır"
-              text="Gerçek hareket anlamlıyken modelin sürekli flat demesi özel loss ile engellenmeli."
+              title="Yön Motoru"
+              text="Regresyon ve yön sınıflandırması birbirinden ayrılarak daha güvenilir sinyal üretimi hedeflenecektir."
             />
 
             <RoadmapItem
               number="3"
-              title="Saatlik veri tablosu ekle"
-              text="IntradayHistoricalData ile kısa vadeli davranış sinyali üretilecek."
+              title="Gelişmiş OHLCV Özellikleri"
+              text="ATR, gövde oranı, fitil oranı ve endekse göre relatif güç gibi özellikler modele dahil edilecektir."
             />
 
             <RoadmapItem
               number="4"
-              title="Multi-timeframe fusion"
-              text="Saatlik yön sinyali, günlük multi-horizon modele yardımcı feature olarak bağlanacak."
+              title="Raporlama Katmanı"
+              text="Model sonuçları, veri sağlığı ve güçlü/zayıf adaylar daha dinamik raporlarla sunulacaktır."
             />
           </Panel>
         </div>
       </div>
 
-      <Panel>
-        <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
-          Rapor Metni Önizleme
-        </div>
-
-        <h3 style={{ margin: 0, letterSpacing: '-0.4px', marginBottom: '14px' }}>
-          Kopyalanabilir Teknik Özet
-        </h3>
-
-        <pre style={{
-          whiteSpace: 'pre-wrap',
-          color: '#d1d5db',
-          background: '#0b1220',
-          border: '1px solid #1f2937',
-          borderRadius: '16px',
-          padding: '16px',
-          lineHeight: 1.6,
-          fontSize: '13px',
-          maxHeight: '360px',
-          overflowY: 'auto'
-        }}>
-          {reportText}
-        </pre>
-      </Panel>
     </div>
   )
 }
@@ -358,7 +285,7 @@ function Header() {
           background: GREEN,
           boxShadow: `0 0 18px ${GREEN}`
         }} />
-        Pusula AI · Raporlar
+        Pusula AI · Proje Brifingi
       </div>
 
       <h2 style={{
@@ -366,7 +293,7 @@ function Header() {
         letterSpacing: '-0.8px',
         fontSize: '31px'
       }}>
-        📄 Raporlar
+        📄 Proje Brifingi
       </h2>
 
       <p style={{
@@ -375,7 +302,7 @@ function Header() {
         maxWidth: '860px',
         lineHeight: 1.6
       }}>
-        Proje anlatımı, teknik özet, model gelişimi ve gelecek çalışma planı için hazırlanmış rapor merkezi.
+        Projenin teknik kapsamını, veritabanı yapısını, uygulama mimarisini ve analiz modüllerini özetleyen bölüm.
       </p>
     </div>
   )
@@ -508,19 +435,19 @@ function ArchitectureGrid() {
   const items = [
     {
       title: 'Frontend',
-      text: 'React tabanlı dashboard, portföy, admin, model lab ve rapor ekranları.'
+      text: 'React tabanlı dashboard, portföy, admin, model lab, izleme listesi ve brifing ekranları.'
     },
     {
       title: '.NET API',
-      text: 'Hisse, portföy, işlem ve tarihsel veri yönetimi.'
+      text: 'Hisse, portföy, işlem ve tarihsel veri yönetimi için REST endpointleri.'
     },
     {
       title: 'Python AI API',
-      text: 'LSTM tabanlı çok ufuklu tahmin motoru ve model metrikleri.'
+      text: 'Tahmin motoru, davranış sinyali ve model laboratuvarı için analiz servisi.'
     },
     {
       title: 'SQL Server',
-      text: 'Hisse, fiyat, dış veri, kullanıcı ve işlem kayıtları.'
+      text: 'Kullanıcı, hisse, işlem, dış veri ve OHLCV tarihsel fiyat kayıtları.'
     }
   ]
 
@@ -564,40 +491,28 @@ function ArchitectureGrid() {
 function Timeline() {
   const items = [
     {
-      version: 'Faz 1',
-      title: 'Return tahmini',
-      text: 'Mutlak fiyat yerine yüzdesel getiri tahminiyle ölçek problemi azaltıldı.',
-      color: GREEN
-    },
-    {
-      version: 'Faz 2',
-      title: 'Directional loss',
-      text: 'Yanlış yöne tahminleri cezalandırarak modelin hareket yakalaması sağlandı.',
-      color: GREEN
-    },
-    {
-      version: 'Faz 3',
-      title: 'Quantile + balanced sampling',
-      text: 'Veri kırpma ve quantile bant genişlemesi nedeniyle başarısız sonuçlar alındı.',
-      color: RED
-    },
-    {
-      version: 'Faz 4',
-      title: 'Rolling forecast',
-      text: 'Modelin kendi tahminini kendine yedirmesi feedback loop ve düz çizgi davranışı üretti.',
-      color: RED
-    },
-    {
       version: CURRENT_VERSION,
-      title: 'Direct multi-horizon',
-      text: 'Günlük rolling yerine doğrudan çok ufuklu getiri hedefleri ve ölçülebilir backtest yapısı kuruldu.',
+      title: 'Çok Ufuklu Tahmin',
+      text: 'Model, 5, 10, 20 ve 30 günlük hedefleri doğrudan değerlendirir.',
       color: BLUE
     },
     {
-      version: NEXT_VERSION,
-      title: 'Directional engine',
-      text: 'Regresyon ve yön sınıflandırmasını ayıran yeni motor hedeflenmektedir.',
+      version: 'v12 Alpha',
+      title: 'Davranış Sinyali',
+      text: 'Momentum, oynaklık, hacim baskısı ve flat risk üzerinden deneysel davranış sinyali üretir.',
       color: PURPLE
+    },
+    {
+      version: 'OHLCV',
+      title: 'Gelişmiş Veri Zemini',
+      text: 'HighPrice ve LowPrice alanlarıyla ATR, fitil oranı ve gün içi aralık özellikleri hesaplanabilir.',
+      color: GREEN
+    },
+    {
+      version: 'Zeta',
+      title: 'Panel Screener',
+      text: 'Gelecek aşamada BIST hisseleri ortak panel veri setiyle sıralama problemi olarak ele alınacaktır.',
+      color: YELLOW
     }
   ]
 
@@ -681,7 +596,7 @@ function StatusItem({ label, text, color }) {
   )
 }
 
-function MetricExplanation({ title, text, color }) {
+function ModuleItem({ title, text, color }) {
   return (
     <div style={{
       display: 'flex',
@@ -764,58 +679,6 @@ function RoadmapItem({ number, title, text }) {
   )
 }
 
-function buildReportText() {
-  return `PUSULA AI PROJE RAPORU
-
-1. Proje Özeti
-Pusula AI, BIST ve yabancı hisse verileri üzerinde çalışan yapay zeka destekli bir finansal analiz ve karar destek platformudur. Proje, kullanıcıya doğrudan yatırım tavsiyesi vermek yerine, model çıktısını ölçülebilir metrikler ve senaryo grafikleriyle birlikte sunmayı hedefler.
-
-2. Veri Seti
-Sistem SQL Server üzerinde saklanan günlük hisse verileriyle çalışır. HistoricalData tablosunda Date, OpenPrice, ClosePrice ve Volume alanları bulunur. ExternalData tablosunda USDTRY, BIST100, Gold ve BrentOil gibi dış piyasa değişkenleri yer alır. Mevcut veri yapısında saatlik veri bulunmadığından intraday modelleme gelecek çalışma olarak planlanmıştır.
-
-3. Mimari
-Uygulama üç ana parçadan oluşur:
-- React frontend: Dashboard, portföy, veri yönetimi, model laboratuvarı ve rapor sayfaları.
-- .NET API: Hisse, portföy, işlem ve tarihsel veri yönetimi.
-- Python AI API: LSTM tabanlı çok ufuklu analiz motoru.
-
-4. Model Gelişimi
-İlk sürümlerde doğrudan fiyat tahmini denenmiş, daha sonra fiyat yerine yüzdesel getiri tahminine geçilmiştir. Directional loss yaklaşımı modelin yön davranışını iyileştirmiştir. Quantile loss ve balanced sampling denemeleri veri kaybı ve bant genişlemesi nedeniyle başarısız sonuçlar üretmiştir. Rolling forecast denemesinde model kendi tahminini tekrar input olarak kullandığı için feedback loop ve düz çizgi problemi görülmüştür. Güncel sürüm olan v11.3, direct multi-horizon yaklaşımıyla 5, 10, 20 ve 30 günlük hedefleri doğrudan tahmin eder.
-
-5. Ölçüm Sistemi
-Model yalnızca tahmin çizgisiyle değil, naive baseline karşılaştırmasıyla değerlendirilir. MAPE ve RMSE fiyat hatasını ölçer. Direction Score yön başarısını gösterir. Action Rate modelin ne kadar up/down sinyali ürettiğini takip eder. Bu metrikler flat collapse ve mean reversion davranışını görünür hale getirir.
-
-6. Mevcut Durum
-v11.3 sürümü frontend, veri yönetimi, portföy simülasyonu, dashboard ve batch test laboratuvarı açısından stabil bir demo altyapısı sağlar. Ancak yön tahmini problemi tamamen çözülmüş değildir. Bu nedenle v11.3 nihai alfa motoru değil, stabil ürün ve ölçüm altyapısı olarak konumlandırılmıştır.
-
-7. Gelecek Çalışmalar
-v12 Directional Engine kapsamında regresyon ve yön tahmini ayrılacaktır. Up/flat/down classification head kurulacak, sürekli flat tahmin yapan modele özel ceza uygulanacak ve saatlik veri eklenerek multi-timeframe yön sinyali geliştirilecektir.
-
-8. Sonuç
-Pusula AI, finansal zaman serilerindeki gürültü, mean reversion ve yön tahmini zorluklarını görünür kılan; kullanıcıya model çıktısını metriklerle birlikte sunan bir karar destek platformudur. Proje, mevcut haliyle stabil demo seviyesine ulaşmış ve v12 için açık araştırma hedefleri belirlemiştir.
-
-Not: Sistem yatırım tavsiyesi değildir. Akademik ve deneysel amaçlı geliştirilmiştir.`
-}
-
-function buildPresentationText() {
-  return `Merhaba, projemin adı Pusula AI.
-
-Bu proje, BIST ve yabancı hisse verileri üzerinde çalışan yapay zeka destekli bir finansal analiz ve karar destek platformudur. Amacım kullanıcıya doğrudan yatırım tavsiyesi vermek değil, modelin ürettiği senaryoları ölçülebilir metriklerle birlikte sunmaktır.
-
-Proje üç ana parçadan oluşuyor. Frontend tarafında React kullanıyorum. Hisse analizi, portföy simülasyonu, veri yönetimi, model laboratuvarı ve rapor ekranları bulunuyor. Backend tarafında .NET API hisse, portföy ve veri yönetimini sağlıyor. Python AI API ise LSTM tabanlı tahmin motorunu çalıştırıyor.
-
-Model geliştirme sürecinde birkaç farklı yaklaşım denedim. İlk başta doğrudan fiyat tahmini yaptım, fakat bu yaklaşım ölçek problemleri oluşturdu. Sonra fiyat yerine getiri tahminine geçtim. Directional loss ile modelin yön davranışını iyileştirmeye çalıştım. Quantile loss ve rolling forecast denemelerinde ise düz çizgi, yani mean reversion problemiyle karşılaştım.
-
-Güncel sürüm olan v11.3, direct multi-horizon yaklaşımını kullanıyor. Model 5, 10, 20 ve 30 günlük hedefleri doğrudan tahmin ediyor. Ayrıca model çıktısı naive baseline ile karşılaştırılıyor. Böylece modelin gerçekten değer katıp katmadığını MAPE, RMSE, direction score ve action rate gibi metriklerle görebiliyorum.
-
-Projenin önemli noktalarından biri, sadece başarılı tahminleri göstermek değil, modelin nerede başarısız olduğunu da görünür hale getirmek. Model Laboratuvarı sayfasında birden fazla hisseyi toplu test ederek flat collapse, düşük direction score veya naive baseline altında kalma gibi durumları analiz edebiliyorum.
-
-Mevcut sürüm stabil bir demo ve ölçüm altyapısı sağlıyor. Ancak yön tahmini problemi tamamen çözülmüş değil. Bu nedenle sonraki hedefim v12 Directional Engine. Bu sürümde regresyon ve yön tahminini ayırmayı, up-flat-down classification head kurmayı ve mümkünse saatlik veriyle multi-timeframe yön sinyali üretmeyi planlıyorum.
-
-Özetle Pusula AI, finansal zaman serilerindeki gürültü ve düz çizgi problemini merkeze alan, model çıktısını şeffaf metriklerle sunan bir karar destek platformudur.
-
-Teşekkür ederim.`
-}
 
 const p = {
   color: '#d1d5db',
@@ -824,25 +687,3 @@ const p = {
   margin: '0 0 12px'
 }
 
-const primaryButton = {
-  padding: '12px 18px',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '13px',
-  fontWeight: 'bold',
-  fontSize: '14px',
-  background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-  boxShadow: '0 14px 28px rgba(37,99,235,0.24)',
-  cursor: 'pointer'
-}
-
-const secondaryButton = {
-  padding: '12px 16px',
-  color: '#d1d5db',
-  border: '1px solid #1f2937',
-  borderRadius: '13px',
-  fontWeight: 'bold',
-  fontSize: '14px',
-  background: '#0b1220',
-  cursor: 'pointer'
-}
