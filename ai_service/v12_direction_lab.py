@@ -1,24 +1,24 @@
 # ai_service/v12_direction_lab.py
 # ============================================================
-# Pusula AI v12 Direction Lab - EPSILON TWO STAGE + OHLCV FEATURES
+# Pusula AI v12 direction lab - epsilon two-stage + ohlcv features
 # ------------------------------------------------------------
-# Amaç:
-#   Tek 3-class model yerine iki aşamalı yön motorunu test etmek.
+# amaç:
+#   tek 3-class model yerine iki aşamalı yön motorunu test eder.
 #
-#   Stage 1: Hareket var mı?
+#   stage 1: hareket var mı?
 #       no_move / move
 #
-#   Stage 2: Hareket varsa yön ne?
+#   stage 2: hareket varsa yön ne?
 #       down / up
 #
-#   Final class:
-#       Stage1 no_move  -> flat
-#       Stage1 move + Stage2 down -> down
-#       Stage1 move + Stage2 up   -> up
+#   final class:
+#       stage1 no_move  -> flat
+#       stage1 move + stage2 down -> down
+#       stage1 move + stage2 up   -> up
 #
-# Not:
-#   Model / threshold seçimi yalnızca validation set üzerinden yapılır.
-#   Test seti sadece final raporlama için kullanılır.
+# not:
+#   model / threshold seçimi yalnızca validation set üzerinden yapılır.
+#   test seti yalnızca final raporlama için kullanılır.
 # ============================================================
 
 import argparse
@@ -47,7 +47,7 @@ CLASS_LABELS = {
 
 
 # ------------------------------------------------------------
-# DB CONNECTION
+# veritabanı bağlantısı
 # ------------------------------------------------------------
 
 def get_db_connection():
@@ -137,7 +137,7 @@ def read_sql_data(stock_id=None):
 
 
 # ------------------------------------------------------------
-# FEATURE ENGINEERING
+# feature engineering
 # ------------------------------------------------------------
 
 def compute_rsi(series, period=14):
@@ -221,7 +221,7 @@ def compute_behavior_features(df):
     df["BehaviorFlatRisk"] = np.clip(flat_risk, 0, 100)
     df["BehaviorDirectionComposite"] = direction_composite
 
-    # Reversal / stretched state features.
+    # ters dönüş ve aşırılaşma özellikleri.
     df["DistanceMA20"] = (close / ma20.replace(0, np.nan)) - 1
     df["DistanceMA50"] = (close / ma50.replace(0, np.nan)) - 1
     df["MASpread10_20"] = ma_spread_10_20
@@ -284,7 +284,7 @@ def build_stock_dataset(stock_df, external_df, horizon=10, vol_mult=0.60, min_th
     if len(df) < 220:
         return pd.DataFrame(), []
 
-    # Eski kayıtlar High/Low backfill edilmemişse güvenli fallback.
+    # high/low backfill edilmemiş eski kayıtlar için güvenli fallback uygulanır.
     df["HighPrice"] = df["HighPrice"].fillna(df[["OpenPrice", "ClosePrice"]].max(axis=1))
     df["LowPrice"] = df["LowPrice"].fillna(df[["OpenPrice", "ClosePrice"]].min(axis=1))
     df["HighPrice"] = df[["HighPrice", "OpenPrice", "ClosePrice"]].max(axis=1)
@@ -442,7 +442,7 @@ def build_stock_dataset(stock_df, external_df, horizon=10, vol_mult=0.60, min_th
 
 
 # ------------------------------------------------------------
-# METRICS
+# metrikler
 # ------------------------------------------------------------
 
 def confusion_matrix_3(y_true, y_pred):
@@ -558,7 +558,7 @@ def class_distribution(y):
 
 
 # ------------------------------------------------------------
-# MODELS
+# modeller
 # ------------------------------------------------------------
 
 def build_models():
@@ -616,7 +616,7 @@ def predict_proba_positive(model, x, constant_class=None):
         proba = model.predict_proba(x)
         classes = list(model.classes_) if hasattr(model, "classes_") else None
 
-        # Pipeline stores classes_ on final estimator, not pipeline itself in some sklearn versions.
+        # bazı sklearn sürümlerinde classes_ bilgisi pipeline yerine son estimator üzerinde bulunur.
         if classes is None and hasattr(model, "steps"):
             last = model.steps[-1][1]
             classes = list(getattr(last, "classes_", [0, 1]))
@@ -636,9 +636,9 @@ def two_stage_predict(move_prob, up_prob, move_threshold, direction_threshold):
 
     pred = np.full(len(move_prob), CLASS_FLAT, dtype=int)
 
-    # Direction classifier: probability up >= threshold => up.
-    # probability up <= 1-threshold => down.
-    # arada kalırsa flat.
+    # direction classifier: up olasılığı threshold değerinden büyükse up sınıfı seçilir.
+    # up olasılığı 1-threshold değerinden küçükse down sınıfı seçilir.
+    # arada kalan örnekler flat olarak değerlendirilir.
     up_mask = move & (up_prob >= direction_threshold)
     down_mask = move & (up_prob <= (1.0 - direction_threshold))
 
@@ -661,7 +661,7 @@ def score_metrics(metrics, min_action_rate=5, max_action_rate=65):
     else:
         action_penalty = 0.0
 
-    # Precision ana hedef, recall ikinci hedef.
+    # precision ana hedef, recall ikinci hedef olarak değerlendirilir.
     return (ap * 14.0) + (ar * 4.5) + (acc * 1.5) - action_penalty
 
 
@@ -706,7 +706,7 @@ def choose_two_stage_thresholds(
 
 
 # ------------------------------------------------------------
-# LAB RUNNER
+# lab runner
 # ------------------------------------------------------------
 
 def split_train_validation_test(data, test_ratio=0.25, validation_ratio=0.15):
@@ -758,7 +758,7 @@ def evaluate_stock_two_stage(symbol, stock_id, data, feature_cols, test_ratio=0.
             "stockID": int(stock_id),
             "symbol": symbol,
             "status": "skipped",
-            "reason": "Direction stage için yeterli up/down move örneği yok",
+            "reason": "direction stage için yeterli up/down hareket örneği yok",
             "samples": int(len(data)),
             "moveTrainSamples": int(len(move_train))
         }
@@ -1006,7 +1006,7 @@ def aggregate_results(results):
 
 
 def run_lab(args):
-    print("🧪 v12 Direction Lab EPSILON TWO-STAGE başlıyor...")
+    print("🧪 v12 direction lab epsilon two-stage başlıyor...")
     print(f"   horizon={args.horizon}, stock={args.stock}, test_ratio={args.test_ratio}, validation_ratio={args.validation_ratio}")
 
     stock_id_filter = None if args.stock == "all" else int(args.stock)
@@ -1044,11 +1044,11 @@ def run_lab(args):
                     "stockID": stock_id,
                     "symbol": symbol,
                     "status": "skipped",
-                    "reason": f"Yetersiz örnek: {len(dataset)}",
+                    "reason": f"yetersiz örnek: {len(dataset)}",
                     "samples": int(len(dataset))
                 }
                 results.append(item)
-                print(f"   ⚠️ skipped: {item['reason']}")
+                print(f"   ⚠️ atlandı: {item['reason']}")
                 continue
 
             result = evaluate_stock_two_stage(
@@ -1084,7 +1084,7 @@ def run_lab(args):
                 "status": "error",
                 "error": str(e)
             })
-            print(f"   ❌ error: {e}")
+            print(f"   ❌ hata: {e}")
 
     summary = {
         "generatedAt": datetime.now().isoformat(timespec="seconds"),
