@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getBehaviorSignal, searchStocks } from '../api/client'
+import { getBehaviorSignal, getZetaLatestRadar, searchStocks } from '../api/client'
 import { useAnalysis } from '../context/AnalysisContext'
 import {
   ResponsiveContainer,
@@ -99,8 +99,14 @@ export default function Dashboard() {
   const [behaviorSignal, setBehaviorSignal] = useState(null)
   const [behaviorLoading, setBehaviorLoading] = useState(false)
   const [behaviorError, setBehaviorError] = useState(null)
+  const [zetaRadar, setZetaRadar] = useState(null)
+  const [zetaLoading, setZetaLoading] = useState(false)
+  const [zetaError, setZetaError] = useState(null)
 
   const selectedStockId = getStockId(selectedStock)
+  const zetaItem = useMemo(() => {
+    return findZetaItemForStock(zetaRadar, selectedStock)
+  }, [zetaRadar, selectedStock])
 
   const pm = prediction?.practicalHorizonMetrics
   const pn = prediction?.practicalNaiveMetrics
@@ -149,6 +155,37 @@ export default function Dashboard() {
       alive = false
     }
   }, [prediction, selectedStockId])
+
+  useEffect(() => {
+  let alive = true
+
+  async function loadZetaRadar() {
+    setZetaLoading(true)
+    setZetaError(null)
+
+    try {
+      const res = await getZetaLatestRadar()
+
+      if (!alive) return
+
+      setZetaRadar(res.data)
+    } catch (e) {
+      if (!alive) return
+
+      const err = e.response?.data?.message || e.response?.data || e.message
+      setZetaRadar(null)
+      setZetaError(String(err))
+    } finally {
+      if (alive) setZetaLoading(false)
+    }
+  }
+
+  loadZetaRadar()
+
+  return () => {
+    alive = false
+  }
+}, [])
 
   async function handleSearch(e) {
     const q = e.target.value
@@ -353,6 +390,13 @@ export default function Dashboard() {
             loading={behaviorLoading}
             error={behaviorError}
           />
+        <ZetaRadarCard
+          selectedStock={selectedStock}
+          zetaItem={zetaItem}
+          radar={zetaRadar}
+          loading={zetaLoading}
+          error={zetaError}
+        />
 
           <div style={{
             display: 'grid',
@@ -804,6 +848,394 @@ function getBehaviorInterpretation(signal) {
   }
 
   return 'Davranış sinyali yorumlanamadı.'
+}
+function normalizeSymbol(symbol) {
+  return String(symbol || '').trim().toUpperCase()
+}
+
+function findZetaItemForStock(radar, stock) {
+  if (!radar || !stock) return null
+
+  const symbol = normalizeSymbol(stock.symbol || stock.Symbol)
+
+  if (!symbol) return null
+
+  if (Array.isArray(radar.allStocks)) {
+    return radar.allStocks.find(item => normalizeSymbol(item.symbol) === symbol) || null
+  }
+
+  const groups = radar.radars || {}
+
+  const items = [
+    ...(groups.momentumLong || []),
+    ...(groups.dipRebound || []),
+    ...(groups.downsideRisk || []),
+    ...(groups.riskWatch || []),
+    ...(groups.neutral || [])
+  ]
+
+  return items.find(item => normalizeSymbol(item.symbol) === symbol) || null
+}
+
+const ZETA_SCENARIO_LABELS = {
+  MOMENTUM_LONG: 'Güçlü Gidiş Adayı',
+  DIP_REBOUND_WATCH: 'Toparlanma Adayı',
+  DOWNSIDE_RISK: 'Aşağı Risk Sinyali',
+  RISK_WATCH: 'Dikkatli İzle',
+  NEUTRAL: 'Net Yön Yok'
+}
+
+const ZETA_SCENARIO_TEXTS = {
+  MOMENTUM_LONG:
+    'Bu hisse son verilerde güçlü kalıyor. Zeta, mevcut hareketin kısa vadede devam edebileceğini düşündüğü için hisseyi izlenebilir aday olarak işaretliyor.',
+  DIP_REBOUND_WATCH:
+    'Bu hisse yakın dönemde baskı yemiş olabilir; ancak Zeta düşüş sonrası toparlanma ihtimalinin izlenebilir olduğunu düşünüyor.',
+  DOWNSIDE_RISK:
+    'Bu hisse için aşağı yönlü risk öne çıkıyor. Bu çıktı alım fırsatından çok risk uyarısı olarak değerlendirilmelidir.',
+  RISK_WATCH:
+    'Bu hisse için net alım veya toparlanma sinyali yok; ancak belirsizlik veya kırılganlık nedeniyle dikkatli takip edilmesi daha sağlıklı olabilir.',
+  NEUTRAL:
+    'Zeta bu hisse için yeterince güçlü bir fırsat veya risk ayrımı görmüyor. Bu durumda bekle-gör yaklaşımı daha sağlıklı olabilir.'
+}
+
+const ZETA_TAG_LABELS = {
+  BREAKOUT_PRESSURE: 'kırılım baskısı',
+  POSITIVE_MOMENTUM: 'pozitif gidiş',
+  RELATIVE_STRENGTH: 'piyasaya göre güçlü duruş',
+  UP_PROBABILITY_SUPPORT: 'model yukarı ihtimalini destekliyor',
+  CONTROLLED_VOLATILITY: 'oynaklık kontrollü',
+  LOWER_WICK_SUPPORT: 'gün içinde alıcı tepkisi',
+  LOW_RANGE_POSITION: 'fiyat bandın alt bölgesinde',
+  RECOVERY_CLOSE: 'gün sonuna doğru toparlanma',
+  HIGH_VOLUME_WEAK_CLOSE: 'yüksek hacimli zayıf kapanış',
+  HIGH_FLAT_RISK: 'net yön belirsizliği yüksek',
+  NO_CLEAR_EDGE: 'net avantaj yok',
+  FALLING_KNIFE_RISK: 'düşüşün devam etme riski',
+  MEDIUM_FALLING_KNIFE_RISK: 'orta seviye düşüş riski',
+  ELEVATED_VOLATILITY: 'oynaklık yüksek',
+  DOWN_PROBABILITY_PRESSURE: 'aşağı ihtimal baskısı',
+  NEGATIVE_MOMENTUM: 'negatif gidiş',
+  RELATIVE_WEAKNESS: 'piyasaya göre zayıf duruş',
+  WEAK_CLOSE: 'zayıf kapanış'
+}
+
+function getZetaScenarioLabel(scenario) {
+  return ZETA_SCENARIO_LABELS[scenario] || 'Zeta Senaryosu'
+}
+
+function getZetaScenarioText(scenario) {
+  return ZETA_SCENARIO_TEXTS[scenario] || 'Zeta bu hisse için deneysel bir senaryo değerlendirmesi üretmiştir.'
+}
+
+function getZetaTagLabel(tag) {
+  return ZETA_TAG_LABELS[tag] || tag
+}
+
+function getZetaScenarioColor(scenario) {
+  if (scenario === 'MOMENTUM_LONG') return GREEN
+  if (scenario === 'DIP_REBOUND_WATCH') return BLUE
+  if (scenario === 'DOWNSIDE_RISK') return RED
+  if (scenario === 'RISK_WATCH') return YELLOW
+  return GRAY
+}
+function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
+  if (loading) {
+    return (
+      <Panel style={{ marginBottom: '18px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', color: '#9ca3af' }}>
+          <span style={{ fontSize: 22 }}>⏳</span>
+          <div>
+            <strong style={{ color: '#e5e7eb' }}>Zeta Radar yükleniyor</strong>
+            <div style={{ fontSize: '12px', marginTop: 3 }}>
+              BIST senaryo taraması son JSON çıktısından okunuyor.
+            </div>
+          </div>
+        </div>
+      </Panel>
+    )
+  }
+
+  if (error) {
+    return (
+      <Panel style={{ marginBottom: '18px', borderColor: '#ef444466' }}>
+        <div style={{ color: '#fecaca', fontSize: '13px', lineHeight: 1.55 }}>
+          <strong>Zeta Radar verisi alınamadı:</strong> {error}
+        </div>
+      </Panel>
+    )
+  }
+
+  if (!selectedStock || !radar) return null
+
+  if (!zetaItem) {
+    return (
+      <Panel style={{ marginBottom: '18px' }}>
+        <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+          {selectedStock?.symbol || 'Seçili Varlık'} · Zeta Radar
+        </div>
+
+        <h3 style={{ margin: 0, color: '#e5e7eb', marginBottom: 8 }}>
+          Zeta bu hisse için üst radar listesinde aktif kayıt bulamadı
+        </h3>
+
+        <div style={{ color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
+          Bu durum hata değildir. Hisse son radar tarihinde güçlü gidiş, toparlanma veya risk izleme listelerinde öne çıkmamış olabilir.
+          Zeta Radar tarihi: <strong style={{ color: '#d1d5db' }}>{radar.date || '-'}</strong>
+        </div>
+      </Panel>
+    )
+  }
+
+  const scenario = zetaItem.scenario
+  const color = getZetaScenarioColor(scenario)
+  const probabilities = zetaItem.modelProbabilities || {}
+  const scores = zetaItem.scores || {}
+
+  return (
+    <div style={{
+      background: `radial-gradient(circle at top left, ${color}24, transparent 34%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      border: `1px solid ${color}66`,
+      borderRadius: '22px',
+      padding: '22px',
+      marginBottom: '18px',
+      boxShadow: `0 22px 52px ${color}10`
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: '18px',
+        marginBottom: '18px',
+        flexWrap: 'wrap'
+      }}>
+        <div>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+            {selectedStock?.symbol || zetaItem.symbol} · Zeta Radar
+          </div>
+
+          <div style={{
+            color,
+            fontWeight: 'bold',
+            fontSize: '25px',
+            letterSpacing: '-0.5px',
+            marginBottom: '7px'
+          }}>
+            {getZetaScenarioLabel(scenario)}
+          </div>
+
+          <div style={{
+            color: '#d1d5db',
+            fontSize: '13px',
+            lineHeight: 1.65,
+            maxWidth: 850
+          }}>
+            {getZetaScenarioText(scenario)}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Badge color={color}>
+            Skor: {num(zetaItem.score, 2)}
+          </Badge>
+
+          <Badge color={PURPLE}>
+            Güven: {num(zetaItem.confidence, 2)}
+          </Badge>
+
+          <Badge color={GRAY}>
+            Radar: {radar.date || '-'}
+          </Badge>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gap: '14px',
+        marginBottom: '16px'
+      }}>
+        <ZetaProbabilityBox
+          title="Aşağı İhtimal"
+          value={probabilities.down}
+          color={RED}
+          helper="Modelin kısa vadede negatif senaryoya verdiği olasılık."
+        />
+
+        <ZetaProbabilityBox
+          title="Yatay / Belirsiz"
+          value={probabilities.flat}
+          color={GRAY}
+          helper="Modelin net yön ayrışması göremediği alan."
+        />
+
+        <ZetaProbabilityBox
+          title="Yukarı İhtimal"
+          value={probabilities.up}
+          color={GREEN}
+          helper="Modelin kısa vadede pozitif senaryoya verdiği olasılık."
+        />
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1.1fr 0.9fr',
+        gap: '14px',
+        alignItems: 'stretch'
+      }}>
+        <div style={{
+          background: '#0b1220',
+          border: '1px solid #1f2937',
+          borderRadius: '16px',
+          padding: '15px'
+        }}>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+            Zeta Skorları
+          </div>
+
+          <ZetaScoreLine label="Güçlü gidiş" value={scores.momentumLong} color={GREEN} />
+          <ZetaScoreLine label="Toparlanma" value={scores.dipRebound} color={BLUE} />
+          <ZetaScoreLine label="Aşağı risk" value={scores.downsideRisk} color={RED} />
+          <ZetaScoreLine label="Net yön yok" value={scores.flatRisk} color={GRAY} />
+          <ZetaScoreLine label="Düşüş devam riski" value={scores.fallingKnifeRisk} color={YELLOW} />
+        </div>
+
+        <div style={{
+          background: '#0b1220',
+          border: '1px solid #1f2937',
+          borderRadius: '16px',
+          padding: '15px'
+        }}>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+            Bu sonucun gerekçeleri
+          </div>
+
+          <ZetaTagGroup
+            title="Destekleyen işaretler"
+            tags={zetaItem.reasonTags || []}
+            color={color}
+            emptyText="Öne çıkan destekleyici etiket yok."
+          />
+
+          <ZetaTagGroup
+            title="Dikkat notları"
+            tags={zetaItem.warningTags || []}
+            color={YELLOW}
+            emptyText="Ek risk etiketi yok."
+          />
+        </div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid #1f2937',
+        marginTop: '16px',
+        paddingTop: '13px',
+        color: '#9ca3af',
+        fontSize: '12px',
+        lineHeight: 1.55
+      }}>
+        Zeta Radar, seçili hisseyi tek başına al/sat önerisi olarak değerlendirmez.
+        Bu kart, ana tahmin motorunun yanında ikinci bir senaryo okuması sağlar.
+      </div>
+    </div>
+  )
+}
+
+function ZetaProbabilityBox({ title, value, color, helper }) {
+  const pctValue = Math.max(0, Math.min(100, safeNumber(value) * 100))
+
+  return (
+    <div style={{
+      background: '#0b1220',
+      border: '1px solid #1f2937',
+      borderRadius: '16px',
+      padding: '14px'
+    }}>
+      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 6 }}>
+        {title}
+      </div>
+
+      <div style={{ color, fontWeight: 'bold', fontSize: '22px', marginBottom: 8 }}>
+        {pct(pctValue)}
+      </div>
+
+      <div style={{
+        height: 8,
+        background: '#111827',
+        borderRadius: '999px',
+        overflow: 'hidden',
+        marginBottom: 8
+      }}>
+        <div style={{
+          width: `${pctValue}%`,
+          height: '100%',
+          borderRadius: '999px',
+          background: color
+        }} />
+      </div>
+
+      <div style={{ color: '#6b7280', fontSize: '11px', lineHeight: 1.45 }}>
+        {helper}
+      </div>
+    </div>
+  )
+}
+
+function ZetaScoreLine({ label, value, color }) {
+  const safe = Math.max(0, Math.min(100, safeNumber(value)))
+
+  return (
+    <div style={{ marginBottom: '11px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        color: '#9ca3af',
+        fontSize: '12px',
+        marginBottom: 5
+      }}>
+        <span>{label}</span>
+        <strong style={{ color }}>{num(safe, 2)}</strong>
+      </div>
+
+      <div style={{
+        height: 8,
+        background: '#111827',
+        border: '1px solid #1f2937',
+        borderRadius: '999px',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          width: `${safe}%`,
+          height: '100%',
+          background: color,
+          borderRadius: '999px'
+        }} />
+      </div>
+    </div>
+  )
+}
+
+function ZetaTagGroup({ title, tags, color, emptyText }) {
+  return (
+    <div style={{ marginBottom: '13px' }}>
+      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 7 }}>
+        {title}
+      </div>
+
+      {tags.length === 0 ? (
+        <div style={{ color: '#6b7280', fontSize: '12px', lineHeight: 1.45 }}>
+          {emptyText}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+          {tags.map(tag => (
+            <Badge key={tag} color={color}>
+              {getZetaTagLabel(tag)}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {

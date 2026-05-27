@@ -1343,6 +1343,42 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
 
     latest_date = enriched["Date"].max()
     latest = enriched[enriched["Date"] == latest_date].copy()
+    all_stock_items = []
+
+    for _, row in latest.sort_values("Symbol").iterrows():
+        scenario = str(row["Scenario"])
+
+        if scenario == SCENARIO_MOMENTUM_LONG:
+            main_score = safe_float(row["MomentumLongScore"])
+        elif scenario == SCENARIO_DIP_REBOUND:
+            main_score = safe_float(row["DipReboundScore"])
+        elif scenario == SCENARIO_DOWNSIDE_RISK:
+            main_score = safe_float(row["DownsideRiskScore"])
+        else:
+            main_score = safe_float(row["FlatRiskScore"])
+
+        all_stock_items.append({
+            "stockID": int(row["StockID"]),
+            "symbol": str(row["Symbol"]),
+            "scenario": scenario,
+            "score": round(main_score, 2),
+            "confidence": round(safe_float(row["ScenarioConfidence"]), 2),
+            "closePrice": round(safe_float(row["ClosePrice"]), 4),
+            "modelProbabilities": {
+                "down": round(safe_float(row["ProbDown"]), 4),
+                "flat": round(safe_float(row["ProbFlat"]), 4),
+                "up": round(safe_float(row["ProbUp"]), 4),
+            },
+            "scores": {
+                "momentumLong": round(safe_float(row["MomentumLongScore"]), 2),
+                "dipRebound": round(safe_float(row["DipReboundScore"]), 2),
+                "downsideRisk": round(safe_float(row["DownsideRiskScore"]), 2),
+                "flatRisk": round(safe_float(row["FlatRiskScore"]), 2),
+                "fallingKnifeRisk": round(safe_float(row["FallingKnifeRisk"]), 2),
+            },
+            "reasonTags": row["ReasonTags"],
+            "warningTags": row["WarningTags"],
+        })
 
     def make_items(scenario: str, score_col: str) -> List[Dict[str, Any]]:
         subset = latest[latest["Scenario"] == scenario].copy()
@@ -1459,6 +1495,7 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
         "date": pd.to_datetime(latest_date).strftime("%Y-%m-%d"),
         "universe": "BIST",
         "totalStocks": int(len(latest)),
+        "allStocks": all_stock_items,
         "radars": {
             "momentumLong": make_items(SCENARIO_MOMENTUM_LONG, "MomentumLongScore"),
             "dipRebound": make_items(SCENARIO_DIP_REBOUND, "DipReboundScore"),
