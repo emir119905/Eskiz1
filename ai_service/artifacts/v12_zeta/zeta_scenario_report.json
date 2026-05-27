@@ -1,0 +1,763 @@
+{
+  "generatedAt": "2026-05-27T16:40:59",
+  "version": "v12_zeta_scenario_screener_v1",
+  "architecture": "bist_global_panel_model_plus_rule_scenario_scorer",
+  "selectedModel": "hist_gradient_boosting",
+  "universe": "BIST",
+  "horizon": 10,
+  "validationStart": "2023-01-01",
+  "testStart": "2024-01-01",
+  "featureCount": 90,
+  "features": [
+    "Return",
+    "ReturnLag1",
+    "ReturnLag2",
+    "ReturnLag3",
+    "OpenReturn",
+    "GapReturn",
+    "VolumeChange",
+    "Mom3",
+    "Mom5",
+    "Mom10",
+    "Mom20",
+    "Mom60",
+    "MA10_norm",
+    "MA20_norm",
+    "MA50_norm",
+    "MASpread10_20",
+    "MASpread20_50",
+    "DistanceMA20",
+    "DistanceMA50",
+    "RSI14",
+    "Volatility10",
+    "Volatility20",
+    "Volatility60",
+    "VolRatio10_60",
+    "VolRatio20_60",
+    "TrueRange",
+    "TrueRangePct",
+    "ATR14",
+    "ATRPercent",
+    "IntradayRangePct",
+    "IntradayRangeATR",
+    "UpperWickPct",
+    "LowerWickPct",
+    "BodyPct",
+    "CloseLocationValue",
+    "VolumeRatio10",
+    "VolumeRatio20",
+    "RangePosition20",
+    "RangePosition60",
+    "BreakoutPressure20",
+    "BreakoutPressure60",
+    "BreakoutScore",
+    "BehaviorMomentumScore",
+    "BehaviorDirectionComposite",
+    "BehaviorFlatRisk",
+    "USDTRY_Return",
+    "BIST100_Return",
+    "Gold_Return",
+    "BrentOil_Return",
+    "USDTRY_Mom5",
+    "BIST100_Mom5",
+    "Gold_Mom5",
+    "BrentOil_Mom5",
+    "USDTRY_Mom20",
+    "BIST100_Mom20",
+    "Gold_Mom20",
+    "BrentOil_Mom20",
+    "XU100_Return",
+    "XU100_Mom5",
+    "XU100_Mom20",
+    "XU100_Vol20",
+    "XU100_RangePosition60",
+    "RelativeReturnToXU100",
+    "RelativeMom5ToXU100",
+    "RelativeMom20ToXU100",
+    "RelativeVol20ToXU100",
+    "RangePositionVsXU100",
+    "Return_Rank",
+    "Mom5_Rank",
+    "Mom10_Rank",
+    "Mom20_Rank",
+    "Mom60_Rank",
+    "VolumeRatio10_Rank",
+    "VolumeRatio20_Rank",
+    "Volatility20_Rank",
+    "ATRPercent_Rank",
+    "IntradayRangeATR_Rank",
+    "RangePosition20_Rank",
+    "RangePosition60_Rank",
+    "BreakoutPressure60_Rank",
+    "BehaviorMomentumScore_Rank",
+    "BehaviorDirectionComposite_Rank",
+    "BehaviorFlatRisk_Rank",
+    "RelativeReturnToXU100_Rank",
+    "RelativeMom5ToXU100_Rank",
+    "RelativeMom20ToXU100_Rank",
+    "RelativeVol20ToXU100_Rank",
+    "CloseLocationValue_Rank",
+    "UpperWickPct_Rank",
+    "LowerWickPct_Rank"
+  ],
+  "dataset": {
+    "panelRows": 30003,
+    "symbols": 37,
+    "trainRows": 16868,
+    "validationRows": 2599,
+    "testRows": 10072,
+    "trainClassDistribution": {
+      "downPct": 20.09,
+      "flatPct": 46.52,
+      "upPct": 33.39,
+      "downCount": 3388,
+      "flatCount": 7847,
+      "upCount": 5633,
+      "samples": 16868
+    },
+    "validationClassDistribution": {
+      "downPct": 28.9,
+      "flatPct": 46.83,
+      "upPct": 24.28,
+      "downCount": 751,
+      "flatCount": 1217,
+      "upCount": 631,
+      "samples": 2599
+    },
+    "testClassDistribution": {
+      "downPct": 24.92,
+      "flatPct": 43.75,
+      "upPct": 31.33,
+      "downCount": 2510,
+      "flatCount": 4406,
+      "upCount": 3156,
+      "samples": 10072
+    }
+  },
+  "models": {
+    "logistic_balanced": {
+      "validation": {
+        "score": 489.9175,
+        "classification": {
+          "samples": 2599,
+          "accuracy": 41.75,
+          "actionPrecision": 30.26,
+          "actionRecall": 30.61,
+          "actionRate": 53.79,
+          "realActionRate": 53.17,
+          "flatRate": 46.21,
+          "confusionMatrix": {
+            "labels": [
+              "down",
+              "flat",
+              "up"
+            ],
+            "matrix": [
+              [
+                208,
+                264,
+                279
+              ],
+              [
+                236,
+                662,
+                319
+              ],
+              [
+                141,
+                275,
+                215
+              ]
+            ]
+          }
+        },
+        "meanProbabilityEdge": 0.0974,
+        "selectionDiagnostics": {
+          "targetActionRate": 28.0,
+          "rateScore": 32.946,
+          "overActionPenalty": 62.055,
+          "excessiveFlatPenalty": 0.0,
+          "weakPrecisionPenalty": 0.0
+        }
+      },
+      "test": {
+        "samples": 10072,
+        "accuracy": 37.98,
+        "actionPrecision": 31.39,
+        "actionRecall": 38.1,
+        "actionRate": 68.28,
+        "realActionRate": 56.25,
+        "flatRate": 31.72,
+        "confusionMatrix": {
+          "labels": [
+            "down",
+            "flat",
+            "up"
+          ],
+          "matrix": [
+            [
+              1049,
+              710,
+              751
+            ],
+            [
+              1479,
+              1666,
+              1261
+            ],
+            [
+              1227,
+              819,
+              1110
+            ]
+          ]
+        }
+      }
+    },
+    "random_forest_balanced": {
+      "validation": {
+        "score": 526.7958,
+        "classification": {
+          "samples": 2599,
+          "accuracy": 41.9,
+          "actionPrecision": 29.57,
+          "actionRecall": 25.4,
+          "actionRate": 45.67,
+          "realActionRate": 53.17,
+          "flatRate": 54.33,
+          "confusionMatrix": {
+            "labels": [
+              "down",
+              "flat",
+              "up"
+            ],
+            "matrix": [
+              [
+                163,
+                384,
+                204
+              ],
+              [
+                237,
+                738,
+                242
+              ],
+              [
+                153,
+                290,
+                188
+              ]
+            ]
+          }
+        },
+        "meanProbabilityEdge": 0.0305,
+        "selectionDiagnostics": {
+          "targetActionRate": 28.0,
+          "rateScore": 54.058,
+          "overActionPenalty": 25.515,
+          "excessiveFlatPenalty": 0.0,
+          "weakPrecisionPenalty": 2.15
+        }
+      },
+      "test": {
+        "samples": 10072,
+        "accuracy": 37.86,
+        "actionPrecision": 31.41,
+        "actionRecall": 39.18,
+        "actionRate": 70.17,
+        "realActionRate": 56.25,
+        "flatRate": 29.83,
+        "confusionMatrix": {
+          "labels": [
+            "down",
+            "flat",
+            "up"
+          ],
+          "matrix": [
+            [
+              898,
+              637,
+              975
+            ],
+            [
+              1295,
+              1593,
+              1518
+            ],
+            [
+              1060,
+              774,
+              1322
+            ]
+          ]
+        }
+      }
+    },
+    "gradient_boosting": {
+      "validation": {
+        "score": 486.4413,
+        "classification": {
+          "samples": 2599,
+          "accuracy": 42.44,
+          "actionPrecision": 24.58,
+          "actionRecall": 10.56,
+          "actionRate": 22.85,
+          "realActionRate": 53.17,
+          "flatRate": 77.15,
+          "confusionMatrix": {
+            "labels": [
+              "down",
+              "flat",
+              "up"
+            ],
+            "matrix": [
+              [
+                4,
+                573,
+                174
+              ],
+              [
+                19,
+                957,
+                241
+              ],
+              [
+                14,
+                475,
+                142
+              ]
+            ]
+          }
+        },
+        "meanProbabilityEdge": 0.0243,
+        "selectionDiagnostics": {
+          "targetActionRate": 28.0,
+          "rateScore": 86.61,
+          "overActionPenalty": 0.0,
+          "excessiveFlatPenalty": 0.0,
+          "weakPrecisionPenalty": 27.1
+        }
+      },
+      "test": {
+        "samples": 10072,
+        "accuracy": 43.62,
+        "actionPrecision": 38.23,
+        "actionRecall": 21.27,
+        "actionRate": 31.29,
+        "realActionRate": 56.25,
+        "flatRate": 68.71,
+        "confusionMatrix": {
+          "labels": [
+            "down",
+            "flat",
+            "up"
+          ],
+          "matrix": [
+            [
+              161,
+              1731,
+              618
+            ],
+            [
+              159,
+              3188,
+              1059
+            ],
+            [
+              111,
+              2001,
+              1044
+            ]
+          ]
+        }
+      }
+    },
+    "hist_gradient_boosting": {
+      "validation": {
+        "score": 566.8523,
+        "classification": {
+          "samples": 2599,
+          "accuracy": 42.82,
+          "actionPrecision": 27.45,
+          "actionRecall": 14.4,
+          "actionRate": 27.9,
+          "realActionRate": 53.17,
+          "flatRate": 72.1,
+          "confusionMatrix": {
+            "labels": [
+              "down",
+              "flat",
+              "up"
+            ],
+            "matrix": [
+              [
+                32,
+                517,
+                202
+              ],
+              [
+                28,
+                914,
+                275
+              ],
+              [
+                21,
+                443,
+                167
+              ]
+            ]
+          }
+        },
+        "meanProbabilityEdge": 0.0473,
+        "selectionDiagnostics": {
+          "targetActionRate": 28.0,
+          "rateScore": 99.74,
+          "overActionPenalty": 0.0,
+          "excessiveFlatPenalty": 0.0,
+          "weakPrecisionPenalty": 12.75
+        }
+      },
+      "test": {
+        "samples": 10072,
+        "accuracy": 43.58,
+        "actionPrecision": 37.88,
+        "actionRecall": 25.93,
+        "actionRate": 38.5,
+        "realActionRate": 56.25,
+        "flatRate": 61.5,
+        "confusionMatrix": {
+          "labels": [
+            "down",
+            "flat",
+            "up"
+          ],
+          "matrix": [
+            [
+              198,
+              1512,
+              800
+            ],
+            [
+              268,
+              2920,
+              1218
+            ],
+            [
+              123,
+              1762,
+              1271
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "latestRadar": {
+    "date": "2026-05-06",
+    "universe": "BIST",
+    "totalStocks": 35,
+    "radars": {
+      "momentumLong": [
+        {
+          "stockID": 13,
+          "symbol": "ALTNY.IS",
+          "scenario": "MOMENTUM_LONG",
+          "score": 73.86,
+          "confidence": 77.15,
+          "closePrice": 17.75,
+          "modelProbabilities": {
+            "down": 0.1323,
+            "flat": 0.4531,
+            "up": 0.4147
+          },
+          "scores": {
+            "momentumLong": 73.86,
+            "dipRebound": 37.35,
+            "downsideRisk": 2.31,
+            "flatRisk": 18.84,
+            "fallingKnifeRisk": 0.97
+          },
+          "reasonTags": [
+            "BREAKOUT_PRESSURE",
+            "POSITIVE_MOMENTUM",
+            "RELATIVE_STRENGTH",
+            "UP_PROBABILITY_SUPPORT"
+          ],
+          "warningTags": []
+        },
+        {
+          "stockID": 29,
+          "symbol": "BIMAS.IS",
+          "scenario": "MOMENTUM_LONG",
+          "score": 70.49,
+          "confidence": 86.0,
+          "closePrice": 390.5,
+          "modelProbabilities": {
+            "down": 0.1025,
+            "flat": 0.2355,
+            "up": 0.662
+          },
+          "scores": {
+            "momentumLong": 70.49,
+            "dipRebound": 32.7,
+            "downsideRisk": 9.77,
+            "flatRisk": 11.64,
+            "fallingKnifeRisk": 10.99
+          },
+          "reasonTags": [
+            "BREAKOUT_PRESSURE",
+            "POSITIVE_MOMENTUM",
+            "UP_PROBABILITY_SUPPORT"
+          ],
+          "warningTags": []
+        },
+        {
+          "stockID": 15,
+          "symbol": "ONRYT.IS",
+          "scenario": "MOMENTUM_LONG",
+          "score": 69.82,
+          "confidence": 70.14,
+          "closePrice": 68.6,
+          "modelProbabilities": {
+            "down": 0.2094,
+            "flat": 0.3069,
+            "up": 0.4837
+          },
+          "scores": {
+            "momentumLong": 69.82,
+            "dipRebound": 42.14,
+            "downsideRisk": 6.69,
+            "flatRisk": 26.51,
+            "fallingKnifeRisk": 3.38
+          },
+          "reasonTags": [
+            "BREAKOUT_PRESSURE",
+            "POSITIVE_MOMENTUM",
+            "RELATIVE_STRENGTH",
+            "UP_PROBABILITY_SUPPORT"
+          ],
+          "warningTags": []
+        },
+        {
+          "stockID": 5,
+          "symbol": "SISE.IS",
+          "scenario": "MOMENTUM_LONG",
+          "score": 60.5,
+          "confidence": 58.47,
+          "closePrice": 49.62,
+          "modelProbabilities": {
+            "down": 0.102,
+            "flat": 0.4895,
+            "up": 0.4085
+          },
+          "scores": {
+            "momentumLong": 60.5,
+            "dipRebound": 15.99,
+            "downsideRisk": 24.15,
+            "flatRisk": 36.45,
+            "fallingKnifeRisk": 34.15
+          },
+          "reasonTags": [
+            "BREAKOUT_PRESSURE",
+            "POSITIVE_MOMENTUM",
+            "UP_PROBABILITY_SUPPORT"
+          ],
+          "warningTags": [
+            "HIGH_VOLUME_WEAK_CLOSE"
+          ]
+        },
+        {
+          "stockID": 24,
+          "symbol": "ENKAI.IS",
+          "scenario": "MOMENTUM_LONG",
+          "score": 59.57,
+          "confidence": 59.15,
+          "closePrice": 110.5,
+          "modelProbabilities": {
+            "down": 0.1409,
+            "flat": 0.4838,
+            "up": 0.3752
+          },
+          "scores": {
+            "momentumLong": 59.57,
+            "dipRebound": 28.2,
+            "downsideRisk": 8.71,
+            "flatRisk": 24.63,
+            "fallingKnifeRisk": 3.53
+          },
+          "reasonTags": [
+            "BREAKOUT_PRESSURE",
+            "POSITIVE_MOMENTUM",
+            "RELATIVE_STRENGTH"
+          ],
+          "warningTags": []
+        }
+      ],
+      "dipRebound": [
+        {
+          "stockID": 35,
+          "symbol": "MAVI.IS",
+          "scenario": "DIP_REBOUND_WATCH",
+          "score": 66.75,
+          "confidence": 57.68,
+          "closePrice": 43.86,
+          "modelProbabilities": {
+            "down": 0.1468,
+            "flat": 0.4115,
+            "up": 0.4417
+          },
+          "scores": {
+            "momentumLong": 24.82,
+            "dipRebound": 66.75,
+            "downsideRisk": 17.45,
+            "flatRisk": 55.42,
+            "fallingKnifeRisk": 0.55
+          },
+          "reasonTags": [
+            "CONTROLLED_VOLATILITY",
+            "LOWER_WICK_SUPPORT",
+            "LOW_RANGE_POSITION",
+            "RECOVERY_CLOSE"
+          ],
+          "warningTags": []
+        },
+        {
+          "stockID": 7,
+          "symbol": "FROTO.IS",
+          "scenario": "DIP_REBOUND_WATCH",
+          "score": 60.8,
+          "confidence": 55.6,
+          "closePrice": 99.0,
+          "modelProbabilities": {
+            "down": 0.1776,
+            "flat": 0.3097,
+            "up": 0.5126
+          },
+          "scores": {
+            "momentumLong": 17.35,
+            "dipRebound": 60.8,
+            "downsideRisk": 38.86,
+            "flatRisk": 48.34,
+            "fallingKnifeRisk": 21.83
+          },
+          "reasonTags": [
+            "CONTROLLED_VOLATILITY",
+            "LOWER_WICK_SUPPORT",
+            "LOW_RANGE_POSITION",
+            "RECOVERY_CLOSE"
+          ],
+          "warningTags": []
+        }
+      ],
+      "downsideRisk": [],
+      "neutral": [
+        {
+          "stockID": 19,
+          "symbol": "GARAN.IS",
+          "scenario": "NEUTRAL",
+          "score": 80.84,
+          "confidence": 23.67,
+          "closePrice": 136.6,
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        },
+        {
+          "stockID": 21,
+          "symbol": "AKBNK.IS",
+          "scenario": "NEUTRAL",
+          "score": 79.16,
+          "confidence": 23.44,
+          "closePrice": 74.35,
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        },
+        {
+          "stockID": 2,
+          "symbol": "THYAO.IS",
+          "scenario": "NEUTRAL",
+          "score": 75.13,
+          "confidence": 18.82,
+          "closePrice": 309.75,
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        },
+        {
+          "stockID": 32,
+          "symbol": "KONTR.IS",
+          "scenario": "NEUTRAL",
+          "score": 74.79,
+          "confidence": 27.41,
+          "closePrice": 9.75,
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        },
+        {
+          "stockID": 28,
+          "symbol": "REEDR.IS",
+          "scenario": "NEUTRAL",
+          "score": 73.5,
+          "confidence": 15.92,
+          "closePrice": 7.74,
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        }
+      ]
+    },
+    "summary": {
+      "momentumLongCount": 14,
+      "dipReboundCount": 2,
+      "downsideRiskCount": 0,
+      "neutralCount": 19
+    }
+  },
+  "scenarioBacktest": {
+    "momentumLong": {
+      "days": 267,
+      "avgCount": 3.85,
+      "avgReturn10Pct": 1.0872,
+      "avgReturn20Pct": 2.6189,
+      "avgExcessReturn10Pct": 0.0804,
+      "avgMaxReturn10Pct": 8.5108,
+      "avgMaxDrawdown10Pct": -6.1547,
+      "upperHitRate10Pct": 55.36,
+      "lowerHitRate10Pct": 40.52
+    },
+    "dipRebound": {
+      "days": 209,
+      "avgCount": 2.83,
+      "avgReturn10Pct": 0.7453,
+      "avgReturn20Pct": 2.3136,
+      "avgExcessReturn10Pct": -0.3022,
+      "avgMaxReturn10Pct": 7.8152,
+      "avgMaxDrawdown10Pct": -5.4135,
+      "upperHitRate10Pct": 55.85,
+      "lowerHitRate10Pct": 37.89
+    },
+    "downsideRisk": {
+      "days": 231,
+      "avgCount": 3.6,
+      "avgReturn10Pct": 0.0003,
+      "avgReturn20Pct": 1.6654,
+      "avgExcessReturn10Pct": -0.9585,
+      "avgMaxReturn10Pct": 6.9133,
+      "avgMaxDrawdown10Pct": -5.8586,
+      "upperHitRate10Pct": 43.61,
+      "lowerHitRate10Pct": 44.66
+    },
+    "universe": {
+      "days": 287,
+      "avgReturn10Pct": 1.0078,
+      "avgReturn20Pct": 2.1438
+    }
+  }
+}

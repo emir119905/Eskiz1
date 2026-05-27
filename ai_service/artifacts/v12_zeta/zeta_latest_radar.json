@@ -1,0 +1,268 @@
+{
+  "date": "2026-05-06",
+  "universe": "BIST",
+  "totalStocks": 35,
+  "radars": {
+    "momentumLong": [
+      {
+        "stockID": 13,
+        "symbol": "ALTNY.IS",
+        "scenario": "MOMENTUM_LONG",
+        "score": 73.86,
+        "confidence": 77.15,
+        "closePrice": 17.75,
+        "modelProbabilities": {
+          "down": 0.1323,
+          "flat": 0.4531,
+          "up": 0.4147
+        },
+        "scores": {
+          "momentumLong": 73.86,
+          "dipRebound": 37.35,
+          "downsideRisk": 2.31,
+          "flatRisk": 18.84,
+          "fallingKnifeRisk": 0.97
+        },
+        "reasonTags": [
+          "BREAKOUT_PRESSURE",
+          "POSITIVE_MOMENTUM",
+          "RELATIVE_STRENGTH",
+          "UP_PROBABILITY_SUPPORT"
+        ],
+        "warningTags": []
+      },
+      {
+        "stockID": 29,
+        "symbol": "BIMAS.IS",
+        "scenario": "MOMENTUM_LONG",
+        "score": 70.49,
+        "confidence": 86.0,
+        "closePrice": 390.5,
+        "modelProbabilities": {
+          "down": 0.1025,
+          "flat": 0.2355,
+          "up": 0.662
+        },
+        "scores": {
+          "momentumLong": 70.49,
+          "dipRebound": 32.7,
+          "downsideRisk": 9.77,
+          "flatRisk": 11.64,
+          "fallingKnifeRisk": 10.99
+        },
+        "reasonTags": [
+          "BREAKOUT_PRESSURE",
+          "POSITIVE_MOMENTUM",
+          "UP_PROBABILITY_SUPPORT"
+        ],
+        "warningTags": []
+      },
+      {
+        "stockID": 15,
+        "symbol": "ONRYT.IS",
+        "scenario": "MOMENTUM_LONG",
+        "score": 69.82,
+        "confidence": 70.14,
+        "closePrice": 68.6,
+        "modelProbabilities": {
+          "down": 0.2094,
+          "flat": 0.3069,
+          "up": 0.4837
+        },
+        "scores": {
+          "momentumLong": 69.82,
+          "dipRebound": 42.14,
+          "downsideRisk": 6.69,
+          "flatRisk": 26.51,
+          "fallingKnifeRisk": 3.38
+        },
+        "reasonTags": [
+          "BREAKOUT_PRESSURE",
+          "POSITIVE_MOMENTUM",
+          "RELATIVE_STRENGTH",
+          "UP_PROBABILITY_SUPPORT"
+        ],
+        "warningTags": []
+      },
+      {
+        "stockID": 5,
+        "symbol": "SISE.IS",
+        "scenario": "MOMENTUM_LONG",
+        "score": 60.5,
+        "confidence": 58.47,
+        "closePrice": 49.62,
+        "modelProbabilities": {
+          "down": 0.102,
+          "flat": 0.4895,
+          "up": 0.4085
+        },
+        "scores": {
+          "momentumLong": 60.5,
+          "dipRebound": 15.99,
+          "downsideRisk": 24.15,
+          "flatRisk": 36.45,
+          "fallingKnifeRisk": 34.15
+        },
+        "reasonTags": [
+          "BREAKOUT_PRESSURE",
+          "POSITIVE_MOMENTUM",
+          "UP_PROBABILITY_SUPPORT"
+        ],
+        "warningTags": [
+          "HIGH_VOLUME_WEAK_CLOSE"
+        ]
+      },
+      {
+        "stockID": 24,
+        "symbol": "ENKAI.IS",
+        "scenario": "MOMENTUM_LONG",
+        "score": 59.57,
+        "confidence": 59.15,
+        "closePrice": 110.5,
+        "modelProbabilities": {
+          "down": 0.1409,
+          "flat": 0.4838,
+          "up": 0.3752
+        },
+        "scores": {
+          "momentumLong": 59.57,
+          "dipRebound": 28.2,
+          "downsideRisk": 8.71,
+          "flatRisk": 24.63,
+          "fallingKnifeRisk": 3.53
+        },
+        "reasonTags": [
+          "BREAKOUT_PRESSURE",
+          "POSITIVE_MOMENTUM",
+          "RELATIVE_STRENGTH"
+        ],
+        "warningTags": []
+      }
+    ],
+    "dipRebound": [
+      {
+        "stockID": 35,
+        "symbol": "MAVI.IS",
+        "scenario": "DIP_REBOUND_WATCH",
+        "score": 66.75,
+        "confidence": 57.68,
+        "closePrice": 43.86,
+        "modelProbabilities": {
+          "down": 0.1468,
+          "flat": 0.4115,
+          "up": 0.4417
+        },
+        "scores": {
+          "momentumLong": 24.82,
+          "dipRebound": 66.75,
+          "downsideRisk": 17.45,
+          "flatRisk": 55.42,
+          "fallingKnifeRisk": 0.55
+        },
+        "reasonTags": [
+          "CONTROLLED_VOLATILITY",
+          "LOWER_WICK_SUPPORT",
+          "LOW_RANGE_POSITION",
+          "RECOVERY_CLOSE"
+        ],
+        "warningTags": []
+      },
+      {
+        "stockID": 7,
+        "symbol": "FROTO.IS",
+        "scenario": "DIP_REBOUND_WATCH",
+        "score": 60.8,
+        "confidence": 55.6,
+        "closePrice": 99.0,
+        "modelProbabilities": {
+          "down": 0.1776,
+          "flat": 0.3097,
+          "up": 0.5126
+        },
+        "scores": {
+          "momentumLong": 17.35,
+          "dipRebound": 60.8,
+          "downsideRisk": 38.86,
+          "flatRisk": 48.34,
+          "fallingKnifeRisk": 21.83
+        },
+        "reasonTags": [
+          "CONTROLLED_VOLATILITY",
+          "LOWER_WICK_SUPPORT",
+          "LOW_RANGE_POSITION",
+          "RECOVERY_CLOSE"
+        ],
+        "warningTags": []
+      }
+    ],
+    "downsideRisk": [],
+    "neutral": [
+      {
+        "stockID": 19,
+        "symbol": "GARAN.IS",
+        "scenario": "NEUTRAL",
+        "score": 80.84,
+        "confidence": 23.67,
+        "closePrice": 136.6,
+        "reasonTags": [],
+        "warningTags": [
+          "HIGH_FLAT_RISK"
+        ]
+      },
+      {
+        "stockID": 21,
+        "symbol": "AKBNK.IS",
+        "scenario": "NEUTRAL",
+        "score": 79.16,
+        "confidence": 23.44,
+        "closePrice": 74.35,
+        "reasonTags": [],
+        "warningTags": [
+          "HIGH_FLAT_RISK"
+        ]
+      },
+      {
+        "stockID": 2,
+        "symbol": "THYAO.IS",
+        "scenario": "NEUTRAL",
+        "score": 75.13,
+        "confidence": 18.82,
+        "closePrice": 309.75,
+        "reasonTags": [],
+        "warningTags": [
+          "HIGH_FLAT_RISK"
+        ]
+      },
+      {
+        "stockID": 32,
+        "symbol": "KONTR.IS",
+        "scenario": "NEUTRAL",
+        "score": 74.79,
+        "confidence": 27.41,
+        "closePrice": 9.75,
+        "reasonTags": [],
+        "warningTags": [
+          "HIGH_FLAT_RISK"
+        ]
+      },
+      {
+        "stockID": 28,
+        "symbol": "REEDR.IS",
+        "scenario": "NEUTRAL",
+        "score": 73.5,
+        "confidence": 15.92,
+        "closePrice": 7.74,
+        "reasonTags": [],
+        "warningTags": [
+          "HIGH_FLAT_RISK"
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "momentumLongCount": 14,
+    "dipReboundCount": 2,
+    "downsideRiskCount": 0,
+    "neutralCount": 19
+  }
+}
