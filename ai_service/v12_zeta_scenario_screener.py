@@ -1220,7 +1220,13 @@ def score_row(row: pd.Series) -> Dict[str, Any]:
     scenario = max(scenario_candidates, key=scenario_candidates.get)
     best_score = scenario_candidates[scenario]
 
-    if best_score < 52 or flat_risk > 72:
+    scenario_thresholds = {
+        SCENARIO_MOMENTUM_LONG: 58.0,
+        SCENARIO_DIP_REBOUND: 56.0,
+        SCENARIO_DOWNSIDE_RISK: 55.0,
+    }
+
+    if best_score < scenario_thresholds.get(scenario, 52.0) or flat_risk > 72:
         scenario = SCENARIO_NEUTRAL
 
     if scenario == SCENARIO_DIP_REBOUND and falling_knife_risk >= 68:
@@ -1370,6 +1376,66 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
 
         return items
 
+    risk_watch = latest.copy()
+
+    risk_watch["RiskWatchScore"] = (
+        0.42 * risk_watch["DownsideRiskScore"].fillna(0)
+        + 0.22 * risk_watch["FallingKnifeRisk"].fillna(0)
+        + 0.22 * risk_watch["ProbDown"].fillna(0) * 100
+        + 0.14 * risk_watch["FlatRiskScore"].fillna(0)
+        - 0.20 * risk_watch["ProbUp"].fillna(0) * 100
+    ).clip(lower=0, upper=100)
+
+    risk_watch_pool = risk_watch[
+        (
+            (risk_watch["Scenario"] == SCENARIO_DOWNSIDE_RISK)
+            | (risk_watch["FallingKnifeRisk"] >= 45)
+            | (risk_watch["FlatRiskScore"] >= 70)
+            | (
+                (risk_watch["DownsideRiskScore"] >= 42)
+                & (risk_watch["ProbUp"] < 0.48)
+            )
+        )
+        & ~(risk_watch["Scenario"].isin([SCENARIO_MOMENTUM_LONG, SCENARIO_DIP_REBOUND]))
+    ].copy()
+
+    risk_watch_pool = risk_watch_pool[
+        risk_watch_pool["RiskWatchScore"] >= 28
+    ].copy()
+
+    risk_watch = risk_watch_pool.sort_values(
+        ["RiskWatchScore", "DownsideRiskScore", "FallingKnifeRisk"],
+        ascending=False,
+    ).head(top_k)
+
+    risk_watch_items = []
+
+    for _, row in risk_watch.iterrows():
+        risk_watch_items.append({
+            "stockID": int(row["StockID"]),
+            "symbol": str(row["Symbol"]),
+            "scenario": "RISK_WATCH",
+            "originalScenario": str(row["Scenario"]),
+            "score": round(safe_float(row["RiskWatchScore"]), 2),
+            "riskWatchScore": round(safe_float(row["RiskWatchScore"]), 2),
+            "confidence": round(safe_float(row["ScenarioConfidence"]), 2),
+            "closePrice": round(safe_float(row["ClosePrice"]), 4),
+            "modelProbabilities": {
+                "down": round(safe_float(row["ProbDown"]), 4),
+                "flat": round(safe_float(row["ProbFlat"]), 4),
+                "up": round(safe_float(row["ProbUp"]), 4),
+            },
+            "scores": {
+                "momentumLong": round(safe_float(row["MomentumLongScore"]), 2),
+                "dipRebound": round(safe_float(row["DipReboundScore"]), 2),
+                "downsideRisk": round(safe_float(row["DownsideRiskScore"]), 2),
+                "flatRisk": round(safe_float(row["FlatRiskScore"]), 2),
+                "fallingKnifeRisk": round(safe_float(row["FallingKnifeRisk"]), 2),
+            },
+            "reasonTags": row["ReasonTags"],
+            "warningTags": row["WarningTags"],
+        })
+
     neutral = latest[latest["Scenario"] == SCENARIO_NEUTRAL].copy()
     neutral = neutral.sort_values(["FlatRiskScore", "ScenarioConfidence"], ascending=False).head(top_k)
 
@@ -1397,12 +1463,14 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
             "momentumLong": make_items(SCENARIO_MOMENTUM_LONG, "MomentumLongScore"),
             "dipRebound": make_items(SCENARIO_DIP_REBOUND, "DipReboundScore"),
             "downsideRisk": make_items(SCENARIO_DOWNSIDE_RISK, "DownsideRiskScore"),
+            "riskWatch": risk_watch_items,
             "neutral": neutral_items,
         },
         "summary": {
             "momentumLongCount": int(scenario_counts.get(SCENARIO_MOMENTUM_LONG, 0)),
             "dipReboundCount": int(scenario_counts.get(SCENARIO_DIP_REBOUND, 0)),
             "downsideRiskCount": int(scenario_counts.get(SCENARIO_DOWNSIDE_RISK, 0)),
+            "riskWatchCount": int(len(risk_watch_items)),
             "neutralCount": int(scenario_counts.get(SCENARIO_NEUTRAL, 0)),
         },
     }
@@ -1469,17 +1537,27 @@ def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[s
 
         if valid.empty:
             return {"days": 0}
+        avg_max_return10 = safe_float(valid.get(f"{prefix}_maxReturn10", pd.Series(dtype=float)).mean())
+        avg_max_drawdown10 = safe_float(valid.get(f"{prefix}_maxDrawdown10", pd.Series(dtype=float)).mean())
+        upper_hit10 = safe_float(valid.get(f"{prefix}_upperHit10", pd.Series(dtype=float)).mean())
+        lower_hit10 = safe_float(valid.get(f"{prefix}_lowerHit10", pd.Series(dtype=float)).mean())
 
+        if abs(avg_max_drawdown10) > 1e-9:
+            reward_risk10 = avg_max_return10 / abs(avg_max_drawdown10)
+        else:
+            reward_risk10 = None
         return {
             "days": int(len(valid)),
             "avgCount": round(safe_float(valid[count_col].mean()), 2),
             "avgReturn10Pct": round(safe_float(valid.get(f"{prefix}_return10", pd.Series(dtype=float)).mean()) * 100, 4),
             "avgReturn20Pct": round(safe_float(valid.get(f"{prefix}_return20", pd.Series(dtype=float)).mean()) * 100, 4),
             "avgExcessReturn10Pct": round(safe_float(valid.get(f"{prefix}_excessReturn10", pd.Series(dtype=float)).mean()) * 100, 4),
-            "avgMaxReturn10Pct": round(safe_float(valid.get(f"{prefix}_maxReturn10", pd.Series(dtype=float)).mean()) * 100, 4),
-            "avgMaxDrawdown10Pct": round(safe_float(valid.get(f"{prefix}_maxDrawdown10", pd.Series(dtype=float)).mean()) * 100, 4),
-            "upperHitRate10Pct": round(safe_float(valid.get(f"{prefix}_upperHit10", pd.Series(dtype=float)).mean()) * 100, 2),
-            "lowerHitRate10Pct": round(safe_float(valid.get(f"{prefix}_lowerHit10", pd.Series(dtype=float)).mean()) * 100, 2),
+            "avgMaxReturn10Pct": round(avg_max_return10 * 100, 4),
+            "avgMaxDrawdown10Pct": round(avg_max_drawdown10 * 100, 4),
+            "rewardRisk10": round(reward_risk10, 4) if reward_risk10 is not None else None,
+            "upperHitRate10Pct": round(upper_hit10 * 100, 2),
+            "lowerHitRate10Pct": round(lower_hit10 * 100, 2),
+            "hitSpread10Pct": round((upper_hit10 - lower_hit10) * 100, 2),
         }
 
     summary = {
