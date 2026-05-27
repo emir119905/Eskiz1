@@ -146,6 +146,7 @@ export default function Reports() {
         loading={loading}
         onRefresh={loadData}
       />
+      <NoticeBox />
 
       {error && (
         <Panel borderColor={RED}>
@@ -221,11 +222,11 @@ export default function Reports() {
               <EmptyState title="Veriler yükleniyor" text="Zeta çıktı dosyaları backend üzerinden okunuyor." />
             ) : activeItems.length === 0 ? (
               <EmptyState
-                title="Bu senaryoda aktif aday yok"
-                text={activeTab === 'risk'
-                  ? 'Bugün aktif aşağı risk veya risk izleme adayı oluşmamış görünüyor.'
-                  : 'Seçili senaryo için radar listesi boş.'}
-              />
+              title={activeTab === 'risk' ? 'Aktif risk sinyali yok' : 'Bu senaryoda aktif aday yok'}
+              text={activeTab === 'risk'
+                ? 'Son radar tarihinde eşik üstü aşağı risk adayı oluşmadı. Bu durum hata değil; model net risk ayrışması görmediğinde risk listesini boş bırakır.'
+                : 'Seçili senaryo için eşik üstü radar adayı oluşmadı.'}
+            />
             ) : (
               <div style={{ display: 'grid', gap: '14px' }}>
                 {activeItems.map(item => (
@@ -960,6 +961,55 @@ function formatSignedPctValue(value) {
   const number = Number(value)
   const sign = number > 0 ? '+' : ''
   return `${sign}${number.toFixed(4)}%`
+}
+
+function NoticeBox() {
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(59,130,246,0.08))',
+      border: '1px solid rgba(245,158,11,0.28)',
+      borderRadius: '18px',
+      padding: '16px 18px',
+      marginBottom: '22px',
+      display: 'flex',
+      gap: '12px',
+      alignItems: 'flex-start'
+    }}>
+      <div style={{
+        width: 34,
+        height: 34,
+        borderRadius: '12px',
+        background: 'rgba(245,158,11,0.16)',
+        border: '1px solid rgba(245,158,11,0.35)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}>
+        ⚠️
+      </div>
+
+      <div>
+        <div style={{
+          color: '#fbbf24',
+          fontWeight: 'bold',
+          marginBottom: '5px'
+        }}>
+          Deneysel karar destek ekranı
+        </div>
+
+        <div style={{
+          color: '#d1d5db',
+          fontSize: '13px',
+          lineHeight: 1.6
+        }}>
+          Zeta Radar yatırım tavsiyesi üretmez. Hisseleri al/sat önerisi olarak değil;
+          momentum, dipten tepki, risk izleme ve nötr senaryolarına göre deneysel olarak sınıflandırır.
+          Sonuçlar model çıktısıdır ve manuel değerlendirme ile birlikte yorumlanmalıdır.
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const h3 = {
