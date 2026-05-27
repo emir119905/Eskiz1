@@ -506,7 +506,7 @@ function HeaderBlock() {
           background: GREEN,
           boxShadow: `0 0 18px ${GREEN}`
         }} />
-        Pusula AI · Çok Ufuklu Finansal Analiz
+        Pusula AI · Karar Destek Paneli
       </div>
 
       <div style={{
@@ -528,11 +528,11 @@ function HeaderBlock() {
           <p style={{
             color: '#9ca3af',
             marginTop: '9px',
-            maxWidth: '780px',
-            lineHeight: 1.6
+            maxWidth: '830px',
+            lineHeight: 1.65
           }}>
-            Gerçek tarihli T+5 backtest, naive baseline ve 30 günlük model senaryolarını birlikte okuyun.
-            Sistem güçlü sinyal görmediğinde işlem yerine beklemeyi önerir.
+            Seçili hisse için ana tahmin motoru, davranış sinyali ve Zeta Radar senaryosu birlikte gösterilir.
+            Amaç tek başına “al/sat” demek değil; modelin güçlü gördüğü, kararsız kaldığı veya riskli bulduğu alanları okunabilir hale getirmektir.
           </p>
         </div>
 
@@ -541,16 +541,18 @@ function HeaderBlock() {
           borderRadius: '16px',
           padding: '12px 14px',
           background: 'linear-gradient(180deg, #111827, #0b1220)',
-          minWidth: 210
+          minWidth: 240
         }}>
           <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 4 }}>
-            Aktif Motor
+            Aktif Analiz Yapısı
           </div>
+
           <div style={{ color: '#e5e7eb', fontWeight: 'bold' }}>
-            Multi-Horizon Engine v11.3
+            Ana Model + Davranış Katmanı + Zeta Radar
           </div>
-          <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 4 }}>
-            Tahmin değil, ölçülebilir senaryo.
+
+          <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 4, lineHeight: 1.45 }}>
+            Sonuçlar deneysel karar destek çıktısıdır; yatırım tavsiyesi olarak yorumlanmamalıdır.
           </div>
         </div>
       </div>
@@ -682,23 +684,62 @@ function SearchPanel({
 
 function SignalHero({ selectedStock, signal, pm, skill }) {
   const color = getBiasColor(signal?.tradeBias)
-  const label = getBiasLabel(signal?.tradeBias)
+  const rawLabel = getBiasLabel(signal?.tradeBias)
 
   const actionRate = safeNumber(pm?.predictedActionRate)
   const mapeSkill = safeNumber(skill?.mapeSkillPct)
-
-  const behavior = actionRate === 0
-    ? 'Model bu örnekte çoğunlukla flat sınıfına kaçıyor.'
-    : actionRate >= 80
-      ? 'Model agresif biçimde aksiyon üretiyor; tek yöne yüklenme riski var.'
-      : 'Model sınırlı ve seçici seviyede aksiyon üretiyor.'
-
-  const baselineText = mapeSkill >= 0
-    ? `Model fiyat hatasında naive baseline’dan ${pct(mapeSkill)} daha iyi.`
-    : `Naive baseline fiyat hatasında modelden ${pct(Math.abs(mapeSkill))} daha iyi.`
-
   const confidence = safeNumber(signal?.directionConfidence)
   const edge = safeNumber(signal?.directionEdge)
+
+  const readableLabel = (() => {
+    const bias = String(signal?.tradeBias || '').toLowerCase()
+
+    if (bias.includes('buy') || bias.includes('up') || bias.includes('long')) {
+      return 'Pozitif Senaryo Öne Çıkıyor'
+    }
+
+    if (bias.includes('sell') || bias.includes('down') || bias.includes('short')) {
+      return 'Aşağı Risk Öne Çıkıyor'
+    }
+
+    if (bias.includes('hold') || bias.includes('flat') || bias.includes('neutral') || bias.includes('wait')) {
+      return 'Bekle-Gör Daha Sağlıklı'
+    }
+
+    return rawLabel || 'Model Senaryosu'
+  })()
+
+  const behavior = (() => {
+    if (actionRate === 0) {
+      return 'Model bu analizde net yukarı/aşağı kararı üretmemiş. Bu durum genelde “bekle-gör” veya yön belirsizliği anlamına gelir.'
+    }
+
+    if (actionRate >= 80) {
+      return 'Model çok sık işlem sinyali üretiyor. Bu, güçlü bir yön okuması gibi görünebilir; ancak bazen tek tarafa aşırı yüklenme riski de taşır.'
+    }
+
+    if (actionRate >= 35) {
+      return 'Model belirli aralıklarla yön sinyali üretiyor. Bu sonuç, diğer kartlardaki Zeta ve davranış sinyaliyle birlikte okunmalıdır.'
+    }
+
+    return 'Model seçici davranıyor. Yani her durumda yön söylemek yerine yalnızca daha belirgin gördüğü alanlarda sinyal üretmeye çalışıyor.'
+  })()
+
+  const baselineText = mapeSkill >= 0
+    ? `Ana model, basit karşılaştırma modeline göre fiyat hatasında ${pct(mapeSkill)} daha iyi sonuç vermiş.`
+    : `Bu testte basit karşılaştırma modeli, ana modelden ${pct(Math.abs(mapeSkill))} daha düşük fiyat hatası üretmiş.`
+
+  const confidenceText = confidence >= 0.60
+    ? 'Sinyal güveni güçlü.'
+    : confidence >= 0.40
+      ? 'Sinyal güveni orta seviyede.'
+      : 'Sinyal güveni düşük; sonuç temkinli okunmalı.'
+
+  const edgeText = edge >= 0.15
+    ? 'Model yukarı/aşağı ayrımını belirgin görüyor.'
+    : edge >= 0.07
+      ? 'Modelde sınırlı bir yön ayrımı var.'
+      : 'Model net yön ayrımı üretmekte zorlanıyor.'
 
   return (
     <div style={{
@@ -723,14 +764,14 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1.25fr 1fr 1fr',
+        gridTemplateColumns: '1.15fr 1fr 0.95fr',
         gap: '18px',
         alignItems: 'center',
         position: 'relative'
       }}>
         <div>
           <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '7px' }}>
-            {selectedStock?.symbol || 'Seçili Varlık'} · Sinyal Özeti
+            {selectedStock?.symbol || 'Seçili Varlık'} · Ana Model Yorumu
           </div>
 
           <div style={{
@@ -740,28 +781,38 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
             letterSpacing: '-0.6px',
             marginBottom: '8px'
           }}>
-            {label}
+            {readableLabel}
           </div>
 
-          <div style={{ color: '#d1d5db', fontSize: '13px', lineHeight: 1.55 }}>
+          <div style={{ color: '#d1d5db', fontSize: '13px', lineHeight: 1.6 }}>
             {baselineText}
           </div>
         </div>
 
-        <div style={{ color: '#d1d5db', fontSize: '13px', lineHeight: 1.6 }}>
+        <div style={{ color: '#d1d5db', fontSize: '13px', lineHeight: 1.65 }}>
           <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: 5 }}>
-            Model Davranışı
+            Modelin Karar Verme Şekli
           </div>
+
           {behavior}
         </div>
 
         <div>
           <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: 8 }}>
-            Sinyal Sağlığı
+            Güven ve Ayrım Gücü
           </div>
 
-          <HealthRow label="Confidence" value={confidence * 100} color={color} />
-          <HealthRow label="Edge" value={edge * 100} color={edge >= 0.1 ? GREEN : YELLOW} />
+          <HealthRow label="Sinyal Güveni" value={confidence * 100} color={color} />
+          <HealthRow label="Yön Ayrımı" value={edge * 100} color={edge >= 0.1 ? GREEN : YELLOW} />
+
+          <div style={{
+            color: '#9ca3af',
+            fontSize: '11px',
+            lineHeight: 1.45,
+            marginTop: '8px'
+          }}>
+            {confidenceText} {edgeText}
+          </div>
         </div>
       </div>
     </div>
@@ -775,18 +826,18 @@ function getBehaviorDirectionColor(directionBias) {
 }
 
 function getBehaviorDirectionLabel(directionBias) {
-  if (directionBias === 'up') return 'Yukarı Davranış'
-  if (directionBias === 'down') return 'Aşağı Davranış'
-  return 'Kararsız / Flat'
+  if (directionBias === 'up') return 'Yukarı eğilim destekleniyor'
+  if (directionBias === 'down') return 'Aşağı baskı izleniyor'
+  return 'Net yön oluşmamış'
 }
 
 function getBehaviorTrendLabel(trendState) {
   const labels = {
-    trend_following: 'Trend Takibi',
-    mean_reverting: 'Ortalamaya Dönüş',
-    choppy_high_vol: 'Dalgalı / Yüksek Vol',
-    choppy: 'Kararsız Rejim',
-    unknown: 'Bilinmiyor'
+    trend_following: 'Trend devamı',
+    mean_reverting: 'Ortalamaya dönüş',
+    choppy_high_vol: 'Dalgalı ve sert piyasa',
+    choppy: 'Kararsız piyasa',
+    unknown: 'Belirsiz'
   }
 
   return labels[trendState] || trendState || '-'
@@ -794,10 +845,10 @@ function getBehaviorTrendLabel(trendState) {
 
 function getBehaviorVolLabel(volatilityState) {
   const labels = {
-    low: 'Düşük',
+    low: 'Sakin',
     normal: 'Normal',
-    high: 'Yüksek',
-    unknown: 'Bilinmiyor'
+    high: 'Hareketli',
+    unknown: 'Belirsiz'
   }
 
   return labels[volatilityState] || volatilityState || '-'
@@ -805,9 +856,9 @@ function getBehaviorVolLabel(volatilityState) {
 
 function getBehaviorVolumeLabel(volumePressure) {
   const labels = {
-    low: 'Düşük Hacim',
-    normal: 'Normal Hacim',
-    high: 'Yüksek Hacim'
+    low: 'Düşük ilgi',
+    normal: 'Normal ilgi',
+    high: 'Yüksek ilgi'
   }
 
   return labels[volumePressure] || volumePressure || '-'
@@ -815,10 +866,10 @@ function getBehaviorVolumeLabel(volumePressure) {
 
 function getBehaviorWarningLabel(warning) {
   const labels = {
-    HIGH_FLAT_RISK: 'Yüksek Flat Riski',
-    CHOPPY_REGIME: 'Kararsız Rejim',
-    LOW_CONFIDENCE: 'Düşük Güven',
-    HIGH_VOLATILITY: 'Yüksek Volatilite'
+    HIGH_FLAT_RISK: 'Net yön belirsizliği yüksek',
+    CHOPPY_REGIME: 'Piyasa davranışı kararsız',
+    LOW_CONFIDENCE: 'Sinyal güveni düşük',
+    HIGH_VOLATILITY: 'Oynaklık yüksek'
   }
 
   return labels[warning] || warning
@@ -829,26 +880,27 @@ function getBehaviorInterpretation(signal) {
 
   if (signal.directionBias === 'flat') {
     if (safeNumber(signal.flatRisk) >= 75) {
-      return 'Günlük davranış katmanı net yön üretmiyor; flat riski yüksek. Ana model sinyali temkinli yorumlanmalıdır.'
+      return 'Davranış katmanı bu hissede net bir yukarı veya aşağı yön göremiyor. Bu nedenle ana model sonucu tek başına güçlü bir sinyal gibi okunmamalı.'
     }
 
-    return 'Günlük davranış katmanı yatay/kararsız bir rejime işaret ediyor.'
+    return 'Davranış katmanı yatay veya kararsız bir fiyat yapısına işaret ediyor. Bu durumda bekle-gör yaklaşımı daha sağlıklı olabilir.'
   }
 
   if (signal.directionBias === 'up') {
     return signal.actionable
-      ? 'Günlük davranış katmanı yukarı yönlü momentumu destekliyor.'
-      : 'Yukarı eğilim var; ancak güven veya flat riski nedeniyle yardımcı sinyal olarak okunmalı.'
+      ? 'Son fiyat davranışı yukarı yönlü hareketi destekliyor. Bu, ana modelin pozitif çıktılarıyla birlikte okunabilecek yardımcı bir işarettir.'
+      : 'Yukarı eğilim belirtileri var; ancak güven veya yön belirsizliği nedeniyle bu sonuç tek başına güçlü sinyal sayılmamalı.'
   }
 
   if (signal.directionBias === 'down') {
     return signal.actionable
-      ? 'Günlük davranış katmanı aşağı yönlü baskıyı destekliyor.'
-      : 'Aşağı eğilim var; ancak güven veya flat riski nedeniyle yardımcı sinyal olarak okunmalı.'
+      ? 'Son fiyat davranışı aşağı yönlü baskıyı destekliyor. Bu, seçili hissede temkinli olunması gerektiğini gösteren yardımcı bir işarettir.'
+      : 'Aşağı eğilim belirtileri var; ancak güven veya yön belirsizliği nedeniyle bu sonuç dikkatli yorumlanmalı.'
   }
 
-  return 'Davranış sinyali yorumlanamadı.'
+  return 'Davranış sinyali bu hisse için net yorum üretmedi.'
 }
+
 function normalizeSymbol(symbol) {
   return String(symbol || '').trim().toUpperCase()
 }
@@ -878,24 +930,24 @@ function findZetaItemForStock(radar, stock) {
 }
 
 const ZETA_SCENARIO_LABELS = {
-  MOMENTUM_LONG: 'Güçlü Gidiş Adayı',
-  DIP_REBOUND_WATCH: 'Toparlanma Adayı',
-  DOWNSIDE_RISK: 'Aşağı Risk Sinyali',
-  RISK_WATCH: 'Dikkatli İzle',
-  NEUTRAL: 'Net Yön Yok'
+  MOMENTUM_LONG: 'Güçlü gidiş izlenebilir',
+  DIP_REBOUND_WATCH: 'Toparlanma ihtimali izlenebilir',
+  DOWNSIDE_RISK: 'Aşağı yönlü risk var',
+  RISK_WATCH: 'Dikkatli izlenmeli',
+  NEUTRAL: 'Net senaryo oluşmamış'
 }
 
 const ZETA_SCENARIO_TEXTS = {
   MOMENTUM_LONG:
-    'Bu hisse son verilerde güçlü kalıyor. Zeta, mevcut hareketin kısa vadede devam edebileceğini düşündüğü için hisseyi izlenebilir aday olarak işaretliyor.',
+    'Zeta, bu hissenin son verilerde piyasaya göre güçlü kaldığını görüyor. Bu, fiyatın aynı yönde devam edebileceği anlamına gelebilir; ancak tek başına alım önerisi değildir.',
   DIP_REBOUND_WATCH:
-    'Bu hisse yakın dönemde baskı yemiş olabilir; ancak Zeta düşüş sonrası toparlanma ihtimalinin izlenebilir olduğunu düşünüyor.',
+    'Zeta, bu hissede düşüş sonrası toparlanma ihtimalini izlenebilir buluyor. Burada amaç “düştü diye alınır” demek değil; düşüşün kontrollü şekilde tepkiye dönüp dönmediğini takip etmektir.',
   DOWNSIDE_RISK:
-    'Bu hisse için aşağı yönlü risk öne çıkıyor. Bu çıktı alım fırsatından çok risk uyarısı olarak değerlendirilmelidir.',
+    'Zeta, bu hissede kısa vadeli aşağı baskının öne çıktığını düşünüyor. Bu senaryo fırsattan çok risk uyarısı olarak okunmalıdır.',
   RISK_WATCH:
-    'Bu hisse için net alım veya toparlanma sinyali yok; ancak belirsizlik veya kırılganlık nedeniyle dikkatli takip edilmesi daha sağlıklı olabilir.',
+    'Zeta, bu hissede net bir fırsat görmüyor; ancak belirsizlik veya kırılganlık nedeniyle dikkatli takip edilmesini daha sağlıklı buluyor.',
   NEUTRAL:
-    'Zeta bu hisse için yeterince güçlü bir fırsat veya risk ayrımı görmüyor. Bu durumda bekle-gör yaklaşımı daha sağlıklı olabilir.'
+    'Zeta, bu hisse için yeterince güçlü bir fırsat veya risk ayrımı görmüyor. Bu durumda bekle-gör yaklaşımı daha doğru olabilir.'
 }
 
 const ZETA_TAG_LABELS = {
@@ -927,8 +979,16 @@ function getZetaScenarioText(scenario) {
   return ZETA_SCENARIO_TEXTS[scenario] || 'Zeta bu hisse için deneysel bir senaryo değerlendirmesi üretmiştir.'
 }
 
+function sentenceCase(text) {
+  const value = String(text || '').trim()
+
+  if (!value) return ''
+
+  return value.charAt(0).toLocaleUpperCase('tr-TR') + value.slice(1)
+}
+
 function getZetaTagLabel(tag) {
-  return ZETA_TAG_LABELS[tag] || tag
+  return sentenceCase(ZETA_TAG_LABELS[tag] || tag)
 }
 
 function getZetaScenarioColor(scenario) {
@@ -1010,7 +1070,7 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
       }}>
         <div>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
-            {selectedStock?.symbol || zetaItem.symbol} · Zeta Radar
+            {selectedStock?.symbol || zetaItem.symbol} · Zeta Senaryo Okuması
           </div>
 
           <div style={{
@@ -1035,11 +1095,11 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Badge color={color}>
-            Skor: {num(zetaItem.score, 2)}
+            Senaryo skoru: {num(zetaItem.score, 2)}
           </Badge>
 
           <Badge color={PURPLE}>
-            Güven: {num(zetaItem.confidence, 2)}
+            Okuma güveni: {num(zetaItem.confidence, 2)}
           </Badge>
 
           <Badge color={GRAY}>
@@ -1054,26 +1114,26 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
         gap: '14px',
         marginBottom: '16px'
       }}>
-        <ZetaProbabilityBox
-          title="Aşağı İhtimal"
-          value={probabilities.down}
-          color={RED}
-          helper="Modelin kısa vadede negatif senaryoya verdiği olasılık."
-        />
+<ZetaProbabilityBox
+  title="Aşağı senaryo"
+  value={probabilities.down}
+  color={RED}
+  helper="Model, kısa vadede aşağı yönlü baskı ihtimalini burada gösterir."
+/>
 
-        <ZetaProbabilityBox
-          title="Yatay / Belirsiz"
-          value={probabilities.flat}
-          color={GRAY}
-          helper="Modelin net yön ayrışması göremediği alan."
-        />
+<ZetaProbabilityBox
+  title="Yön belirsiz"
+  value={probabilities.flat}
+  color={GRAY}
+  helper="Model net yukarı veya aşağı ayrımı göremediğinde bu olasılık yükselir."
+/>
 
-        <ZetaProbabilityBox
-          title="Yukarı İhtimal"
-          value={probabilities.up}
-          color={GREEN}
-          helper="Modelin kısa vadede pozitif senaryoya verdiği olasılık."
-        />
+<ZetaProbabilityBox
+  title="Yukarı senaryo"
+  value={probabilities.up}
+  color={GREEN}
+  helper="Model, kısa vadede toparlanma veya yukarı hareket ihtimalini burada gösterir."
+/>
       </div>
 
       <div style={{
@@ -1089,14 +1149,14 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
           padding: '15px'
         }}>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
-            Zeta Skorları
+            Senaryo Ayrımı
           </div>
 
-          <ZetaScoreLine label="Güçlü gidiş" value={scores.momentumLong} color={GREEN} />
-          <ZetaScoreLine label="Toparlanma" value={scores.dipRebound} color={BLUE} />
-          <ZetaScoreLine label="Aşağı risk" value={scores.downsideRisk} color={RED} />
-          <ZetaScoreLine label="Net yön yok" value={scores.flatRisk} color={GRAY} />
-          <ZetaScoreLine label="Düşüş devam riski" value={scores.fallingKnifeRisk} color={YELLOW} />
+<ZetaScoreLine label="Güçlü gidiş ihtimali" value={scores.momentumLong} color={GREEN} />
+<ZetaScoreLine label="Toparlanma ihtimali" value={scores.dipRebound} color={BLUE} />
+<ZetaScoreLine label="Aşağı risk" value={scores.downsideRisk} color={RED} />
+<ZetaScoreLine label="Yön belirsizliği" value={scores.flatRisk} color={GRAY} />
+<ZetaScoreLine label="Düşüşün sürme riski" value={scores.fallingKnifeRisk} color={YELLOW} />
         </div>
 
         <div style={{
@@ -1106,21 +1166,21 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
           padding: '15px'
         }}>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
-            Bu sonucun gerekçeleri
+            Zeta bu sonuca neden vardı?
           </div>
 
           <ZetaTagGroup
-            title="Destekleyen işaretler"
+            title="Destekleyen veriler"
             tags={zetaItem.reasonTags || []}
             color={color}
-            emptyText="Öne çıkan destekleyici etiket yok."
+            emptyText="Bu senaryo için öne çıkan ek destek etiketi yok."
           />
 
           <ZetaTagGroup
-            title="Dikkat notları"
+            title="Dikkat edilmesi gerekenler"
             tags={zetaItem.warningTags || []}
             color={YELLOW}
-            emptyText="Ek risk etiketi yok."
+            emptyText="Ek risk uyarısı görünmüyor."
           />
         </div>
       </div>
@@ -1133,8 +1193,8 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
         fontSize: '12px',
         lineHeight: 1.55
       }}>
-        Zeta Radar, seçili hisseyi tek başına al/sat önerisi olarak değerlendirmez.
-        Bu kart, ana tahmin motorunun yanında ikinci bir senaryo okuması sağlar.
+        Zeta, seçili hisseyi tek başına al/sat önerisi olarak değerlendirmez.
+        Bu kart, ana tahmin motoruna ek olarak hissenin hangi senaryoda izlenebileceğini açıklar.
       </div>
     </div>
   )
@@ -1250,9 +1310,9 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
         }}>
           <span style={{ fontSize: 22 }}>⏳</span>
           <div>
-            <strong style={{ color: '#e5e7eb' }}>v12-alpha davranış sinyali yükleniyor</strong>
+            <strong style={{ color: '#e5e7eb' }}>Fiyat davranışı okunuyor</strong>
             <div style={{ fontSize: '12px', marginTop: 3 }}>
-              Günlük momentum, volatilite, hacim ve range davranışı okunuyor.
+              Son fiyat hareketi, oynaklık, hacim ilgisi ve yön belirsizliği değerlendiriliyor.
             </div>
           </div>
         </div>
@@ -1264,7 +1324,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
     return (
       <Panel style={{ marginBottom: '18px', borderColor: '#ef444466' }}>
         <div style={{ color: '#fecaca', fontSize: '13px', lineHeight: 1.55 }}>
-          <strong>v12-alpha davranış sinyali alınamadı:</strong> {error}
+          <strong>Fiyat davranışı bilgisi alınamadı:</strong> {error}
         </div>
       </Panel>
     )
@@ -1303,7 +1363,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
       }}>
         <div>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
-            {selectedStock?.symbol || 'Seçili Varlık'} · Deneysel Davranış Katmanı
+            {selectedStock?.symbol || 'Seçili Varlık'} · Fiyat Davranışı
           </div>
 
           <div style={{
@@ -1328,11 +1388,11 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Badge color={behaviorSignal.actionable ? GREEN : YELLOW}>
-            {behaviorSignal.actionable ? 'Aksiyon Üretebilir' : 'Yardımcı Sinyal'}
+            {behaviorSignal.actionable ? 'Daha Net Sinyal' : 'Yardımcı Okuma'}
           </Badge>
 
           <Badge color={PURPLE}>
-            v12-alpha
+            Davranış Katmanı
           </Badge>
         </div>
       </div>
@@ -1350,12 +1410,12 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
           padding: '15px'
         }}>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
-            Günlük Davranış Skorları
+            Davranış Özeti
           </div>
 
-          <BehaviorBar label="Composite" value={composite} color={color} />
-          <BehaviorBar label="Momentum" value={momentum} color={momentum >= 0 ? GREEN : RED} />
-          <BehaviorBar label="Breakout" value={breakout} color={BLUE} positiveOnly />
+          <BehaviorBar label="Genel yön eğilimi" value={composite} color={color} />
+          <BehaviorBar label="Gidiş gücü" value={momentum} color={momentum >= 0 ? GREEN : RED} />
+          <BehaviorBar label="Kopma baskısı" value={breakout} color={BLUE} positiveOnly />
         </div>
 
         <div style={{
@@ -1365,7 +1425,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
           padding: '15px'
         }}>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
-            Güven / Risk
+            Güven ve Belirsizlik
           </div>
 
           <ScoreGauge
@@ -1375,7 +1435,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
           />
 
           <ScoreGauge
-            label="Flat Riski"
+            label="Net yön belirsizliği"
             value={flatRisk}
             color={flatRisk >= 75 ? RED : flatRisk >= 55 ? YELLOW : GREEN}
           />
@@ -1388,14 +1448,14 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
           padding: '15px'
         }}>
           <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
-            Rejim Özeti
+            Piyasa Davranışı
           </div>
 
           <BehaviorInfo label="Trend" value={getBehaviorTrendLabel(behaviorSignal.trendState)} />
-          <BehaviorInfo label="Volatilite" value={getBehaviorVolLabel(behaviorSignal.volatilityState)} />
-          <BehaviorInfo label="Hacim" value={getBehaviorVolumeLabel(behaviorSignal.volumePressure)} />
+          <BehaviorInfo label="Hareketlilik" value={getBehaviorVolLabel(behaviorSignal.volatilityState)} />
+          <BehaviorInfo label="Hacim ilgisi" value={getBehaviorVolumeLabel(behaviorSignal.volumePressure)} />
           <BehaviorInfo
-            label="20G Hacim Oranı"
+            label="20 günlük hacim oranı"
             value={metrics.volumeRatio20 == null ? '-' : `${num(metrics.volumeRatio20, 2)}x`}
           />
         </div>
