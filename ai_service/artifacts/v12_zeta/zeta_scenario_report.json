@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-27T16:40:59",
+  "generatedAt": "2026-05-27T17:05:07",
   "version": "v12_zeta_scenario_screener_v1",
   "architecture": "bist_global_panel_model_plus_rule_scenario_scorer",
   "selectedModel": "hist_gradient_boosting",
@@ -650,6 +650,86 @@
         }
       ],
       "downsideRisk": [],
+      "riskWatch": [
+        {
+          "stockID": 16,
+          "symbol": "OTKAR.IS",
+          "scenario": "RISK_WATCH",
+          "originalScenario": "NEUTRAL",
+          "score": 31.49,
+          "riskWatchScore": 31.49,
+          "confidence": 37.24,
+          "closePrice": 374.75,
+          "modelProbabilities": {
+            "down": 0.1658,
+            "flat": 0.436,
+            "up": 0.3981
+          },
+          "scores": {
+            "momentumLong": 13.53,
+            "dipRebound": 44.17,
+            "downsideRisk": 48.14,
+            "flatRisk": 54.38,
+            "fallingKnifeRisk": 36.24
+          },
+          "reasonTags": [],
+          "warningTags": [
+            "NO_CLEAR_EDGE"
+          ]
+        },
+        {
+          "stockID": 38,
+          "symbol": "OBAMS.IS",
+          "scenario": "RISK_WATCH",
+          "originalScenario": "NEUTRAL",
+          "score": 30.31,
+          "riskWatchScore": 30.31,
+          "confidence": 23.27,
+          "closePrice": 8.44,
+          "modelProbabilities": {
+            "down": 0.1587,
+            "flat": 0.3922,
+            "up": 0.4491
+          },
+          "scores": {
+            "momentumLong": 34.58,
+            "dipRebound": 16.2,
+            "downsideRisk": 38.36,
+            "flatRisk": 72.14,
+            "fallingKnifeRisk": 43.57
+          },
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        },
+        {
+          "stockID": 19,
+          "symbol": "GARAN.IS",
+          "scenario": "RISK_WATCH",
+          "originalScenario": "NEUTRAL",
+          "score": 29.18,
+          "riskWatchScore": 29.18,
+          "confidence": 23.67,
+          "closePrice": 136.6,
+          "modelProbabilities": {
+            "down": 0.0864,
+            "flat": 0.6423,
+            "up": 0.2713
+          },
+          "scores": {
+            "momentumLong": 16.35,
+            "dipRebound": 45.5,
+            "downsideRisk": 38.52,
+            "flatRisk": 80.84,
+            "fallingKnifeRisk": 23.66
+          },
+          "reasonTags": [],
+          "warningTags": [
+            "HIGH_FLAT_RISK"
+          ]
+        }
+      ],
       "neutral": [
         {
           "stockID": 19,
@@ -714,45 +794,51 @@
       ]
     },
     "summary": {
-      "momentumLongCount": 14,
+      "momentumLongCount": 9,
       "dipReboundCount": 2,
       "downsideRiskCount": 0,
-      "neutralCount": 19
+      "neutralCount": 24
     }
   },
   "scenarioBacktest": {
     "momentumLong": {
-      "days": 267,
-      "avgCount": 3.85,
-      "avgReturn10Pct": 1.0872,
-      "avgReturn20Pct": 2.6189,
-      "avgExcessReturn10Pct": 0.0804,
-      "avgMaxReturn10Pct": 8.5108,
-      "avgMaxDrawdown10Pct": -6.1547,
-      "upperHitRate10Pct": 55.36,
-      "lowerHitRate10Pct": 40.52
+      "days": 240,
+      "avgCount": 2.99,
+      "avgReturn10Pct": 1.106,
+      "avgReturn20Pct": 2.1908,
+      "avgExcessReturn10Pct": 0.0607,
+      "avgMaxReturn10Pct": 8.9687,
+      "avgMaxDrawdown10Pct": -6.2519,
+      "rewardRisk10": 1.4346,
+      "upperHitRate10Pct": 56.59,
+      "lowerHitRate10Pct": 39.5,
+      "hitSpread10Pct": 17.09
     },
     "dipRebound": {
-      "days": 209,
-      "avgCount": 2.83,
-      "avgReturn10Pct": 0.7453,
-      "avgReturn20Pct": 2.3136,
-      "avgExcessReturn10Pct": -0.3022,
-      "avgMaxReturn10Pct": 7.8152,
-      "avgMaxDrawdown10Pct": -5.4135,
-      "upperHitRate10Pct": 55.85,
-      "lowerHitRate10Pct": 37.89
+      "days": 168,
+      "avgCount": 2.46,
+      "avgReturn10Pct": 1.1538,
+      "avgReturn20Pct": 3.1233,
+      "avgExcessReturn10Pct": -0.0429,
+      "avgMaxReturn10Pct": 8.2137,
+      "avgMaxDrawdown10Pct": -5.2114,
+      "rewardRisk10": 1.5761,
+      "upperHitRate10Pct": 55.71,
+      "lowerHitRate10Pct": 37.35,
+      "hitSpread10Pct": 18.36
     },
     "downsideRisk": {
-      "days": 231,
-      "avgCount": 3.6,
-      "avgReturn10Pct": 0.0003,
-      "avgReturn20Pct": 1.6654,
-      "avgExcessReturn10Pct": -0.9585,
-      "avgMaxReturn10Pct": 6.9133,
-      "avgMaxDrawdown10Pct": -5.8586,
-      "upperHitRate10Pct": 43.61,
-      "lowerHitRate10Pct": 44.66
+      "days": 203,
+      "avgCount": 3.3,
+      "avgReturn10Pct": -0.3092,
+      "avgReturn20Pct": 1.1209,
+      "avgExcessReturn10Pct": -1.4541,
+      "avgMaxReturn10Pct": 6.7145,
+      "avgMaxDrawdown10Pct": -5.8306,
+      "rewardRisk10": 1.1516,
+      "upperHitRate10Pct": 43.8,
+      "lowerHitRate10Pct": 44.99,
+      "hitSpread10Pct": -1.19
     },
     "universe": {
       "days": 287,

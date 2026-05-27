@@ -34,3 +34,8 @@ export const getDbStatus     = ()        => api.get('/historicaldata/status')
 export const syncStock       = (stockId) => api.post(`/historicaldata/sync/${stockId}`)
 export const syncAllStocks   = ()        => api.post('/historicaldata/syncall') 
 export const deleteStockHistoricalData = (stockId) => api.delete(`/historicaldata/stock/${stockId}`)
+
+// ZETA RADAR
+export const getZetaLatestRadar      = () => api.get('/zeta/latest-radar')
+export const getZetaBacktestSummary  = () => api.get('/zeta/backtest-summary')
+export const getZetaScenarioReport   = () => api.get('/zeta/scenario-report')
