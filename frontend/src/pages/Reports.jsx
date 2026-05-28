@@ -31,8 +31,8 @@ const TAG_LABELS = {
   RELATIVE_WEAKNESS: 'göreli zayıflık',
   WEAK_CLOSE: 'zayıf kapanış',
   HIGH_FLAT_RISK: 'yön belirsizliği yüksek',
-  FALLING_KNIFE_RISK: 'falling knife riski',
-  MEDIUM_FALLING_KNIFE_RISK: 'orta seviye falling knife riski',
+  FALLING_KNIFE_RISK: 'düşüşün devam etme riski',
+  MEDIUM_FALLING_KNIFE_RISK: 'orta seviye düşüş riski',
   HIGH_VOLUME_WEAK_CLOSE: 'yüksek hacimli zayıf kapanış',
   ELEVATED_VOLATILITY: 'oynaklık artışı',
   NO_CLEAR_EDGE: 'net avantaj yok'
@@ -82,6 +82,18 @@ const TABS = [
   { key: 'risk', label: 'Risk İzleme', color: ORANGE },
   { key: 'neutral', label: 'Nötr', color: '#94a3b8' }
 ]
+
+function sentenceCase(text) {
+  const value = String(text || '').trim()
+
+  if (!value) return ''
+
+  return value.charAt(0).toLocaleUpperCase('tr-TR') + value.slice(1)
+}
+
+function getTagLabel(tag) {
+  return sentenceCase(TAG_LABELS[tag] || tag)
+}
 
 export default function Reports() {
   const [latestRadar, setLatestRadar] = useState(null)
@@ -649,7 +661,7 @@ function TagList({ title, tags = [], color }) {
               fontWeight: 700
             }}
           >
-            {TAG_LABELS[tag] || tag.toLowerCase().replaceAll('_', ' ')}
+            {getTagLabel(tag)}
           </span>
         ))}
       </div>

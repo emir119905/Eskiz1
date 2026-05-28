@@ -333,7 +333,7 @@ export default function Dashboard() {
         up: pred?.upPct ?? 0
       },
       {
-        name: 'Naive',
+        name: 'Basit Karşılaştırma',
         down: naive?.downPct ?? 0,
         flat: naive?.flatPct ?? 0,
         up: naive?.upPct ?? 0
@@ -346,8 +346,8 @@ export default function Dashboard() {
     backtest: 'T+5 Horizon Backtest',
     forecast: '30 Günlük Senaryo Bandı',
     returns: 'Gerçek vs Model 5G Getiri',
-    error: 'Model vs Naive Hata Grafiği',
-    distribution: 'Down / Flat / Up Dağılımı'
+    error: 'Model vs Basit Karşılaştırma Hata Grafiği',
+    distribution: 'Aşağı / Nötr / Yukarı Dağılımı'
   }[chartView]
 
   const isReturnChart = chartView === 'returns' || chartView === 'error'
@@ -424,33 +424,33 @@ export default function Dashboard() {
             marginBottom: '22px'
           }}>
             <MetricCard
-              label="MAPE Skill"
+              label="Fiyat Hatası Avantajı"
               value={pct(skill?.mapeSkillPct)}
-              sub={skill?.beatsNaiveByMape ? 'Model fiyat hatasında baseline’ı geçti' : 'Naive baseline daha iyi'}
+              sub={skill?.beatsNaiveByMape ? 'Model, basit karşılaştırma modelinden daha iyi' : 'Basit karşılaştırma modeli daha iyi'}
               color={(skill?.mapeSkillPct || 0) >= 0 ? GREEN : RED}
               icon="⚔️"
             />
 
             <MetricCard
-              label="Pratik Yön Skoru"
+              label="Yön Tahmin Başarısı"
               value={pct(pm?.directionScore)}
-              sub={`Coverage: ${pct(pm?.directionCoverage)}`}
+              sub={`Kapsama: ${pct(pm?.directionCoverage)}`}
               color={(pm?.directionScore || 0) >= 50 ? GREEN : YELLOW}
               icon="🧭"
             />
 
             <MetricCard
-              label="Action Rate"
+              label="Sinyal Sıklığı"
               value={pct(pm?.predictedActionRate)}
-              sub="Modelin up/down aksiyon oranı"
+              sub="Modelin yukarı/aşağı sinyal üretme oranı"
               color={(pm?.predictedActionRate || 0) > 0 ? BLUE : GRAY}
               icon="⚡"
             />
 
             <MetricCard
-              label="3-Sınıf Başarı"
+              label="Yön Sınıflama Başarısı"
               value={pct(pm?.threeClassAccuracy)}
-              sub="Down / Flat / Up sınıflaması"
+              sub="Aşağı / nötr / yukarı sınıflaması"
               color={PURPLE}
               icon="📊"
             />
@@ -1576,12 +1576,12 @@ function ModelVsNaiveCard({ pm, pn, skill, selectedStock }) {
             Ölçüm Sistemi
           </div>
           <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
-            Model vs Naive Baseline
+            Model vs Basit Karşılaştırma
           </h3>
         </div>
 
         <Badge color={modelWinsMape ? GREEN : RED}>
-          {modelWinsMape ? 'Model MAPE’de önde' : 'Naive MAPE’de önde'}
+          {modelWinsMape ? 'Model MAPE’de önde' : 'Basit model MAPE’de önde'}
         </Badge>
       </div>
 
@@ -1617,8 +1617,8 @@ function ModelVsNaiveCard({ pm, pn, skill, selectedStock }) {
         borderTop: '1px solid #1f2937',
         paddingTop: '13px'
       }}>
-        Naive baseline, “5 gün sonra fiyat bugünkü seviyeye yakın kalır” varsayımıdır.
-        Modelin gerçek katkısı bu baseline karşılaştırmasıyla okunur.
+        Basit karşılaştırma modeli, “5 gün sonra fiyat bugünkü seviyeye yakın kalır” varsayımıdır.
+        Ana modelin gerçek katkısı bu karşılaştırmayla okunur.
       </div>
     </Panel>
   )
@@ -1647,19 +1647,19 @@ function SignalHealthCard({ signal, pm }) {
       />
 
       <ScoreGauge
-        label="Action Rate"
+        label="Sinyal Sıklığı"
         value={actionRate}
         color={actionRate > 0 ? BLUE : GRAY}
       />
 
       <ScoreGauge
-        label="Confidence"
+        label="Sinyal Güveni"
         value={confidence}
         color={confidence >= 55 ? GREEN : YELLOW}
       />
 
       <ScoreGauge
-        label="Edge"
+        label="Yön Ayrımı"
         value={edge}
         color={edge >= 10 ? GREEN : YELLOW}
       />
@@ -1824,7 +1824,7 @@ function ChartPanel({
 
                 <Line
                   dataKey="naive"
-                  name="Naive Baseline"
+                  name="Basit Karşılaştırma"
                   stroke={YELLOW}
                   strokeWidth={1.5}
                   strokeDasharray="3 3"
@@ -1900,7 +1900,7 @@ function ChartPanel({
                 />
                 <Line
                   dataKey="naiveError"
-                  name="Naive Hata %"
+                  name="Basit Model Hata %"
                   stroke={YELLOW}
                   strokeWidth={2}
                   dot={false}
@@ -1930,12 +1930,12 @@ function DistributionMiniPanel({ data }) {
             Sınıf Dağılımı
           </div>
           <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
-            Gerçek / Model / Naive Karşılaştırması
+            Gerçek / Model / Basit Karşılaştırma
           </h3>
         </div>
 
         <div style={{ color: '#6b7280', fontSize: '12px', maxWidth: 420, lineHeight: 1.5 }}>
-          Modelin flat sınıfına yoğunlaşıp yoğunlaşmadığını veya tek yöne aşırı yüklenip yüklenmediğini burada okuyabilirsiniz.
+          Modelin net yön sınıfına fazla yüklenip yüklenmediğini veya tek yöne aşırı kayıp kaymadığını burada okuyabilirsiniz.
         </div>
       </div>
 
@@ -1966,7 +1966,7 @@ function DistributionCard({ row }) {
         marginBottom: '10px'
       }}>
         <strong>{row.name}</strong>
-        <span style={{ color: '#6b7280', fontSize: '12px' }}>Down / Flat / Up</span>
+        <span style={{ color: '#6b7280', fontSize: '12px' }}>Aşağı / Nötr / Yukarı</span>
       </div>
 
       <div style={{
@@ -2029,9 +2029,9 @@ function DistributionPanel({ data }) {
 
           <Legend />
 
-          <Bar dataKey="down" name="Down" stackId="a" fill={RED} />
-          <Bar dataKey="flat" name="Flat" stackId="a" fill={GRAY} />
-          <Bar dataKey="up" name="Up" stackId="a" fill={GREEN} />
+          <Bar dataKey="down" name="Aşağı" stackId="a" fill={RED} />
+          <Bar dataKey="flat" name="Nötr" stackId="a" fill={GRAY} />
+          <Bar dataKey="up" name="Yukarı" stackId="a" fill={GREEN} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -2067,19 +2067,19 @@ function DetailsPanel({ prediction, pm, signal, detailsOpen, setDetailsOpen }) {
         }}>
           <Detail label="Model Versiyonu" value={prediction.modelVersion} />
           <Detail label="Aktif Feature" value={prediction.activeFeatures} />
-          <Detail label="Signal Confidence" value={num(signal?.directionConfidence, 4)} />
-          <Detail label="Signal Edge" value={num(signal?.directionEdge, 4)} />
-          <Detail label="Return Correlation" value={num(pm?.returnCorrelation, 4)} />
+          <Detail label="Sinyal Güveni" value={num(signal?.directionConfidence, 4)} />
+          <Detail label="Yön Ayrımı Gücü" value={num(signal?.directionEdge, 4)} />
+          <Detail label="Getiri Korelasyonu" value={num(pm?.returnCorrelation, 4)} />
           <Detail
-            label="Mean Predicted Return"
+            label="Ort. Tahmin Getirisi"
             value={pm?.meanPredictedReturn == null ? '-' : pct(pm.meanPredictedReturn * 100, 2)}
           />
           <Detail
-            label="Mean Real Return"
+            label="Ort. Gerçek Getirisi"
             value={pm?.meanRealReturn == null ? '-' : pct(pm.meanRealReturn * 100, 2)}
           />
           <Detail
-            label="Direction Threshold"
+            label="Yön Eşiği"
             value={pm?.directionThreshold == null ? '-' : pct(pm.directionThreshold * 100, 2)}
           />
           <Detail label="Sample Sayısı" value={pm?.samples ?? '-'} />
@@ -2108,7 +2108,7 @@ function EmptyState({ selectedStock, loading }) {
           <p style={{ maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
             {loading
               ? 'Analiz hazırlanıyor. Sonuçlar tamamlandığında burada görünecek.'
-              : 'Pusula AI, model çıktısını naive baseline ile karşılaştırır ve düşük güvenli sonuçlarda işlem sinyali üretmez.'}
+              : 'Pusula AI, model çıktısını basit karşılaştırma modeliyle karşılaştırır ve düşük güvenli sonuçlarda işlem sinyali üretmez.'}
           </p>
         </div>
       </div>
@@ -2237,7 +2237,7 @@ function CompareBox({ title, model, naive, skill, positive, formatter }) {
         </div>
 
         <div>
-          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 4 }}>Naive</div>
+          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 4 }}>Basit model</div>
           <div style={{ color: '#e5e7eb', fontWeight: 'bold' }}>{formatter(naive)}</div>
         </div>
       </div>
