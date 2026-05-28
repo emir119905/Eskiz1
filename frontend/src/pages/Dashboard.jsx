@@ -23,6 +23,7 @@ import {
   getBiasLabel,
   getBiasColor
 } from '../utils/formatters'
+import { buildFusionSummary } from '../utils/fusionLayer'
 
 const BLUE = '#3b82f6'
 const GREEN = '#10b981'
@@ -112,6 +113,16 @@ export default function Dashboard() {
   const pn = prediction?.practicalNaiveMetrics
   const skill = prediction?.practicalSkillVsNaive
   const signal = prediction?.signalQuality
+
+  const fusionSummary = useMemo(() => {
+    return buildFusionSummary({
+      signal,
+      behaviorSignal,
+      zetaItem,
+      behaviorLoading,
+      zetaLoading
+    })
+  }, [signal, behaviorSignal, zetaItem, behaviorLoading, zetaLoading])
 
   useEffect(() => {
     let alive = true
@@ -396,6 +407,11 @@ export default function Dashboard() {
           radar={zetaRadar}
           loading={zetaLoading}
           error={zetaError}
+        />
+
+        <FusionSummaryCard
+          selectedStock={selectedStock}
+          fusion={fusionSummary}
         />
 
           <div style={{
@@ -998,6 +1014,137 @@ function getZetaScenarioColor(scenario) {
   if (scenario === 'RISK_WATCH') return YELLOW
   return GRAY
 }
+function FusionSummaryCard({ selectedStock, fusion }) {
+  if (!fusion) return null
+
+  const alignmentColor =
+    fusion.alignment === 'aligned'
+      ? GREEN
+      : fusion.alignment === 'conflicting'
+        ? RED
+        : YELLOW
+
+  const headlineColor =
+    fusion.riskLevel === 'Yüksek' && fusion.opportunityLevel !== 'Yüksek'
+      ? RED
+      : fusion.opportunityLevel === 'Yüksek' && fusion.riskLevel !== 'Yüksek'
+        ? GREEN
+        : fusion.alignment === 'conflicting'
+          ? YELLOW
+          : BLUE
+
+  return (
+    <div style={{
+      background: `radial-gradient(circle at top left, ${headlineColor}22, transparent 34%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      border: `1px solid ${headlineColor}66`,
+      borderRadius: '22px',
+      padding: '22px',
+      marginBottom: '18px',
+      boxShadow: `0 22px 52px ${headlineColor}10`
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: '18px',
+        marginBottom: '18px',
+        flexWrap: 'wrap'
+      }}>
+        <div>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+            {selectedStock?.symbol || 'Seçili Varlık'} · Birleşik Karar Özeti
+          </div>
+
+          <div style={{
+            color: headlineColor,
+            fontWeight: 'bold',
+            fontSize: '25px',
+            letterSpacing: '-0.5px',
+            marginBottom: '8px'
+          }}>
+            {fusion.headline}
+          </div>
+
+          <div style={{
+            color: '#d1d5db',
+            fontSize: '13px',
+            lineHeight: 1.65,
+            maxWidth: 860
+          }}>
+            {fusion.summary}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Badge color={alignmentColor}>
+            Uyum: {fusion.alignmentLabel}
+          </Badge>
+
+          <Badge color={fusion.opportunityLevel === 'Yüksek' ? GREEN : fusion.opportunityLevel === 'Orta' ? YELLOW : GRAY}>
+            İzleme gücü: {fusion.opportunityLevel}
+          </Badge>
+
+          <Badge color={fusion.riskLevel === 'Yüksek' ? RED : fusion.riskLevel === 'Orta' ? YELLOW : GREEN}>
+            Risk: {fusion.riskLevel}
+          </Badge>
+        </div>
+      </div>
+
+      {fusion.layers && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(160px, 1fr))',
+          gap: '12px',
+          marginBottom: fusion.notes?.length ? '16px' : 0
+        }}>
+          <FusionLayerChip label="Ana Model" value={fusion.layers.model} color={BLUE} />
+          <FusionLayerChip label="Fiyat Davranışı" value={fusion.layers.behavior} color={PURPLE} />
+          <FusionLayerChip label="Zeta Senaryosu" value={fusion.layers.zeta} color={GREEN} />
+        </div>
+      )}
+
+      {fusion.notes?.length > 0 && (
+        <div style={{
+          borderTop: '1px solid #1f2937',
+          paddingTop: '14px',
+          display: 'grid',
+          gap: '8px'
+        }}>
+          {fusion.notes.map(note => (
+            <div
+              key={note}
+              style={{
+                color: '#9ca3af',
+                fontSize: '12px',
+                lineHeight: 1.5,
+                display: 'flex',
+                gap: '8px'
+              }}
+            >
+              <span style={{ color: headlineColor }}>•</span>
+              <span>{note}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FusionLayerChip({ label, value, color }) {
+  return (
+    <div style={{
+      background: '#0b1220',
+      border: '1px solid #1f2937',
+      borderRadius: '14px',
+      padding: '12px 14px'
+    }}>
+      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 5 }}>{label}</div>
+      <div style={{ color, fontWeight: 'bold', fontSize: '14px', lineHeight: 1.45 }}>{value}</div>
+    </div>
+  )
+}
+
 function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
   if (loading) {
     return (

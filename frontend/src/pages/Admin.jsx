@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   getStocks,
   getDbStatus,
+  getZetaStatus,
   syncStock,
   syncAllStocks,
   deleteStockHistoricalData,
@@ -14,6 +15,7 @@ const YELLOW = '#f59e0b'
 const RED = '#ef4444'
 const PURPLE = '#8b5cf6'
 const GRAY = '#6b7280'
+const CYAN = '#06b6d4'
 
 function asArray(payload) {
   if (!payload) return []
@@ -71,6 +73,25 @@ function formatDate(value) {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
+    })
+  } catch {
+    return String(value)
+  }
+}
+
+function formatDateTime(value) {
+  if (!value) return '-'
+
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return String(value)
+
+    return d.toLocaleString('tr-TR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   } catch {
     return String(value)
@@ -373,6 +394,8 @@ export default function Admin() {
   const [query, setQuery] = useState('')
   const [healthFilter, setHealthFilter] = useState('all')
   const [addingStock, setAddingStock] = useState(false)
+  const [zetaStatus, setZetaStatus] = useState(null)
+  const [zetaStatusLoading, setZetaStatusLoading] = useState(true)
   const [newStock, setNewStock] = useState({
     symbol: '',
     companyName: '',
@@ -381,7 +404,21 @@ export default function Admin() {
 
   useEffect(() => {
     loadAdminData()
+    loadZetaStatus()
   }, [])
+
+  async function loadZetaStatus() {
+    setZetaStatusLoading(true)
+
+    try {
+      const res = await getZetaStatus()
+      setZetaStatus(res.data)
+    } catch {
+      setZetaStatus(null)
+    } finally {
+      setZetaStatusLoading(false)
+    }
+  }
 
   async function loadAdminData() {
     setLoading(true)
@@ -607,6 +644,12 @@ export default function Admin() {
         <StatCard label="Toplam Satır" value={formatNumber(stats.totalRows)} color={PURPLE} icon="🗄️" />
         <StatCard label="OHLC Eksik" value={formatNumber(stats.ohlcMissing)} color={stats.ohlcMissing > 0 ? YELLOW : GREEN} icon="🕯️" />
       </div>
+
+      <ZetaStatusPanel
+        status={zetaStatus}
+        loading={zetaStatusLoading}
+        onRefresh={loadZetaStatus}
+      />
 
       <Panel>
         <div style={{
@@ -917,6 +960,191 @@ export default function Admin() {
           />
         </div>
       </Panel>
+    </div>
+  )
+}
+
+function Badge({ children, color }) {
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      color,
+      background: `${color}18`,
+      border: `1px solid ${color}55`,
+      borderRadius: '999px',
+      padding: '6px 10px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      whiteSpace: 'nowrap'
+    }}>
+      {children}
+    </span>
+  )
+}
+
+function ZetaStatusPanel({ status, loading, onRefresh }) {
+  const allArtifactsReady = Boolean(
+    status?.latestRadarExists &&
+    status?.backtestSummaryExists &&
+    status?.scenarioReportExists
+  )
+
+  const statusColor = loading
+    ? GRAY
+    : !status
+      ? RED
+      : status.isStale
+        ? YELLOW
+        : allArtifactsReady
+          ? GREEN
+          : YELLOW
+
+  const statusLabel = loading
+    ? 'Kontrol ediliyor'
+    : !status
+      ? 'Durum alınamadı'
+      : status.isStale
+        ? 'Güncellenmeli'
+        : allArtifactsReady
+          ? 'Hazır'
+          : 'Eksik çıktı'
+
+  return (
+    <Panel>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: '16px',
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        marginBottom: '18px'
+      }}>
+        <div>
+          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+            Senaryo Tarama Katmanı
+          </div>
+          <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
+            Zeta Radar Durumu
+          </h3>
+          <p style={{
+            color: '#9ca3af',
+            fontSize: '13px',
+            marginTop: '7px',
+            maxWidth: 760,
+            lineHeight: 1.55
+          }}>
+            Python script tarafından üretilen JSON artifact dosyalarının mevcut olup olmadığını ve ne kadar güncel
+            olduklarını gösterir. Bu kart yalnızca durumu okur; henüz script çalıştırmaz.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Badge color={statusColor}>{statusLabel}</Badge>
+
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            style={secondaryButton}
+          >
+            {loading ? 'Yenileniyor...' : '↻ Durumu Yenile'}
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ color: '#9ca3af', fontSize: '13px', padding: '8px 0' }}>
+          Zeta durumu okunuyor...
+        </div>
+      ) : !status ? (
+        <div style={{ color: '#9ca3af', fontSize: '13px' }}>
+          Zeta durum bilgisi alınamadı. Backend API ve `ai_service/artifacts/v12_zeta` klasörünü kontrol edin.
+        </div>
+      ) : (
+        <>
+          <div style={{
+            color: status.isStale ? '#fde68a' : '#9ca3af',
+            background: status.isStale ? '#f59e0b14' : '#111827',
+            border: `1px solid ${status.isStale ? '#f59e0b55' : '#1f2937'}`,
+            borderRadius: '12px',
+            padding: '12px 14px',
+            fontSize: '13px',
+            lineHeight: 1.55,
+            marginBottom: '16px'
+          }}>
+            {status.message}
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(150px, 1fr))',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <ZetaStatusItem
+              label="Radar"
+              value={status.latestRadarExists ? 'Mevcut' : 'Yok'}
+              color={status.latestRadarExists ? GREEN : RED}
+            />
+            <ZetaStatusItem
+              label="Backtest Özeti"
+              value={status.backtestSummaryExists ? 'Mevcut' : 'Yok'}
+              color={status.backtestSummaryExists ? GREEN : RED}
+            />
+            <ZetaStatusItem
+              label="Senaryo Raporu"
+              value={status.scenarioReportExists ? 'Mevcut' : 'Yok'}
+              color={status.scenarioReportExists ? GREEN : RED}
+            />
+            <ZetaStatusItem
+              label="Taranan Sembol"
+              value={formatNumber(status.totalStocks)}
+              color={BLUE}
+            />
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(150px, 1fr))',
+            gap: '12px'
+          }}>
+            <ZetaStatusItem
+              label="Radar Tarihi"
+              value={formatDate(status.latestRadarDate)}
+              color={PURPLE}
+            />
+            <ZetaStatusItem
+              label="Son Üretim"
+              value={formatDateTime(status.generatedAt)}
+              color={PURPLE}
+            />
+            <ZetaStatusItem
+              label="Seçilen Model"
+              value={status.selectedModel || '-'}
+              color={CYAN}
+            />
+            <ZetaStatusItem
+              label="Feature Sayısı"
+              value={formatNumber(status.featureCount)}
+              color={CYAN}
+            />
+          </div>
+        </>
+      )}
+    </Panel>
+  )
+}
+
+function ZetaStatusItem({ label, value, color }) {
+  return (
+    <div style={{
+      background: '#0b1220',
+      border: '1px solid #1f2937',
+      borderRadius: '14px',
+      padding: '12px 14px'
+    }}>
+      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 5 }}>{label}</div>
+      <div style={{ color, fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{value}</div>
     </div>
   )
 }

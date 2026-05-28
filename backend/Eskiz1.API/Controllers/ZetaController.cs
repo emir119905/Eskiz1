@@ -7,11 +7,80 @@ namespace Eskiz1.API.Controllers;
 [Route("api/[controller]")]
 public class ZetaController : ControllerBase
 {
+    private const int StaleRadarAfterDays = 5;
+    private const int StaleReportAfterDays = 7;
+
     private readonly IWebHostEnvironment _environment;
 
     public ZetaController(IWebHostEnvironment environment)
     {
         _environment = environment;
+    }
+
+    [HttpGet("status")]
+    public async Task<IActionResult> GetStatus()
+    {
+        var radarPath = ResolveZetaArtifactPath("zeta_latest_radar.json");
+        var backtestPath = ResolveZetaArtifactPath("zeta_backtest_summary.json");
+        var reportPath = ResolveZetaArtifactPath("zeta_scenario_report.json");
+
+        var latestRadarExists = FileExists(radarPath);
+        var backtestSummaryExists = FileExists(backtestPath);
+        var scenarioReportExists = FileExists(reportPath);
+
+        DateTime? latestRadarDate = null;
+        DateTime? generatedAt = null;
+        string? selectedModel = null;
+        int? totalStocks = null;
+        int? featureCount = null;
+        DateTime? artifactUpdatedAt = null;
+
+        if (latestRadarExists && radarPath is not null)
+        {
+            var radarMeta = await ReadRadarMetadataAsync(radarPath);
+            latestRadarDate = radarMeta.Date;
+            totalStocks = radarMeta.TotalStocks;
+            artifactUpdatedAt = MaxWriteTime(artifactUpdatedAt, radarPath);
+        }
+
+        if (scenarioReportExists && reportPath is not null)
+        {
+            var reportMeta = await ReadScenarioReportMetadataAsync(reportPath);
+            generatedAt = reportMeta.GeneratedAt;
+            selectedModel = reportMeta.SelectedModel;
+            featureCount = reportMeta.FeatureCount;
+            artifactUpdatedAt = MaxWriteTime(artifactUpdatedAt, reportPath);
+        }
+
+        if (backtestSummaryExists && backtestPath is not null)
+        {
+            artifactUpdatedAt = MaxWriteTime(artifactUpdatedAt, backtestPath);
+        }
+
+        var isStale = false;
+        var message = BuildStatusMessage(
+            latestRadarExists,
+            backtestSummaryExists,
+            scenarioReportExists,
+            latestRadarDate,
+            generatedAt,
+            out isStale);
+
+        return Ok(new
+        {
+            latestRadarExists,
+            backtestSummaryExists,
+            scenarioReportExists,
+            latestRadarDate = latestRadarDate?.ToString("yyyy-MM-dd"),
+            generatedAt = generatedAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
+            artifactUpdatedAt = artifactUpdatedAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
+            isStale,
+            message,
+            selectedModel,
+            totalStocks,
+            featureCount,
+            expectedFolder = "ai_service/artifacts/v12_zeta"
+        });
     }
 
     [HttpGet("latest-radar")]
@@ -61,6 +130,109 @@ public class ZetaController : ControllerBase
                 fileName
             });
         }
+    }
+
+    private static bool FileExists(string? filePath)
+    {
+        return filePath is not null && System.IO.File.Exists(filePath);
+    }
+
+    private static DateTime? MaxWriteTime(DateTime? current, string filePath)
+    {
+        var writeTime = System.IO.File.GetLastWriteTimeUtc(filePath);
+        return current.HasValue
+            ? writeTime > current.Value ? writeTime : current
+            : writeTime;
+    }
+
+    private static string BuildStatusMessage(
+        bool latestRadarExists,
+        bool backtestSummaryExists,
+        bool scenarioReportExists,
+        DateTime? latestRadarDate,
+        DateTime? generatedAt,
+        out bool isStale)
+    {
+        isStale = false;
+
+        if (!latestRadarExists && !backtestSummaryExists && !scenarioReportExists)
+        {
+            return "Zeta çıktıları henüz üretilmemiş.";
+        }
+
+        if (!latestRadarExists || !backtestSummaryExists || !scenarioReportExists)
+        {
+            isStale = true;
+            return "Bazı Zeta çıktı dosyaları eksik.";
+        }
+
+        if (latestRadarDate.HasValue &&
+            (DateTime.UtcNow.Date - latestRadarDate.Value.Date).TotalDays > StaleRadarAfterDays)
+        {
+            isStale = true;
+            return "Zeta radar çıktısı güncel değil; yeniden çalıştırılması önerilir.";
+        }
+
+        if (generatedAt.HasValue &&
+            (DateTime.UtcNow - generatedAt.Value.ToUniversalTime()).TotalDays > StaleReportAfterDays)
+        {
+            isStale = true;
+            return "Zeta model raporu eski; yeniden çalıştırılması önerilir.";
+        }
+
+        return "Zeta çıktıları mevcut ve güncel görünüyor.";
+    }
+
+    private static async Task<(DateTime? Date, int? TotalStocks)> ReadRadarMetadataAsync(string filePath)
+    {
+        await using var stream = System.IO.File.OpenRead(filePath);
+        using var document = await JsonDocument.ParseAsync(stream);
+        var root = document.RootElement;
+
+        DateTime? date = null;
+        if (root.TryGetProperty("date", out var dateElement) &&
+            DateTime.TryParse(dateElement.GetString(), out var parsedDate))
+        {
+            date = parsedDate.Date;
+        }
+
+        int? totalStocks = null;
+        if (root.TryGetProperty("totalStocks", out var totalStocksElement) &&
+            totalStocksElement.TryGetInt32(out var parsedTotalStocks))
+        {
+            totalStocks = parsedTotalStocks;
+        }
+
+        return (date, totalStocks);
+    }
+
+    private static async Task<(DateTime? GeneratedAt, string? SelectedModel, int? FeatureCount)> ReadScenarioReportMetadataAsync(string filePath)
+    {
+        await using var stream = System.IO.File.OpenRead(filePath);
+        using var document = await JsonDocument.ParseAsync(stream);
+        var root = document.RootElement;
+
+        DateTime? generatedAt = null;
+        if (root.TryGetProperty("generatedAt", out var generatedAtElement) &&
+            DateTime.TryParse(generatedAtElement.GetString(), out var parsedGeneratedAt))
+        {
+            generatedAt = parsedGeneratedAt;
+        }
+
+        string? selectedModel = null;
+        if (root.TryGetProperty("selectedModel", out var selectedModelElement))
+        {
+            selectedModel = selectedModelElement.GetString();
+        }
+
+        int? featureCount = null;
+        if (root.TryGetProperty("featureCount", out var featureCountElement) &&
+            featureCountElement.TryGetInt32(out var parsedFeatureCount))
+        {
+            featureCount = parsedFeatureCount;
+        }
+
+        return (generatedAt, selectedModel, featureCount);
     }
 
     private string? ResolveZetaArtifactPath(string fileName)
