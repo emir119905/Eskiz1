@@ -3,6 +3,7 @@ import {
   getStocks,
   getDbStatus,
   getZetaStatus,
+  runZetaRadar,
   syncStock,
   syncAllStocks,
   deleteStockHistoricalData,
@@ -396,6 +397,7 @@ export default function Admin() {
   const [addingStock, setAddingStock] = useState(false)
   const [zetaStatus, setZetaStatus] = useState(null)
   const [zetaStatusLoading, setZetaStatusLoading] = useState(true)
+  const [zetaRunning, setZetaRunning] = useState(false)
   const [newStock, setNewStock] = useState({
     symbol: '',
     companyName: '',
@@ -413,10 +415,36 @@ export default function Admin() {
     try {
       const res = await getZetaStatus()
       setZetaStatus(res.data)
+      setZetaRunning(Boolean(res.data?.isRunning))
     } catch {
       setZetaStatus(null)
+      setZetaRunning(false)
     } finally {
       setZetaStatusLoading(false)
+    }
+  }
+
+  async function handleRunZetaRadar() {
+    if (zetaRunning) return
+
+    setZetaRunning(true)
+    setMessage('⏳ Zeta Radar script çalıştırılıyor. Bu işlem birkaç dakika sürebilir...')
+
+    try {
+      const res = await runZetaRadar()
+      const duration = res?.data?.durationSeconds
+      const durationText = duration != null ? ` (${duration} sn)` : ''
+
+      setMessage(`✅ ${res?.data?.message || 'Zeta Radar tamamlandı.'}${durationText}`)
+      await loadZetaStatus()
+    } catch (e) {
+      const payload = e.response?.data
+      const err = payload?.message || payload?.outputTail || e.message
+
+      setMessage(`❌ Zeta Radar çalıştırılamadı: ${err}`)
+      await loadZetaStatus()
+    } finally {
+      setZetaRunning(false)
     }
   }
 
@@ -648,7 +676,9 @@ export default function Admin() {
       <ZetaStatusPanel
         status={zetaStatus}
         loading={zetaStatusLoading}
+        running={zetaRunning}
         onRefresh={loadZetaStatus}
+        onRun={handleRunZetaRadar}
       />
 
       <Panel>
@@ -983,7 +1013,8 @@ function Badge({ children, color }) {
   )
 }
 
-function ZetaStatusPanel({ status, loading, onRefresh }) {
+function ZetaStatusPanel({ status, loading, running, onRefresh, onRun }) {
+  const isRunning = running || Boolean(status?.isRunning)
   const allArtifactsReady = Boolean(
     status?.latestRadarExists &&
     status?.backtestSummaryExists &&
@@ -992,6 +1023,8 @@ function ZetaStatusPanel({ status, loading, onRefresh }) {
 
   const statusColor = loading
     ? GRAY
+    : isRunning
+      ? BLUE
     : !status
       ? RED
       : status.isStale
@@ -1002,6 +1035,8 @@ function ZetaStatusPanel({ status, loading, onRefresh }) {
 
   const statusLabel = loading
     ? 'Kontrol ediliyor'
+    : isRunning
+      ? 'Çalışıyor'
     : !status
       ? 'Durum alınamadı'
       : status.isStale
@@ -1034,8 +1069,8 @@ function ZetaStatusPanel({ status, loading, onRefresh }) {
             maxWidth: 760,
             lineHeight: 1.55
           }}>
-            Python script tarafından üretilen JSON artifact dosyalarının mevcut olup olmadığını ve ne kadar güncel
-            olduklarını gösterir. Bu kart yalnızca durumu okur; henüz script çalıştırmaz.
+            Python script tarafından üretilen JSON artifact dosyalarının durumunu gösterir ve kontrollü şekilde
+            yeniden üretim başlatabilir. Script birkaç dakika sürebilir.
           </p>
         </div>
 
@@ -1044,10 +1079,22 @@ function ZetaStatusPanel({ status, loading, onRefresh }) {
 
           <button
             onClick={onRefresh}
-            disabled={loading}
+            disabled={loading || isRunning}
             style={secondaryButton}
           >
             {loading ? 'Yenileniyor...' : '↻ Durumu Yenile'}
+          </button>
+
+          <button
+            onClick={onRun}
+            disabled={loading || isRunning}
+            style={{
+              ...primaryButton,
+              opacity: loading || isRunning ? 0.65 : 1,
+              cursor: loading || isRunning ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isRunning ? '⏳ Zeta Radar Çalışıyor...' : '🚀 Zeta Radar Yenile'}
           </button>
         </div>
       </div>
@@ -1129,6 +1176,20 @@ function ZetaStatusPanel({ status, loading, onRefresh }) {
               color={CYAN}
             />
           </div>
+
+          {(status.lastRunCompletedAt || status.lastRunMessage) && (
+            <div style={{
+              marginTop: '14px',
+              color: '#6b7280',
+              fontSize: '12px',
+              lineHeight: 1.55
+            }}>
+              Son çalıştırma: {formatDateTime(status.lastRunCompletedAt || status.lastRunStartedAt)}
+              {status.lastRunSuccess === true && ' · başarılı'}
+              {status.lastRunSuccess === false && ' · başarısız'}
+              {status.lastRunMessage ? ` · ${status.lastRunMessage}` : ''}
+            </div>
+          )}
         </>
       )}
     </Panel>

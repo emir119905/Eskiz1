@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Eskiz1.API.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Eskiz1.API.Controllers;
@@ -10,19 +11,22 @@ public class ZetaController : ControllerBase
     private const int StaleRadarAfterDays = 5;
     private const int StaleReportAfterDays = 7;
 
-    private readonly IWebHostEnvironment _environment;
+    private readonly ZetaPaths _paths;
+    private readonly ZetaRunService _runService;
 
-    public ZetaController(IWebHostEnvironment environment)
+    public ZetaController(ZetaPaths paths, ZetaRunService runService)
     {
-        _environment = environment;
+        _paths = paths;
+        _runService = runService;
     }
 
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus()
     {
-        var radarPath = ResolveZetaArtifactPath("zeta_latest_radar.json");
-        var backtestPath = ResolveZetaArtifactPath("zeta_backtest_summary.json");
-        var reportPath = ResolveZetaArtifactPath("zeta_scenario_report.json");
+        var runSnapshot = _runService.GetSnapshot();
+        var radarPath = _paths.ResolveArtifactFile("zeta_latest_radar.json");
+        var backtestPath = _paths.ResolveArtifactFile("zeta_backtest_summary.json");
+        var reportPath = _paths.ResolveArtifactFile("zeta_scenario_report.json");
 
         var latestRadarExists = FileExists(radarPath);
         var backtestSummaryExists = FileExists(backtestPath);
@@ -66,6 +70,11 @@ public class ZetaController : ControllerBase
             generatedAt,
             out isStale);
 
+        if (runSnapshot.IsRunning)
+        {
+            message = "Zeta Radar şu anda çalışıyor.";
+        }
+
         return Ok(new
         {
             latestRadarExists,
@@ -74,13 +83,72 @@ public class ZetaController : ControllerBase
             latestRadarDate = latestRadarDate?.ToString("yyyy-MM-dd"),
             generatedAt = generatedAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
             artifactUpdatedAt = artifactUpdatedAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
-            isStale,
+            isStale = runSnapshot.IsRunning || isStale,
             message,
             selectedModel,
             totalStocks,
             featureCount,
-            expectedFolder = "ai_service/artifacts/v12_zeta"
+            expectedFolder = "ai_service/artifacts/v12_zeta",
+            isRunning = runSnapshot.IsRunning,
+            lastRunStartedAt = runSnapshot.LastRunStartedAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
+            lastRunCompletedAt = runSnapshot.LastRunCompletedAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
+            lastRunSuccess = runSnapshot.LastRunSuccess,
+            lastRunMessage = runSnapshot.LastRunMessage,
+            lastExitCode = runSnapshot.LastExitCode
         });
+    }
+
+    [HttpPost("run")]
+    public async Task<IActionResult> RunRadar(CancellationToken cancellationToken)
+    {
+        if (_runService.IsRunning)
+        {
+            var snapshot = _runService.GetSnapshot();
+            return Conflict(new
+            {
+                message = "Zeta Radar zaten çalışıyor.",
+                startedAt = snapshot.LastRunStartedAt?.ToString("yyyy-MM-ddTHH:mm:ss")
+            });
+        }
+
+        try
+        {
+            var result = await _runService.RunAsync(cancellationToken);
+
+            if (!result.Success)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = result.Message,
+                    startedAt = result.StartedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    completedAt = result.CompletedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    durationSeconds = result.DurationSeconds,
+                    exitCode = result.ExitCode,
+                    outputTail = result.OutputTail
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = result.Message,
+                startedAt = result.StartedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
+                completedAt = result.CompletedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
+                durationSeconds = result.DurationSeconds,
+                exitCode = result.ExitCode,
+                outputTail = result.OutputTail
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            var snapshot = _runService.GetSnapshot();
+            return Conflict(new
+            {
+                message = ex.Message,
+                startedAt = snapshot.LastRunStartedAt?.ToString("yyyy-MM-ddTHH:mm:ss")
+            });
+        }
     }
 
     [HttpGet("latest-radar")]
@@ -103,7 +171,7 @@ public class ZetaController : ControllerBase
 
     private async Task<IActionResult> ReadZetaJsonFile(string fileName)
     {
-        var filePath = ResolveZetaArtifactPath(fileName);
+        var filePath = _paths.ResolveArtifactFile(fileName);
 
         if (filePath is null || !System.IO.File.Exists(filePath))
         {
@@ -233,23 +301,5 @@ public class ZetaController : ControllerBase
         }
 
         return (generatedAt, selectedModel, featureCount);
-    }
-
-    private string? ResolveZetaArtifactPath(string fileName)
-    {
-        var currentDirectory = Directory.GetCurrentDirectory();
-
-        var candidates = new[]
-        {
-            Path.Combine(currentDirectory, "artifacts", "v12_zeta", fileName),
-            Path.Combine(currentDirectory, "..", "..", "ai_service", "artifacts", "v12_zeta", fileName),
-            Path.Combine(currentDirectory, "..", "..", "..", "ai_service", "artifacts", "v12_zeta", fileName),
-            Path.Combine(_environment.ContentRootPath, "..", "..", "ai_service", "artifacts", "v12_zeta", fileName),
-            Path.Combine(_environment.ContentRootPath, "..", "..", "..", "ai_service", "artifacts", "v12_zeta", fileName)
-        };
-
-        return candidates
-            .Select(Path.GetFullPath)
-            .FirstOrDefault(System.IO.File.Exists);
     }
 }

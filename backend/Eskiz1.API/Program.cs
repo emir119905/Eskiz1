@@ -10,6 +10,8 @@ builder.Services.AddHttpClient(string.Empty, client =>
 
 builder.Services.AddScoped<Eskiz1.API.Services.YahooFinanceService>();
 builder.Services.AddScoped<Eskiz1.API.Services.ExternalDataService>();
+builder.Services.AddSingleton<Eskiz1.API.Services.ZetaPaths>();
+builder.Services.AddSingleton<Eskiz1.API.Services.ZetaRunService>();
 builder.Services.AddHostedService<Eskiz1.API.Services.DailyDataSyncService>();
 
 builder.Services.AddControllers();
