@@ -1,13 +1,10 @@
 import axios from 'axios'
 
-// .NET API: hisse arama, portföy, admin vb. mevcut sistem burada kalıyor.
 const api = axios.create({
   baseURL: 'http://localhost:5221/api',
   timeout: 600000
 })
 
-// Python AI API: v11.3 metrikleri ve chartData kontratı burada.
-// .NET prediction endpoint'i yeni alanları filtreliyorsa Dashboard kartları boş kalır.
 const aiApi = axios.create({
   baseURL: 'http://127.0.0.1:8000',
   timeout: 600000
@@ -19,7 +16,6 @@ export const searchStocks    = (q)       => api.get(`/stocks/search?q=${encodeUR
 export const addStock        = (stock)   => api.post('/stocks', stock)
 
 // TAHMİN
-// v11.3 için direkt Python motorundan çekiyoruz ki chartData/practicalHorizonMetrics kaybolmasın.
 export const getPrediction   = (stockId) => aiApi.get(`/predict/${stockId}`)
 export const getBehaviorSignal = (stockId) => aiApi.get(`/behavior-signal/${stockId}`)
 

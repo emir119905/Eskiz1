@@ -1,24 +1,3 @@
-"""
-Pusula AI v11.3 — horizon metrikleri ve grafik veri kontratı
-=============================================================
-
-Bu servis, çok ufuklu finansal analiz motorunu çalıştırır ve frontend tarafında kullanılan
-tahmin, backtest, sinyal kalitesi ve grafik verisi alanlarını üretir.
-
-Ana özellikler:
-  1. rolling forecast kullanılmaz; model kendi tahminini tekrar girdi olarak almaz.
-  2. direct multi-horizon yapı ile T+5, T+10, T+20 ve T+30 günlük cumulative log return hedefleri tahmin edilir.
-  3. return hedefleri sıfır merkezli tutulur; böylece yön davranışı doğrudan korunur.
-  4. quantile head q10, q50 ve q90 bantlarını üretir.
-  5. direction head down, flat ve up olasılıklarını üretir.
-  6. son 90 gün holdout olarak ayrılır ve eğitimde kullanılmaz.
-  7. dış piyasa değişkenleri feature setine kontrollü şekilde dahil edilir.
-  8. yön başarısı anlamlı hareket filtresiyle değerlendirilir.
-  9. naive baseline karşılaştırması ile model katkısı ayrıca ölçülür.
-  10. chartData alanı frontend için tarih hizalı backtest ve forecast serileri döndürür.
-"""
-
-
 import os
 import joblib
 from datetime import datetime
@@ -112,7 +91,7 @@ EXTERNAL_FEATURES = [
 LOOKBACK = 90
 FORECAST = 30
 BACKTEST_DAYS = 90
-BACKTEST_HORIZON = 5  # Backtest artık T+1 değil, modelin gerçek T+5 hedefiyle hizalıdır.
+BACKTEST_HORIZON = 5  
 
 HORIZONS = np.array([5, 10, 20, 30], dtype=np.int32)
 N_HORIZONS = len(HORIZONS)
@@ -124,27 +103,21 @@ N_QUANTILES = len(QUANTILES)
 FEATURE_SELECTION_MODE = "force_external"
 MOMENTUM_WIN = 5
 
-# 30 günlük sınıflandırma eşiği:
-# threshold = CLASS_THRESHOLD_K * rolling_volatility * sqrt(30)
 CLASS_THRESHOLD_K = 0.75
 
-# Çok küçük hareketlerde direction loss'u devre dışı bırakır.
-# Ölçeklenmiş target üzerinde çalışır.
 DIRECTION_SIGNIFICANCE_THR = 0.15
 
-DIRECTION_METRIC_THR = 0.002  # Günlük %0.2; horizon metriğinde sqrt(horizon) ile ölçeklenir.
-PRACTICAL_HORIZON_DIRECTION_THR = 0.01  # 5 günlük pratik yön eşiği: +/- %1
+DIRECTION_METRIC_THR = 0.002  
+PRACTICAL_HORIZON_DIRECTION_THR = 0.01  
 SIGNAL_CONFIDENCE_THR = 0.45
 SIGNAL_EDGE_THR = 0.08
 
-# Eğitim/mimari versiyonu değişmedi; v11.1 modelleri tekrar kullanılabilir.
 MODEL_VERSION = "v11_2_ohlcv_features"
 EVALUATION_VERSION = "v11_4_ohlcv_atr_features"
 
 
-# ============================================================
-# 1. veritabanı
-# ============================================================
+# veritabanı
+
 def get_db_data(stock_id: int) -> pd.DataFrame:
     try:
         conn = get_connection()
@@ -189,9 +162,7 @@ def get_db_data(stock_id: int) -> pd.DataFrame:
         raise Exception(f"veritabanı hatası: {str(e)}")
 
 
-# ============================================================
-# 2. indikatörler
-# ============================================================
+# indikatörler
 def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
@@ -203,7 +174,6 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     close = df["ClosePrice"].astype(float)
     open_ = df["OpenPrice"].astype(float)
 
-    # high/low kolonları eksik olan eski kayıtlarda güvenli fallback uygulanır.
     if "HighPrice" in df.columns:
         high = pd.to_numeric(df["HighPrice"], errors="coerce").astype(float)
     else:
@@ -272,21 +242,9 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ============================================================
-# 3. feature seçimi ve profil
-# ============================================================
+# feature seçimi ve profil
 def select_features(train_df: pd.DataFrame, stock_id: int) -> List[str]:
-    """
-    v11.1:
-    External feature'ları korelasyon filtresine takmadan dahil eder.
-
-    Neden?
-      v11 testlerinde 14 hisseden sadece KONTR external feature alabildi.
-      Aynı gün lineer korelasyon filtresi makro etkileri fazla agresif eliyordu.
-
-    Not:
-      Bu seçim yine sadece train_df üzerinden yapılır; holdout/test döneminden bilgi sızıntısı yoktur.
-    """
+    
     aktif = []
 
     for feat in BASE_FEATURES:
@@ -304,7 +262,6 @@ def select_features(train_df: pd.DataFrame, stock_id: int) -> List[str]:
         finite_count = int(np.isfinite(series).sum())
         std_val = float(np.nanstd(series.values.astype(np.float64))) if finite_count > 0 else 0.0
 
-            # tamamen boş veya sabit external kolonlar feature setine eklenmez.
         if finite_count >= 30 and np.isfinite(std_val) and std_val > 1e-12:
             aktif.append(feat)
 
@@ -312,11 +269,7 @@ def select_features(train_df: pd.DataFrame, stock_id: int) -> List[str]:
 
 
 def get_profile(df: pd.DataFrame) -> Dict[str, Any]:
-    """
-    v11.1:
-    Sadece 252 günlük volatiliteye bakmak yerine 60 günlük yakın dönem volatilitesini de dikkate alır.
-    Böylece sonradan hareketlenen hisseler yanlışlıkla DUSUK_VOL'a sıkışmaz.
-    """
+   
     ret = df["Return"].astype(float)
 
     vol_252 = float(ret.tail(252).std() * np.sqrt(252))
@@ -351,24 +304,10 @@ def get_profile(df: pd.DataFrame) -> Dict[str, Any]:
         }
 
 
-# ============================================================
-# 4. custom layer: ordered quantiles
-# ============================================================
+# custom layer: ordered quantiles
 @tf.keras.utils.register_keras_serializable(package="Eskiz")
 class OrderedQuantilesLayer(Layer):
-    """
-    raw[..., 0] -> q50
-    raw[..., 1] -> low width
-    raw[..., 2] -> high width
-
-    Çıktı:
-      q10 = q50 - softplus(low width)
-      q50 = raw median
-      q90 = q50 + softplus(high width)
-
-    Böylece q10 <= q50 <= q90 mimari olarak garanti edilir.
-    """
-
+   
     def __init__(self, min_width: float = 1e-5, **kwargs):
         super().__init__(**kwargs)
         self.min_width = min_width
@@ -389,18 +328,10 @@ class OrderedQuantilesLayer(Layer):
         return config
 
 
-# ============================================================
-# 5. loss fonksiyonları
-# ============================================================
+# loss fonksiyonları
 @tf.keras.utils.register_keras_serializable(package="Eskiz")
 def multi_horizon_quantile_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-    """
-    y_true: (batch, N_HORIZONS)
-    y_pred: (batch, N_HORIZONS, N_QUANTILES)
-
-    Hedefler cumulative log return / horizon scale.
-    Yani sıfır-merkezli ve işaret koruyan ölçekte çalışır.
-    """
+   
     y_true = tf.cast(y_true, tf.float32)
     y_pred = tf.cast(y_pred, tf.float32)
 
@@ -417,21 +348,16 @@ def multi_horizon_quantile_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tens
 
     significant = tf.cast(tf.abs(y_true) > DIRECTION_SIGNIFICANCE_THR, tf.float32)
 
-    # Differentiable directional penalty:
-    # y_true * q50 pozitifse doğru yön, negatifse yanlış yön.
     dir_raw = tf.nn.softplus(-3.0 * y_true * q50)
     loss_dir = tf.reduce_sum(significant * dir_raw) / (tf.reduce_sum(significant) + 1e-8)
 
-    # Bantları sınırsız açmasın diye yumuşak width regularization.
-    # OrderedQuantilesLayer sebebiyle q90 - q10 zaten pozitiftir.
     width = tf.reduce_mean(y_pred[:, :, 2] - y_pred[:, :, 0])
 
     return loss_q + 0.15 * loss_dir + 0.01 * width
 
 
-# ============================================================
-# 6. model — direct multi-horizon
-# ============================================================
+# model — direct multi-horizon
+
 def build_model_v11(lookback: int, n_features: int, dropout: float) -> Model:
     enc_input = Input(shape=(lookback, n_features), name="enc_input")
 
@@ -458,14 +384,10 @@ def build_model_v11(lookback: int, n_features: int, dropout: float) -> Model:
     x = Dropout(dropout, name="dropout3")(x)
     x = Dense(32, activation="relu", name="dense32")(x)
 
-    # quantile head:
-    # Her horizon için raw 3 parametre üretir.
     raw_q = Dense(N_HORIZONS * 3, name="raw_quantile_params")(x)
     raw_q = Reshape((N_HORIZONS, 3), name="raw_quantiles")(raw_q)
     quantile_output = OrderedQuantilesLayer(name="quantiles")(raw_q)
 
-    # direction head:
-    # 0 = down, 1 = flat, 2 = up
     direction_output = Dense(3, activation="softmax", name="direction")(x)
 
     model = Model(
@@ -474,10 +396,6 @@ def build_model_v11(lookback: int, n_features: int, dropout: float) -> Model:
         name="Eskiz1_v11_1_ForceExternal",
     )
 
-    # keras 3.x çoklu çıktı eşleşmesinde liste tabanlı compile tercih edilir.
-    # çıktı sırası:
-    #   0 -> quantiles
-    #   1 -> direction
     model.compile(
         optimizer=Adam(learning_rate=0.001),
         loss=[
@@ -490,9 +408,8 @@ def build_model_v11(lookback: int, n_features: int, dropout: float) -> Model:
     return model
 
 
-# ============================================================
-# 7. dataset üretimi
-# ============================================================
+# dataset üretimi
+
 def compute_raw_momentum(raw_returns: np.ndarray, end_idx: int, ret_sigma: float) -> np.ndarray:
     recent = raw_returns[end_idx - MOMENTUM_WIN:end_idx]
     return np.array(
@@ -508,15 +425,7 @@ def create_direct_horizon_dataset(
     train_df: pd.DataFrame,
     features: List[str],
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, MinMaxScaler, np.ndarray, float]:
-    """
-    Model input:
-      X_enc: Son 90 gün feature penceresi
-      X_mom: Son 5 gün raw return momentum özeti
 
-    Model target:
-      Y_ret: T+5/T+10/T+20/T+30 cumulative log return, horizon scale ile normalize edilmiş
-      Y_cls: 30 günlük down/flat/up sınıfı
-    """
     if len(train_df) < LOOKBACK + MAX_HORIZON + 50:
         raise ValueError(
             f"Yetersiz train verisi. Gerekli minimum yaklaşık {LOOKBACK + MAX_HORIZON + 50}, mevcut {len(train_df)}."
@@ -533,7 +442,6 @@ def create_direct_horizon_dataset(
     raw_returns = train_df["Return"].values.astype(np.float64)
     ret_sigma = float(np.nanstd(raw_returns) + 1e-8)
 
-    # Horizon büyüdükçe doğal getiri oynaklığı sqrt(horizon) ile ölçeklenir.
     y_scale = (ret_sigma * np.sqrt(HORIZONS.astype(np.float32))).astype(np.float32)
     y_scale = np.maximum(y_scale, 1e-8)
 
@@ -545,7 +453,6 @@ def create_direct_horizon_dataset(
 
         base_idx = end_idx - 1
 
-        # Cumulative log return hedefleri.
         y = np.array(
             [
                 log_close[base_idx + int(h)] - log_close[base_idx]
@@ -556,7 +463,6 @@ def create_direct_horizon_dataset(
 
         Y_ret.append(y / y_scale)
 
-        # Direction class sadece 30 günlük hedef üzerinden.
         local_start = max(0, end_idx - 60)
         local_vol = float(np.nanstd(raw_returns[local_start:end_idx]) + 1e-8)
         threshold = CLASS_THRESHOLD_K * local_vol * np.sqrt(30.0)
@@ -584,10 +490,7 @@ def create_direct_horizon_dataset(
 
 
 def build_sample_weights(Y_cls: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Balanced sampling yerine veri atmayız.
-    Sadece direction head için sınıf ağırlıklı sample_weight kullanırız.
-    """
+
     n = len(Y_cls)
     quantile_weights = np.ones(n, dtype=np.float32)
 
@@ -597,17 +500,15 @@ def build_sample_weights(Y_cls: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     class_weights = n / (3.0 * counts)
     direction_weights = class_weights[Y_cls].astype(np.float32)
 
-    # çok nadir sınıflarda aşırı yüksek ağırlık oluşması engellenir.
     direction_weights = np.clip(direction_weights, 0.25, 4.0)
 
     return quantile_weights, direction_weights
 
 
-# ============================================================
-# 8. eğitim / kaydetme
-# ============================================================
+# eğitim / kaydetme
+
 def model_paths(stock_id: int) -> Dict[str, str]:
-    # v11 baseline dosyalarıyla karışmaması için ayrı kayıt adları kullanılır.
+
     return {
         "model": f"ai_models/model_v11_2_{stock_id}.keras",
         "scaler": f"ai_models/scaler_v11_2_{stock_id}.gz",
@@ -624,10 +525,7 @@ def train_and_save_model(
     stock_id: int,
     features: List[str],
 ) -> Tuple[Model, MinMaxScaler, np.ndarray, float, Dict[str, Any]]:
-    """
-    Son BACKTEST_DAYS eğitimden ayrılır.
-    Böylece endpoint'in verdiği backtest modelin görmediği veri üzerinde yapılır.
-    """
+
     train_df = df.iloc[:-BACKTEST_DAYS].copy()
 
     if len(train_df) < LOOKBACK + MAX_HORIZON + 100:
@@ -669,7 +567,6 @@ def train_and_save_model(
 
     sw_quantiles, sw_direction = build_sample_weights(Y_cls)
 
-    # Zaman serisi mantığını korumak için validasyonu elle sondan ayırıyoruz.
     n_samples = len(X_enc)
     val_size = max(1, int(n_samples * 0.15))
     train_size = n_samples - val_size
@@ -713,9 +610,8 @@ def train_and_save_model(
     return model, x_scaler, y_scale, ret_sigma, profil
 
 
-# ============================================================
-# 9. model yükleme / stale kontrol
-# ============================================================
+# model yükleme / stale kontrol
+
 CUSTOM_OBJECTS = {
     "OrderedQuantilesLayer": OrderedQuantilesLayer,
     "multi_horizon_quantile_loss": multi_horizon_quantile_loss,
@@ -784,9 +680,8 @@ def load_saved_model_bundle(stock_id: int) -> Tuple[Model, MinMaxScaler, np.ndar
     return model, scaler, y_scale, float(ret_sigma), profil, features
 
 
-# ============================================================
-# 10. tahmin yardımcıları
-# ============================================================
+# tahmin yardımcıları
+
 def make_seed_inputs(
     df: pd.DataFrame,
     features: List[str],
@@ -794,11 +689,7 @@ def make_seed_inputs(
     ret_sigma: float,
     end_idx_exclusive: int = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    end_idx_exclusive:
-      None ise df'in son LOOKBACK günü kullanılır.
-      Değer verilirse [end_idx - LOOKBACK, end_idx) penceresi kullanılır.
-    """
+
     if end_idx_exclusive is None:
         end_idx_exclusive = len(df)
 
@@ -825,7 +716,6 @@ def model_predict_outputs(
 ) -> Tuple[np.ndarray, np.ndarray]:
     pred = model.predict([seed_batch, seed_momentum], verbose=0)
 
-    # Keras output list döner: [quantiles, direction]
     if isinstance(pred, dict):
         q_scaled = pred["quantiles"][0]
         direction_probs = pred["direction"][0]
@@ -837,10 +727,7 @@ def model_predict_outputs(
 
 
 def interpolate_horizon_curve(q_values: np.ndarray) -> np.ndarray:
-    """
-    q_values: HORIZONS uzunluğunda cumulative log return.
-    Çıktı: 1..FORECAST günleri için interpolated cumulative log return.
-    """
+
     days = np.arange(1, FORECAST + 1)
     xp = np.array([0, *HORIZONS], dtype=np.float64)
     fp = np.r_[0.0, q_values.astype(np.float64)]
@@ -866,7 +753,6 @@ def direct_horizon_forecast(
 
     q_scaled, direction_probs = model_predict_outputs(model, seed_batch, seed_momentum)
 
-    # q_scaled: (N_HORIZONS, 3)
     q_real = q_scaled * y_scale.reshape(-1, 1)
 
     q10 = q_real[:, 0]
@@ -899,9 +785,8 @@ def direct_horizon_forecast(
     }
 
 
-# ============================================================
-# 11. backtest — horizon-aligned + naive baseline
-# ============================================================
+# backtest — horizon-aligned + naive baseline
+
 def get_horizon_position(horizon: int) -> int:
     matches = np.where(HORIZONS == int(horizon))[0]
     if len(matches) == 0:
@@ -930,21 +815,7 @@ def horizon_aligned_backtest(
     n_days: int = BACKTEST_DAYS,
     horizon: int = BACKTEST_HORIZON,
 ) -> Dict[str, Any]:
-    """
-    Direct multi-horizon model için doğru backtest.
 
-    Eski sorun:
-      Model T+5/T+10/T+20/T+30 eğitildiği halde backtest grafiğinde T+1 interpolasyon kullanılıyordu.
-      Bu da kırmızı çizgiyi çoğu zaman gerçek fiyatın 1 günlük gecikmiş kopyasına benzetiyordu.
-
-    Yeni mantık:
-      Her target gün için, horizon gün önceki origin gününden gerçek T+horizon tahmini alınır.
-
-      origin_idx = target_idx - horizon
-      prediction = Close[origin_idx] * exp(predicted_cumulative_log_return_horizon)
-      real       = Close[target_idx]
-      naive      = Close[origin_idx]
-    """
     horizon = int(horizon)
     h_pos = get_horizon_position(horizon)
 
@@ -1051,15 +922,7 @@ def calculate_horizon_metrics(
     horizon: int = BACKTEST_HORIZON,
     direction_threshold: float = None,
 ) -> Dict[str, Any]:
-    """
-    Horizon-aligned metrikler.
 
-    Doğru yön sorusu:
-      origin -> target gerçek hareketi ile origin -> model tahmini aynı sınıfta mı?
-
-    Eski hatadan kaçınır:
-      diff(real_target_series) vs diff(prediction_series) karşılaştırılmaz.
-    """
     real_arr = np.asarray(real, dtype=np.float64)
     pred_arr = np.asarray(predicted, dtype=np.float64)
     origin_arr = np.asarray(origins, dtype=np.float64)
@@ -1095,7 +958,6 @@ def calculate_horizon_metrics(
     pred_ret = (pred_arr - origin_arr) / (np.abs(origin_arr) + 1e-10)
 
     if direction_threshold is None:
-        # Günlük %0.2 eşiği horizon'a sqrt ölçekle taşınır.
         direction_threshold = float(DIRECTION_METRIC_THR * np.sqrt(max(1, int(horizon))))
     else:
         direction_threshold = float(direction_threshold)
@@ -1105,8 +967,6 @@ def calculate_horizon_metrics(
 
     three_class_accuracy = np.mean(real_cls == pred_cls) * 100.0
 
-    # Direction score sadece gerçek anlamlı hareketlerde hesaplanır.
-    # Pred flat ise gerçek up/down karşısında yanlış sayılır; bu bilinçli ve dürüst alfa metriğidir.
     significant_mask = real_cls != 0
     direction_coverage = float(np.mean(significant_mask) * 100.0)
 
@@ -1117,7 +977,6 @@ def calculate_horizon_metrics(
 
     predicted_action_rate = float(np.mean(pred_cls != 0) * 100.0)
 
-    # eski alan adı api uyumu için korunur; değer artık horizon 3-class accuracy anlamına gelir.
     raw_direction_score = three_class_accuracy
 
     accuracy_score = max(0.0, min(100.0, (1.0 - float(mape)) * 100.0))
@@ -1234,12 +1093,7 @@ def build_chart_data(
     forecast: Dict[str, Any],
     df: pd.DataFrame,
 ) -> Dict[str, Any]:
-    """
-    Frontend tarih uydurmasın diye tek doğru grafik kontratı.
 
-    backtest satırları targetDate üzerinde çizilir.
-    originDate sadece tooltip/debug içindir.
-    """
     backtest_rows = []
     n = min(
         len(backtest.get("real", [])),
@@ -1298,9 +1152,8 @@ def build_chart_data(
         "xAxisRule": "Use backtest[].date and forecast[].date. Do not generate synthetic past dates in frontend.",
     }
 
-# ============================================================
-# 12. ANA ENDPOINT
-# ============================================================
+# ANA ENDPOINT
+
 @app.get("/predict/{stock_id}")
 def predict(stock_id: int):
     try:
@@ -1313,7 +1166,6 @@ def predict(stock_id: int):
                 "error": f"Yetersiz veri. Minimum yaklaşık {min_required} satır gerekli, mevcut {len(df)}."
             }
 
-        # Feature selection sadece train/holdout ayrımından önceki bölümde yapılır.
         feature_selection_df = df.iloc[:-BACKTEST_DAYS].copy()
         active_features = select_features(feature_selection_df, stock_id)
 
@@ -1341,8 +1193,6 @@ def predict(stock_id: int):
                 f"[{profil.get('profil', '?')}] ({len(active_features)} feat)"
             )
 
-        # Holdout backtest — v11.2:
-        # T+1 interpolasyon yok. T+5 horizon-aligned değerlendirme var.
         backtest = horizon_aligned_backtest(
             model=model,
             x_scaler=x_scaler,
@@ -1371,8 +1221,6 @@ def predict(stock_id: int):
             horizon=BACKTEST_HORIZON,
         )
 
-        # daha anlaşılır bir 5 günlük yön eşiği kullanılır: +/- %1.
-        # dashboard üzerinde gösterilen directionScore bu pratik ölçümden üretilir.
         practical_metrics = calculate_horizon_metrics(
             real=past_90_real,
             predicted=past_90_ai,
@@ -1420,7 +1268,6 @@ def predict(stock_id: int):
             "directionProbabilities": forecast["directionProbabilities"],
             "horizonReturns": forecast["horizonReturns"],
             "confidenceScore": metrics["accuracyScore"],
-            # dashboard uyumluluğu için directionScore pratik +/- %1 horizon metriğini kullanır.
             "directionScore": practical_metrics["directionScore"],
             "rawDirectionScore": practical_metrics["rawDirectionScore"],
             "directionCoverage": practical_metrics["directionCoverage"],
@@ -1453,11 +1300,9 @@ def predict(stock_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================
 # v12-alpha daily behavior signal
 # rule-based günlük davranış katmanı.
 # ana tahmin motorunu değiştirmeden teşhis ve yardımcı sinyal üretir.
-# ============================================================
 
 def _behavior_safe_float(value, default=0.0):
     try:
@@ -1491,10 +1336,7 @@ def _behavior_tanh_score(value, scale=1.0):
 
 
 def _behavior_get_connection():
-    """
-    v12-alpha behavior endpoint için ana DB bağlantısını kullanır.
-    /predict endpoint'iyle aynı SQL Server connection string'i paylaşılır.
-    """
+
     return get_connection()
 
 

@@ -89,11 +89,7 @@ function formatSmartPct(value, digits = 2) {
   if (value === undefined || value === null || Number.isNaN(Number(value))) return '-'
 
   const n = Number(value)
-
-  // 0.34 gibi olasılık değeri gelirse yüzdeye çevrilir.
   if (Math.abs(n) <= 1) return pct(n * 100, digits)
-
-  // 34 gibi yüzde değeri gelirse olduğu gibi gösterilir.
   return pct(n, digits)
 }
 function normalizeBehaviorSignal(payload) {
@@ -281,12 +277,10 @@ function getPredictionMetrics(stock, prediction, behaviorSignal = null) {
     behavior.directionBias !== 'flat'
   )
 
-  // sert ayrışma: ana model aksiyon üretmezken davranış katmanı net yön sinyali verir.
   if (behaviorHasActionableDirection && safeNumber(actionRate) <= 1) {
     riskTags.push('V12_DIVERGENCE')
   }
 
-  // yumuşak ayrışma: ana model zayıfken davranış katmanı güçlü yön sinyali verir.
   if (
     behaviorHasActionableDirection &&
     safeNumber(actionRate) > 1 &&

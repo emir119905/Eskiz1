@@ -1,26 +1,3 @@
-# ai_service/v12_direction_lab.py
-# ============================================================
-# Pusula AI v12 direction lab - epsilon two-stage + ohlcv features
-# ------------------------------------------------------------
-# amaç:
-#   tek 3-class model yerine iki aşamalı yön motorunu test eder.
-#
-#   stage 1: hareket var mı?
-#       no_move / move
-#
-#   stage 2: hareket varsa yön ne?
-#       down / up
-#
-#   final class:
-#       stage1 no_move  -> flat
-#       stage1 move + stage2 down -> down
-#       stage1 move + stage2 up   -> up
-#
-# not:
-#   model / threshold seçimi yalnızca validation set üzerinden yapılır.
-#   test seti yalnızca final raporlama için kullanılır.
-# ============================================================
-
 import argparse
 import json
 import math
@@ -46,9 +23,7 @@ CLASS_LABELS = {
 }
 
 
-# ------------------------------------------------------------
 # veritabanı bağlantısı
-# ------------------------------------------------------------
 
 def get_db_connection():
     """
@@ -136,9 +111,7 @@ def read_sql_data(stock_id=None):
             pass
 
 
-# ------------------------------------------------------------
 # feature engineering
-# ------------------------------------------------------------
 
 def compute_rsi(series, period=14):
     delta = series.diff()
@@ -284,7 +257,6 @@ def build_stock_dataset(stock_df, external_df, horizon=10, vol_mult=0.60, min_th
     if len(df) < 220:
         return pd.DataFrame(), []
 
-    # high/low backfill edilmemiş eski kayıtlar için güvenli fallback uygulanır.
     df["HighPrice"] = df["HighPrice"].fillna(df[["OpenPrice", "ClosePrice"]].max(axis=1))
     df["LowPrice"] = df["LowPrice"].fillna(df[["OpenPrice", "ClosePrice"]].min(axis=1))
     df["HighPrice"] = df[["HighPrice", "OpenPrice", "ClosePrice"]].max(axis=1)
@@ -441,9 +413,7 @@ def build_stock_dataset(stock_df, external_df, horizon=10, vol_mult=0.60, min_th
     return out, feature_cols
 
 
-# ------------------------------------------------------------
 # metrikler
-# ------------------------------------------------------------
 
 def confusion_matrix_3(y_true, y_pred):
     matrix = np.zeros((3, 3), dtype=int)
@@ -557,9 +527,7 @@ def class_distribution(y):
     }
 
 
-# ------------------------------------------------------------
 # modeller
-# ------------------------------------------------------------
 
 def build_models():
     try:
@@ -636,9 +604,6 @@ def two_stage_predict(move_prob, up_prob, move_threshold, direction_threshold):
 
     pred = np.full(len(move_prob), CLASS_FLAT, dtype=int)
 
-    # direction classifier: up olasılığı threshold değerinden büyükse up sınıfı seçilir.
-    # up olasılığı 1-threshold değerinden küçükse down sınıfı seçilir.
-    # arada kalan örnekler flat olarak değerlendirilir.
     up_mask = move & (up_prob >= direction_threshold)
     down_mask = move & (up_prob <= (1.0 - direction_threshold))
 
@@ -661,7 +626,6 @@ def score_metrics(metrics, min_action_rate=5, max_action_rate=65):
     else:
         action_penalty = 0.0
 
-    # precision ana hedef, recall ikinci hedef olarak değerlendirilir.
     return (ap * 14.0) + (ar * 4.5) + (acc * 1.5) - action_penalty
 
 
@@ -705,9 +669,7 @@ def choose_two_stage_thresholds(
     return best
 
 
-# ------------------------------------------------------------
 # lab runner
-# ------------------------------------------------------------
 
 def split_train_validation_test(data, test_ratio=0.25, validation_ratio=0.15):
     data = data.sort_values("Date").reset_index(drop=True)

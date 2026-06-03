@@ -1,24 +1,3 @@
-# ai_service/v12_zeta_scenario_screener.py
-# ============================================================
-# Pusula AI v12 - Zeta Scenario Screener
-# ------------------------------------------------------------
-# amaç:
-#   bist hisselerini tek tek ayrı modellemek yerine global panel veri seti
-#   üzerinde eğitmek ve hisseleri işlem senaryolarına göre sınıflandırmak.
-#
-# senaryolar:
-#   - momentum_long
-#   - dip_rebound_watch
-#   - downside_risk
-#   - neutral
-#
-# çıktı:
-#   artifacts/v12_zeta/zeta_scenario_report.json
-#   artifacts/v12_zeta/zeta_latest_radar.json
-#   artifacts/v12_zeta/zeta_backtest_summary.json
-#   artifacts/v12_zeta/zeta_latest_radar.csv
-# ============================================================
-
 import argparse
 import json
 import math
@@ -50,9 +29,7 @@ BIST_SYMBOL_EXCEPTIONS = {
 }
 
 
-# ============================================================
 # yardımcı fonksiyonlar
-# ============================================================
 
 def clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     if not np.isfinite(value):
@@ -123,9 +100,7 @@ def to_serializable(obj: Any) -> Any:
     return obj
 
 
-# ============================================================
 # veritabanı bağlantısı
-# ============================================================
 
 def get_db_connection():
     """
@@ -215,9 +190,7 @@ def read_sql_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             pass
 
 
-# ============================================================
 # temel feature yardımcıları
-# ============================================================
 
 def clean_numeric(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     for col in cols:
@@ -840,9 +813,7 @@ def split_panel(panel: pd.DataFrame, validation_start: str, test_start: str):
     return train, validation, test
 
 
-# ============================================================
 # model ve değerlendirme fonksiyonları
-# ============================================================
 
 def build_models() -> Dict[str, Any]:
     try:
@@ -1023,7 +994,6 @@ def evaluate_model_selection(scored: pd.DataFrame) -> Dict[str, Any]:
     action_rate = safe_float(metrics.get("actionRate"))
     flat_rate = safe_float(metrics.get("flatRate"))
 
-    # screener için çok fazla aksiyon üretmek istenmez; seçici ama tamamen pasif olmayan model tercih edilir.
     target_action_rate = 28.0
     rate_score = max(0.0, 100.0 - abs(action_rate - target_action_rate) * 2.6)
 
@@ -1055,9 +1025,7 @@ def evaluate_model_selection(scored: pd.DataFrame) -> Dict[str, Any]:
         },
     }
 
-# ============================================================
 # senaryo skorlayıcı
-# ============================================================
 
 def score_row(row: pd.Series) -> Dict[str, Any]:
     prob_up = safe_float(row.get("ProbUp"))
@@ -1153,7 +1121,6 @@ def score_row(row: pd.Series) -> Dict[str, Any]:
         - 0.10 * prob_up_score
     )
 
-    # model aşağı ihtimalini yukarı ihtimalinden belirgin yüksek görüyorsa risk skoru güçlendirilir.
     if down_minus_up > 0.08:
         downside_risk += min(16.0, down_minus_up * 100.0 * 0.90)
     elif down_minus_up > 0.04:
@@ -1333,9 +1300,7 @@ def apply_scenario_scores(scored: pd.DataFrame) -> pd.DataFrame:
     return enriched
 
 
-# ============================================================
 # radar üretimi
-# ============================================================
 
 def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     if enriched.empty:
@@ -1513,9 +1478,7 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     }
 
 
-# ============================================================
 # senaryo backtest metrikleri
-# ============================================================
 
 def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     if enriched.empty:
@@ -1614,9 +1577,7 @@ def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[s
     }
 
 
-# ============================================================
 # ana çalışma akışı
-# ============================================================
 
 def run(args: argparse.Namespace) -> Dict[str, Any]:
     print("zeta scenario screener başlıyor...")

@@ -42,11 +42,8 @@ function asArray(payload) {
     payload.StockStatuses,
     payload.hisseler,
     payload.Hisseler,
-
-    // .net endpointinin döndürdüğü alan adı.
     payload.hisseDurumlari,
     payload.HisseDurumlari,
-
     payload.value,
     payload.Value
   ]
@@ -162,8 +159,6 @@ function normalizeStatusRow(row) {
       row?.HistoricalDataCount,
       row?.priceCount,
       row?.PriceCount,
-
-      // mevcut endpointin döndürdüğü alan adı.
       row?.kayitSayisi,
       row?.KayitSayisi
     ),
@@ -176,8 +171,6 @@ function normalizeStatusRow(row) {
       row?.StartDate,
       row?.oldestDate,
       row?.OldestDate,
-
-      // mevcut endpointin döndürdüğü alan adı.
       row?.ilkTarih,
       row?.IlkTarih
     ),
@@ -192,8 +185,6 @@ function normalizeStatusRow(row) {
       row?.LatestDate,
       row?.newestDate,
       row?.NewestDate,
-
-      // mevcut endpointin döndürdüğü alan adı.
       row?.sonTarih,
       row?.SonTarih
     ),
@@ -204,8 +195,6 @@ function normalizeStatusRow(row) {
       row?.State,
       row?.health,
       row?.Health,
-
-      // mevcut endpointin döndürdüğü alan adı.
       row?.durum,
       row?.Durum
     ),
