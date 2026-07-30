@@ -18,6 +18,9 @@ namespace Eskiz1.API.Models
         [Required]
         public string Email { get; set; } = string.Empty;
 
+        [Required]
+        public string PasswordHash { get; set; } = string.Empty;
+
         // bakiye alanı için decimal hassasiyeti tanımlanır.
         [Column(TypeName = "decimal(18,2)")]
         public decimal Balance { get; set; }

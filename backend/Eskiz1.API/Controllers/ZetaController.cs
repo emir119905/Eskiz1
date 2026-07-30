@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Eskiz1.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Eskiz1.API.Controllers;
@@ -98,6 +99,7 @@ public class ZetaController : ControllerBase
         });
     }
 
+    [Authorize]
     [HttpPost("run")]
     public async Task<IActionResult> RunRadar(CancellationToken cancellationToken)
     {

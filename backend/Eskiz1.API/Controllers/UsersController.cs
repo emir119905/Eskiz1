@@ -1,12 +1,15 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Eskiz1.API.Data;
-using Eskiz1.API.Models;
 
 namespace Eskiz1.API.Controllers
 {
+    // kullanıcı oluşturma artık AuthController.Register üzerinden (şifre hash'lenerek) yapılır;
+    // bu controller yalnızca oturum açmış kullanıcıların listeleme ihtiyacı için kalır.
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -20,17 +23,10 @@ namespace Eskiz1.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
-            var users = await _context.Users.ToListAsync();
+            var users = await _context.Users
+                .Select(u => new { u.UserID, u.FirstName, u.LastName, u.Email, u.Balance, u.CreatedAt })
+                .ToListAsync();
             return Ok(users);
-        }
-
-        // post: api/users -> yeni kullanıcı kaydı oluşturur.
-        [HttpPost]
-        public async Task<IActionResult> AddUser(User user)
-        {
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-            return Ok(user);
         }
     }
 }

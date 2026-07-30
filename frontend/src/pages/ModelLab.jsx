@@ -8,12 +8,12 @@ import {
   getBiasColor
 } from '../utils/formatters'
 
-const BLUE = '#3b82f6'
+const BLUE = '#2dd4bf'
 const GREEN = '#10b981'
 const YELLOW = '#f59e0b'
 const RED = '#ef4444'
 const PURPLE = '#8b5cf6'
-const GRAY = '#6b7280'
+const GRAY = '#66625a'
 
 const PROBLEM_SET_IDS = [31, 32, 34, 4, 6, 28, 21, 3, 33]
 const DYNAMIC_PROBLEM_STORAGE_KEY = 'pusula_ai_model_lab_dynamic_problem_ids_v1'
@@ -755,12 +755,12 @@ export default function ModelLab() {
 
       {message && (
         <div style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
+          background: '#141312',
+          border: '1px solid #2a2825',
           borderRadius: '14px',
           padding: '13px 16px',
           marginBottom: '20px',
-          color: '#d1d5db',
+          color: '#c7c3b8',
           boxShadow: '0 14px 32px rgba(0,0,0,0.18)'
         }}>
           {message}
@@ -802,14 +802,14 @@ export default function ModelLab() {
           marginBottom: '18px'
         }}>
           <div>
-            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+            <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
               Toplu Test Alanı
             </div>
             <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
               Model Laboratuvarı
             </h3>
             <p style={{
-              color: '#9ca3af',
+              color: '#9a968c',
               fontSize: '13px',
               marginTop: '7px',
               maxWidth: 760,
@@ -888,7 +888,7 @@ export default function ModelLab() {
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
-              color: '#9ca3af',
+              color: '#9a968c',
               fontSize: '12px',
               marginBottom: 6
             }}>
@@ -900,13 +900,13 @@ export default function ModelLab() {
               height: 10,
               borderRadius: '999px',
               overflow: 'hidden',
-              background: '#0b1220',
-              border: '1px solid #1f2937'
+              background: '#0f0f10',
+              border: '1px solid #2a2825'
             }}>
               <div style={{
                 height: '100%',
                 width: `${progressPct}%`,
-                background: 'linear-gradient(90deg, #2563eb, #7c3aed)',
+                background: '#d97706',
                 transition: 'width 0.25s ease'
               }} />
             </div>
@@ -936,18 +936,18 @@ export default function ModelLab() {
                   style={{
                     textAlign: 'left',
                     background: selected
-                      ? '#2563eb22'
+                      ? '#d9770622'
                       : dynamicProblem
                         ? '#f59e0b12'
-                        : '#0b1220',
+                        : '#0f0f10',
                     border: selected
-                      ? '1px solid #3b82f6'
+                      ? '1px solid #2dd4bf'
                       : dynamicProblem
                         ? '1px solid #f59e0b55'
-                        : '1px solid #1f2937',
+                        : '1px solid #2a2825',
                     borderRadius: '14px',
                     padding: '12px',
-                    color: '#d1d5db',
+                    color: '#c7c3b8',
                     cursor: running ? 'not-allowed' : 'pointer'
                   }}
                 >
@@ -957,7 +957,7 @@ export default function ModelLab() {
                     gap: '8px',
                     marginBottom: '5px'
                   }}>
-                    <strong style={{ color: selected ? '#93c5fd' : '#f9fafb' }}>
+                    <strong style={{ color: selected ? '#93c5fd' : '#f2f0ec' }}>
                       {stock.symbol}
                     </strong>
                     <span style={{
@@ -969,7 +969,7 @@ export default function ModelLab() {
                   </div>
 
                   <div style={{
-                    color: '#6b7280',
+                    color: '#66625a',
                     fontSize: '12px',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -994,7 +994,7 @@ export default function ModelLab() {
           alignItems: 'center'
         }}>
           <div>
-            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+            <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
               Sonuçlar
             </div>
             <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
@@ -1067,8 +1067,8 @@ export default function ModelLab() {
             }}>
               <thead>
                 <tr style={{
-                  borderBottom: '1px solid #1f2937',
-                  color: '#9ca3af',
+                  borderBottom: '1px solid #2a2825',
+                  color: '#9a968c',
                   textAlign: 'left'
                 }}>
                   <th style={th}>Hisse</th>
@@ -1094,13 +1094,13 @@ export default function ModelLab() {
                     <tr
                       key={row.stockID}
                       style={{
-                        borderBottom: '1px solid #1f2937',
-                        color: '#d1d5db'
+                        borderBottom: '1px solid #2a2825',
+                        color: '#c7c3b8'
                       }}
                     >
                       <td style={td}>
-                        <div style={{ fontWeight: 'bold', color: '#f9fafb' }}>{row.symbol}</div>
-                        <div style={{ color: '#6b7280', fontSize: '11px' }}>
+                        <div style={{ fontWeight: 'bold', color: '#f2f0ec' }}>{row.symbol}</div>
+                        <div style={{ color: '#66625a', fontSize: '11px' }}>
                           ID: {row.stockID}
                         </div>
                       </td>
@@ -1115,7 +1115,7 @@ export default function ModelLab() {
                         <div style={{ color: biasColor, fontWeight: 'bold' }}>
                           {getBiasLabel(row.tradeBias)}
                         </div>
-                        <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 3 }}>
+                        <div style={{ color: '#66625a', fontSize: '11px', marginTop: 3 }}>
                           {row.signalTopDirection} · conf {formatSmartPct(row.signalConfidence)}
                         </div>
                       </td>
@@ -1126,7 +1126,7 @@ export default function ModelLab() {
                         }}>
                           {pct(row.directionScore)}
                         </strong>
-                        <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 3 }}>
+                        <div style={{ color: '#66625a', fontSize: '11px', marginTop: 3 }}>
                           raw {pct(row.rawDirectionScore)}
                         </div>
                       </td>
@@ -1137,7 +1137,7 @@ export default function ModelLab() {
                         }}>
                           {pct(row.actionRate)}
                         </strong>
-                        <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 3 }}>
+                        <div style={{ color: '#66625a', fontSize: '11px', marginTop: 3 }}>
                           coverage {pct(row.directionCoverage)}
                         </div>
                       </td>
@@ -1148,14 +1148,14 @@ export default function ModelLab() {
                         }}>
                           {pct(row.mapeSkill)}
                         </strong>
-                        <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 3 }}>
+                        <div style={{ color: '#66625a', fontSize: '11px', marginTop: 3 }}>
                           rmse skill {pct(row.rmseSkill)}
                         </div>
                       </td>
 
                       <td style={td}>
                         {row.mape == null ? '-' : pct(Number(row.mape) * 100)}
-                        <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 3 }}>
+                        <div style={{ color: '#66625a', fontSize: '11px', marginTop: 3 }}>
                           rmse {row.rmse == null ? '-' : money(row.rmse, row.symbol)}
                         </div>
                       </td>
@@ -1166,7 +1166,7 @@ export default function ModelLab() {
                         }}>
                           {row.q50_30d == null ? '-' : pct(Number(row.q50_30d) * 100)}
                         </strong>
-                        <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 3 }}>
+                        <div style={{ color: '#66625a', fontSize: '11px', marginTop: 3 }}>
                           {row.modelVersion}
                         </div>
                       </td>
@@ -1185,7 +1185,7 @@ export default function ModelLab() {
                         <div style={{
                           display: 'flex',
                           justifyContent: 'space-between',
-                          color: '#6b7280',
+                          color: '#66625a',
                           fontSize: '10px',
                           marginTop: 4
                         }}>
@@ -1250,7 +1250,7 @@ function Header() {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        color: '#6b7280',
+        color: '#66625a',
         fontSize: '13px',
         marginBottom: '8px'
       }}>
@@ -1273,7 +1273,7 @@ function Header() {
       </h2>
 
       <p style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         marginTop: '9px',
         maxWidth: '860px',
         lineHeight: 1.6
@@ -1287,8 +1287,8 @@ function Header() {
 function StatCard({ label, value, color, icon }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #0f0f10 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '18px',
       padding: '16px',
       minHeight: '92px',
@@ -1305,7 +1305,7 @@ function StatCard({ label, value, color, icon }) {
         {icon}
       </div>
 
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '8px' }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: '8px' }}>
         {label}
       </div>
 
@@ -1324,8 +1324,8 @@ function StatCard({ label, value, color, icon }) {
 function Panel({ children }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #141312 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '20px',
       padding: '22px',
       marginBottom: '22px',
@@ -1340,10 +1340,10 @@ function SegmentedButton({ value, setValue, options }) {
   return (
     <div style={{
       display: 'flex',
-      background: '#0b1220',
+      background: '#0f0f10',
       padding: '4px',
       borderRadius: '13px',
-      border: '1px solid #1f2937',
+      border: '1px solid #2a2825',
       flexWrap: 'wrap',
       gap: '3px'
     }}>
@@ -1353,8 +1353,8 @@ function SegmentedButton({ value, setValue, options }) {
           onClick={() => setValue(key)}
           style={{
             padding: '8px 11px',
-            background: value === key ? '#2563eb' : 'transparent',
-            color: value === key ? '#fff' : '#9ca3af',
+            background: value === key ? '#d97706' : 'transparent',
+            color: value === key ? '#fff' : '#9a968c',
             border: 'none',
             borderRadius: '10px',
             cursor: 'pointer',
@@ -1421,7 +1421,7 @@ function BehaviorCell({ row }) {
       </div>
 
       <div style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '11px',
         lineHeight: 1.45
       }}>
@@ -1429,7 +1429,7 @@ function BehaviorCell({ row }) {
       </div>
 
       <div style={{
-        color: '#6b7280',
+        color: '#66625a',
         fontSize: '11px',
         lineHeight: 1.45,
         marginTop: 3
@@ -1438,7 +1438,7 @@ function BehaviorCell({ row }) {
       </div>
 
       <div style={{
-        color: '#6b7280',
+        color: '#66625a',
         fontSize: '11px',
         lineHeight: 1.45,
         marginTop: 3
@@ -1467,10 +1467,10 @@ function MiniProb({ color, value }) {
     <div style={{
       flex: 1,
       height: 10,
-      background: '#111827',
+      background: '#141312',
       borderRadius: '999px',
       overflow: 'hidden',
-      border: '1px solid #1f2937'
+      border: '1px solid #2a2825'
     }}>
       <div style={{
         width: `${safe}%`,
@@ -1489,12 +1489,12 @@ function LoadingState() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#9ca3af',
+      color: '#9a968c',
       textAlign: 'center'
     }}>
       <div>
         <div style={{ fontSize: 38, marginBottom: 12 }}>⏳</div>
-        <h3 style={{ margin: 0, color: '#e5e7eb' }}>Hisse listesi yükleniyor</h3>
+        <h3 style={{ margin: 0, color: '#e8e5df' }}>Hisse listesi yükleniyor</h3>
         <p style={{ marginTop: 8 }}>Model Laboratuvarı analiz evrenini hazırlıyor...</p>
       </div>
     </div>
@@ -1508,12 +1508,12 @@ function EmptyResults() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#9ca3af',
+      color: '#9a968c',
       textAlign: 'center'
     }}>
       <div>
         <div style={{ fontSize: 44, marginBottom: 12 }}>🧪</div>
-        <h3 style={{ margin: 0, color: '#e5e7eb' }}>Henüz batch sonucu yok</h3>
+        <h3 style={{ margin: 0, color: '#e8e5df' }}>Henüz batch sonucu yok</h3>
         <p style={{ marginTop: 8, maxWidth: 520, lineHeight: 1.55 }}>
           Problem set veya istediğin hisseleri seçip batch analizi başlat. Sonuçlar burada directionScore, actionRate ve naive karşılaştırmasıyla listelenecek.
         </p>
@@ -1525,8 +1525,8 @@ function EmptyResults() {
 const inputStyle = {
   width: '100%',
   padding: '13px 16px',
-  background: '#0b1220',
-  border: '1px solid #1f2937',
+  background: '#0f0f10',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   color: '#fff',
   fontSize: '14px',
@@ -1535,10 +1535,10 @@ const inputStyle = {
 
 const selectStyle = {
   padding: '10px 12px',
-  background: '#0b1220',
-  border: '1px solid #1f2937',
+  background: '#0f0f10',
+  border: '1px solid #2a2825',
   borderRadius: '12px',
-  color: '#d1d5db',
+  color: '#c7c3b8',
   fontSize: '12px',
   outline: 'none'
 }
@@ -1550,18 +1550,18 @@ const primaryButton = {
   borderRadius: '13px',
   fontWeight: 'bold',
   fontSize: '14px',
-  background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-  boxShadow: '0 14px 28px rgba(37,99,235,0.24)'
+  background: '#d97706',
+  boxShadow: '0 14px 28px rgba(217,119,6,0.24)'
 }
 
 const secondaryButton = {
   padding: '11px 14px',
-  color: '#d1d5db',
-  border: '1px solid #1f2937',
+  color: '#c7c3b8',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   fontWeight: 'bold',
   fontSize: '13px',
-  background: '#0b1220',
+  background: '#0f0f10',
   cursor: 'pointer'
 }
 

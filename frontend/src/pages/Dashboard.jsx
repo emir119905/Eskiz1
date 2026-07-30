@@ -25,12 +25,12 @@ import {
 } from '../utils/formatters'
 import { buildFusionSummary } from '../utils/fusionLayer'
 
-const BLUE = '#3b82f6'
+const BLUE = '#2dd4bf'
 const GREEN = '#10b981'
 const YELLOW = '#f59e0b'
 const RED = '#ef4444'
 const PURPLE = '#8b5cf6'
-const GRAY = '#6b7280'
+const GRAY = '#66625a'
 
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
@@ -46,15 +46,15 @@ function CustomTooltip({ active, payload, label, asset, mode }) {
 
   return (
     <div style={{
-      background: '#111827',
-      border: '1px solid #1f2937',
+      background: '#141312',
+      border: '1px solid #2a2825',
       borderRadius: '14px',
       padding: '11px 14px',
       fontSize: '13px',
       boxShadow: '0 18px 38px rgba(0,0,0,0.35)'
     }}>
       <p style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         margin: '0 0 7px',
         fontWeight: 'bold'
       }}>
@@ -511,7 +511,7 @@ function HeaderBlock() {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        color: '#6b7280',
+        color: '#66625a',
         fontSize: '13px',
         marginBottom: '8px'
       }}>
@@ -542,7 +542,7 @@ function HeaderBlock() {
           </h2>
 
           <p style={{
-            color: '#9ca3af',
+            color: '#9a968c',
             marginTop: '9px',
             maxWidth: '830px',
             lineHeight: 1.65
@@ -553,21 +553,21 @@ function HeaderBlock() {
         </div>
 
         <div style={{
-          border: '1px solid #1f2937',
+          border: '1px solid #2a2825',
           borderRadius: '16px',
           padding: '12px 14px',
-          background: 'linear-gradient(180deg, #111827, #0b1220)',
+          background: 'linear-gradient(180deg, #141312, #0f0f10)',
           minWidth: 240
         }}>
-          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 4 }}>
+          <div style={{ color: '#66625a', fontSize: '11px', marginBottom: 4 }}>
             Aktif Analiz Yapısı
           </div>
 
-          <div style={{ color: '#e5e7eb', fontWeight: 'bold' }}>
+          <div style={{ color: '#e8e5df', fontWeight: 'bold' }}>
             Ana Model + Davranış Katmanı + Zeta Radar
           </div>
 
-          <div style={{ color: '#6b7280', fontSize: '11px', marginTop: 4, lineHeight: 1.45 }}>
+          <div style={{ color: '#66625a', fontSize: '11px', marginTop: 4, lineHeight: 1.45 }}>
             Sonuçlar deneysel karar destek çıktısıdır; yatırım tavsiyesi olarak yorumlanmamalıdır.
           </div>
         </div>
@@ -610,22 +610,22 @@ function SearchPanel({
                   key={s.stockID}
                   onClick={() => handleSelectStock(s)}
                   style={searchItemStyle}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#1f2937' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#2a2825' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <div>
                     <div style={{ fontWeight: 'bold', color: '#60a5fa' }}>
                       {s.symbol}
                     </div>
-                    <div style={{ color: '#9ca3af', fontSize: '12px' }}>
+                    <div style={{ color: '#9a968c', fontSize: '12px' }}>
                       {s.companyName}
                     </div>
                   </div>
 
                   <span style={{
-                    color: '#6b7280',
+                    color: '#66625a',
                     fontSize: '12px',
-                    border: '1px solid #1f2937',
+                    border: '1px solid #2a2825',
                     borderRadius: '999px',
                     padding: '4px 8px'
                   }}>
@@ -643,8 +643,8 @@ function SearchPanel({
           style={{
             ...primaryButton,
             background: loading
-              ? '#374151'
-              : 'linear-gradient(135deg, #2563eb, #7c3aed)',
+              ? '#3a372f'
+              : '#d97706',
             cursor: loading || !selectedStock ? 'not-allowed' : 'pointer',
             opacity: !selectedStock ? 0.65 : 1
           }}
@@ -663,7 +663,7 @@ function SearchPanel({
         }}>
           <Badge color={BLUE}>Seçili: {selectedStock.symbol}</Badge>
           {selectedStock.companyName && (
-            <span style={{ color: '#9ca3af', fontSize: '13px' }}>
+            <span style={{ color: '#9a968c', fontSize: '13px' }}>
               {selectedStock.companyName}
             </span>
           )}
@@ -686,7 +686,7 @@ function SearchPanel({
 
       {prediction?.message && (
         <p style={{
-          color: '#6b7280',
+          color: '#66625a',
           marginTop: '12px',
           fontSize: '13px',
           fontStyle: 'italic'
@@ -759,7 +759,7 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
 
   return (
     <div style={{
-      background: `radial-gradient(circle at top left, ${color}30, transparent 32%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      background: `radial-gradient(circle at top left, ${color}30, transparent 32%), linear-gradient(135deg, rgba(20,19,18,0.98), rgba(12,12,13,0.98))`,
       border: `1px solid ${color}70`,
       borderRadius: '22px',
       padding: '22px',
@@ -786,7 +786,7 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
         position: 'relative'
       }}>
         <div>
-          <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '7px' }}>
+          <div style={{ color: '#9a968c', fontSize: '12px', marginBottom: '7px' }}>
             {selectedStock?.symbol || 'Seçili Varlık'} · Ana Model Yorumu
           </div>
 
@@ -800,13 +800,13 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
             {readableLabel}
           </div>
 
-          <div style={{ color: '#d1d5db', fontSize: '13px', lineHeight: 1.6 }}>
+          <div style={{ color: '#c7c3b8', fontSize: '13px', lineHeight: 1.6 }}>
             {baselineText}
           </div>
         </div>
 
-        <div style={{ color: '#d1d5db', fontSize: '13px', lineHeight: 1.65 }}>
-          <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: 5 }}>
+        <div style={{ color: '#c7c3b8', fontSize: '13px', lineHeight: 1.65 }}>
+          <div style={{ color: '#9a968c', fontSize: '12px', marginBottom: 5 }}>
             Modelin Karar Verme Şekli
           </div>
 
@@ -814,7 +814,7 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
         </div>
 
         <div>
-          <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: 8 }}>
+          <div style={{ color: '#9a968c', fontSize: '12px', marginBottom: 8 }}>
             Güven ve Ayrım Gücü
           </div>
 
@@ -822,7 +822,7 @@ function SignalHero({ selectedStock, signal, pm, skill }) {
           <HealthRow label="Yön Ayrımı" value={edge * 100} color={edge >= 0.1 ? GREEN : YELLOW} />
 
           <div style={{
-            color: '#9ca3af',
+            color: '#9a968c',
             fontSize: '11px',
             lineHeight: 1.45,
             marginTop: '8px'
@@ -1035,7 +1035,7 @@ function FusionSummaryCard({ selectedStock, fusion }) {
 
   return (
     <div style={{
-      background: `radial-gradient(circle at top left, ${headlineColor}22, transparent 34%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      background: `radial-gradient(circle at top left, ${headlineColor}22, transparent 34%), linear-gradient(135deg, rgba(20,19,18,0.98), rgba(12,12,13,0.98))`,
       border: `1px solid ${headlineColor}66`,
       borderRadius: '22px',
       padding: '22px',
@@ -1051,7 +1051,7 @@ function FusionSummaryCard({ selectedStock, fusion }) {
         flexWrap: 'wrap'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 5 }}>
             {selectedStock?.symbol || 'Seçili Varlık'} · Birleşik Karar Özeti
           </div>
 
@@ -1066,7 +1066,7 @@ function FusionSummaryCard({ selectedStock, fusion }) {
           </div>
 
           <div style={{
-            color: '#d1d5db',
+            color: '#c7c3b8',
             fontSize: '13px',
             lineHeight: 1.65,
             maxWidth: 860
@@ -1105,7 +1105,7 @@ function FusionSummaryCard({ selectedStock, fusion }) {
 
       {fusion.notes?.length > 0 && (
         <div style={{
-          borderTop: '1px solid #1f2937',
+          borderTop: '1px solid #2a2825',
           paddingTop: '14px',
           display: 'grid',
           gap: '8px'
@@ -1114,7 +1114,7 @@ function FusionSummaryCard({ selectedStock, fusion }) {
             <div
               key={note}
               style={{
-                color: '#9ca3af',
+                color: '#9a968c',
                 fontSize: '12px',
                 lineHeight: 1.5,
                 display: 'flex',
@@ -1134,12 +1134,12 @@ function FusionSummaryCard({ selectedStock, fusion }) {
 function FusionLayerChip({ label, value, color }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '14px',
       padding: '12px 14px'
     }}>
-      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 5 }}>{label}</div>
+      <div style={{ color: '#66625a', fontSize: '11px', marginBottom: 5 }}>{label}</div>
       <div style={{ color, fontWeight: 'bold', fontSize: '14px', lineHeight: 1.45 }}>{value}</div>
     </div>
   )
@@ -1149,10 +1149,10 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
   if (loading) {
     return (
       <Panel style={{ marginBottom: '18px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', color: '#9ca3af' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', color: '#9a968c' }}>
           <span style={{ fontSize: 22 }}>⏳</span>
           <div>
-            <strong style={{ color: '#e5e7eb' }}>Zeta Radar yükleniyor</strong>
+            <strong style={{ color: '#e8e5df' }}>Zeta Radar yükleniyor</strong>
             <div style={{ fontSize: '12px', marginTop: 3 }}>
               BIST senaryo taraması son JSON çıktısından okunuyor.
             </div>
@@ -1177,17 +1177,17 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
   if (!zetaItem) {
     return (
       <Panel style={{ marginBottom: '18px' }}>
-        <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+        <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 5 }}>
           {selectedStock?.symbol || 'Seçili Varlık'} · Zeta Radar
         </div>
 
-        <h3 style={{ margin: 0, color: '#e5e7eb', marginBottom: 8 }}>
+        <h3 style={{ margin: 0, color: '#e8e5df', marginBottom: 8 }}>
           Zeta bu hisse için üst radar listesinde aktif kayıt bulamadı
         </h3>
 
-        <div style={{ color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
+        <div style={{ color: '#9a968c', fontSize: '13px', lineHeight: 1.6 }}>
           Bu durum hata değildir. Hisse son radar tarihinde güçlü gidiş, toparlanma veya risk izleme listelerinde öne çıkmamış olabilir.
-          Zeta Radar tarihi: <strong style={{ color: '#d1d5db' }}>{radar.date || '-'}</strong>
+          Zeta Radar tarihi: <strong style={{ color: '#c7c3b8' }}>{radar.date || '-'}</strong>
         </div>
       </Panel>
     )
@@ -1200,7 +1200,7 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
 
   return (
     <div style={{
-      background: `radial-gradient(circle at top left, ${color}24, transparent 34%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      background: `radial-gradient(circle at top left, ${color}24, transparent 34%), linear-gradient(135deg, rgba(20,19,18,0.98), rgba(12,12,13,0.98))`,
       border: `1px solid ${color}66`,
       borderRadius: '22px',
       padding: '22px',
@@ -1216,7 +1216,7 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
         flexWrap: 'wrap'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 5 }}>
             {selectedStock?.symbol || zetaItem.symbol} · Zeta Senaryo Okuması
           </div>
 
@@ -1231,7 +1231,7 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
           </div>
 
           <div style={{
-            color: '#d1d5db',
+            color: '#c7c3b8',
             fontSize: '13px',
             lineHeight: 1.65,
             maxWidth: 850
@@ -1290,12 +1290,12 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
         alignItems: 'stretch'
       }}>
         <div style={{
-          background: '#0b1220',
-          border: '1px solid #1f2937',
+          background: '#0f0f10',
+          border: '1px solid #2a2825',
           borderRadius: '16px',
           padding: '15px'
         }}>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 12 }}>
             Senaryo Ayrımı
           </div>
 
@@ -1307,12 +1307,12 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
         </div>
 
         <div style={{
-          background: '#0b1220',
-          border: '1px solid #1f2937',
+          background: '#0f0f10',
+          border: '1px solid #2a2825',
           borderRadius: '16px',
           padding: '15px'
         }}>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 12 }}>
             Zeta bu sonuca neden vardı?
           </div>
 
@@ -1333,10 +1333,10 @@ function ZetaRadarCard({ selectedStock, zetaItem, radar, loading, error }) {
       </div>
 
       <div style={{
-        borderTop: '1px solid #1f2937',
+        borderTop: '1px solid #2a2825',
         marginTop: '16px',
         paddingTop: '13px',
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '12px',
         lineHeight: 1.55
       }}>
@@ -1352,12 +1352,12 @@ function ZetaProbabilityBox({ title, value, color, helper }) {
 
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '16px',
       padding: '14px'
     }}>
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 6 }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 6 }}>
         {title}
       </div>
 
@@ -1367,7 +1367,7 @@ function ZetaProbabilityBox({ title, value, color, helper }) {
 
       <div style={{
         height: 8,
-        background: '#111827',
+        background: '#141312',
         borderRadius: '999px',
         overflow: 'hidden',
         marginBottom: 8
@@ -1380,7 +1380,7 @@ function ZetaProbabilityBox({ title, value, color, helper }) {
         }} />
       </div>
 
-      <div style={{ color: '#6b7280', fontSize: '11px', lineHeight: 1.45 }}>
+      <div style={{ color: '#66625a', fontSize: '11px', lineHeight: 1.45 }}>
         {helper}
       </div>
     </div>
@@ -1395,7 +1395,7 @@ function ZetaScoreLine({ label, value, color }) {
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '12px',
         marginBottom: 5
       }}>
@@ -1405,8 +1405,8 @@ function ZetaScoreLine({ label, value, color }) {
 
       <div style={{
         height: 8,
-        background: '#111827',
-        border: '1px solid #1f2937',
+        background: '#141312',
+        border: '1px solid #2a2825',
         borderRadius: '999px',
         overflow: 'hidden'
       }}>
@@ -1424,12 +1424,12 @@ function ZetaScoreLine({ label, value, color }) {
 function ZetaTagGroup({ title, tags, color, emptyText }) {
   return (
     <div style={{ marginBottom: '13px' }}>
-      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 7 }}>
+      <div style={{ color: '#66625a', fontSize: '11px', marginBottom: 7 }}>
         {title}
       </div>
 
       {tags.length === 0 ? (
-        <div style={{ color: '#6b7280', fontSize: '12px', lineHeight: 1.45 }}>
+        <div style={{ color: '#66625a', fontSize: '12px', lineHeight: 1.45 }}>
           {emptyText}
         </div>
       ) : (
@@ -1453,11 +1453,11 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          color: '#9ca3af'
+          color: '#9a968c'
         }}>
           <span style={{ fontSize: 22 }}>⏳</span>
           <div>
-            <strong style={{ color: '#e5e7eb' }}>Fiyat davranışı okunuyor</strong>
+            <strong style={{ color: '#e8e5df' }}>Fiyat davranışı okunuyor</strong>
             <div style={{ fontSize: '12px', marginTop: 3 }}>
               Son fiyat hareketi, oynaklık, hacim ilgisi ve yön belirsizliği değerlendiriliyor.
             </div>
@@ -1491,7 +1491,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
 
   return (
     <div style={{
-      background: `radial-gradient(circle at top left, ${color}24, transparent 34%), linear-gradient(135deg, rgba(17,24,39,0.98), rgba(8,11,18,0.98))`,
+      background: `radial-gradient(circle at top left, ${color}24, transparent 34%), linear-gradient(135deg, rgba(20,19,18,0.98), rgba(12,12,13,0.98))`,
       border: `1px solid ${color}66`,
       borderRadius: '22px',
       padding: '22px',
@@ -1509,7 +1509,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
         flexWrap: 'wrap'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 5 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 5 }}>
             {selectedStock?.symbol || 'Seçili Varlık'} · Fiyat Davranışı
           </div>
 
@@ -1524,7 +1524,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
           </div>
 
           <div style={{
-            color: '#d1d5db',
+            color: '#c7c3b8',
             fontSize: '13px',
             lineHeight: 1.6,
             maxWidth: 760
@@ -1551,12 +1551,12 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
         alignItems: 'stretch'
       }}>
         <div style={{
-          background: '#0b1220',
-          border: '1px solid #1f2937',
+          background: '#0f0f10',
+          border: '1px solid #2a2825',
           borderRadius: '16px',
           padding: '15px'
         }}>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 12 }}>
             Davranış Özeti
           </div>
 
@@ -1566,12 +1566,12 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
         </div>
 
         <div style={{
-          background: '#0b1220',
-          border: '1px solid #1f2937',
+          background: '#0f0f10',
+          border: '1px solid #2a2825',
           borderRadius: '16px',
           padding: '15px'
         }}>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 12 }}>
             Güven ve Belirsizlik
           </div>
 
@@ -1589,12 +1589,12 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
         </div>
 
         <div style={{
-          background: '#0b1220',
-          border: '1px solid #1f2937',
+          background: '#0f0f10',
+          border: '1px solid #2a2825',
           borderRadius: '16px',
           padding: '15px'
         }}>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 12 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 12 }}>
             Piyasa Davranışı
           </div>
 
@@ -1610,7 +1610,7 @@ function BehaviorSignalCard({ selectedStock, behaviorSignal, loading, error }) {
 
       {warnings.length > 0 && (
         <div style={{
-          borderTop: '1px solid #1f2937',
+          borderTop: '1px solid #2a2825',
           marginTop: '16px',
           paddingTop: '14px',
           display: 'flex',
@@ -1634,11 +1634,11 @@ function BehaviorInfo({ label, value }) {
       display: 'flex',
       justifyContent: 'space-between',
       gap: '10px',
-      color: '#d1d5db',
+      color: '#c7c3b8',
       fontSize: '13px',
       marginBottom: '9px'
     }}>
-      <span style={{ color: '#6b7280' }}>{label}</span>
+      <span style={{ color: '#66625a' }}>{label}</span>
       <strong style={{ textAlign: 'right' }}>{value}</strong>
     </div>
   )
@@ -1658,7 +1658,7 @@ function BehaviorBar({ label, value, color, positiveOnly = false }) {
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '12px',
         marginBottom: 5
       }}>
@@ -1668,8 +1668,8 @@ function BehaviorBar({ label, value, color, positiveOnly = false }) {
 
       <div style={{
         height: 9,
-        background: '#111827',
-        border: '1px solid #1f2937',
+        background: '#141312',
+        border: '1px solid #2a2825',
         borderRadius: '999px',
         overflow: 'hidden',
         position: 'relative'
@@ -1681,7 +1681,7 @@ function BehaviorBar({ label, value, color, positiveOnly = false }) {
             top: 0,
             bottom: 0,
             width: 1,
-            background: '#374151'
+            background: '#3a372f'
           }} />
         )}
 
@@ -1719,7 +1719,7 @@ function ModelVsNaiveCard({ pm, pn, skill, selectedStock }) {
         marginBottom: '18px'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
             Ölçüm Sistemi
           </div>
           <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
@@ -1758,10 +1758,10 @@ function ModelVsNaiveCard({ pm, pn, skill, selectedStock }) {
       </div>
 
       <div style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '13px',
         lineHeight: 1.55,
-        borderTop: '1px solid #1f2937',
+        borderTop: '1px solid #2a2825',
         paddingTop: '13px'
       }}>
         Basit karşılaştırma modeli, “5 gün sonra fiyat bugünkü seviyeye yakın kalır” varsayımıdır.
@@ -1779,7 +1779,7 @@ function SignalHealthCard({ signal, pm }) {
 
   return (
     <Panel style={{ marginBottom: 0 }}>
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
         Karar Katmanı
       </div>
 
@@ -1837,7 +1837,7 @@ function ChartPanel({
         gap: '14px'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
             Grafik Alanı
           </div>
 
@@ -1849,7 +1849,7 @@ function ChartPanel({
             {selectedStock?.symbol} — {chartTitle}
           </h3>
 
-          <p style={{ color: '#6b7280', fontSize: '12px', margin: 0 }}>
+          <p style={{ color: '#66625a', fontSize: '12px', margin: 0 }}>
             Analiz servisinden gelen gerçek tarihli chartData verisi kullanılır. Arayüz tarafında tarih üretilmez.
           </p>
         </div>
@@ -1892,22 +1892,22 @@ function ChartPanel({
       ) : (
         <ResponsiveContainer width="100%" height={440}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2825" />
 
             <XAxis
               dataKey="label"
-              tick={{ fill: '#6b7280', fontSize: 11 }}
+              tick={{ fill: '#66625a', fontSize: 11 }}
               interval="preserveStartEnd"
             />
 
             <YAxis
-              tick={{ fill: '#6b7280', fontSize: 11 }}
+              tick={{ fill: '#66625a', fontSize: 11 }}
               tickFormatter={v => `${Number(v).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}${axisSuffix}`}
               width={78}
             />
 
             {(chartView === 'returns' || chartView === 'error' || scaleMode === 'percent') && (
-              <ReferenceLine y={0} stroke="#374151" strokeDasharray="4 4" />
+              <ReferenceLine y={0} stroke="#3a372f" strokeDasharray="4 4" />
             )}
 
             <Tooltip
@@ -1920,7 +1920,7 @@ function ChartPanel({
             />
 
             <Legend wrapperStyle={{
-              color: '#9ca3af',
+              color: '#9a968c',
               fontSize: '13px',
               paddingTop: '10px'
             }} />
@@ -1930,8 +1930,8 @@ function ChartPanel({
                 <Area
                   dataKey="upper"
                   name="Üst Bant (q90)"
-                  fill="#3b82f614"
-                  stroke="#3b82f644"
+                  fill="#2dd4bf14"
+                  stroke="#2dd4bf44"
                   strokeWidth={1}
                   dot={false}
                   activeDot={false}
@@ -1939,8 +1939,8 @@ function ChartPanel({
                 <Area
                   dataKey="lower"
                   name="Alt Bant (q10)"
-                  fill="#080b12"
-                  stroke="#3b82f644"
+                  fill="#0c0c0d"
+                  stroke="#2dd4bf44"
                   strokeWidth={1}
                   dot={false}
                   activeDot={false}
@@ -2073,7 +2073,7 @@ function DistributionMiniPanel({ data }) {
         flexWrap: 'wrap'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
             Sınıf Dağılımı
           </div>
           <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
@@ -2081,7 +2081,7 @@ function DistributionMiniPanel({ data }) {
           </h3>
         </div>
 
-        <div style={{ color: '#6b7280', fontSize: '12px', maxWidth: 420, lineHeight: 1.5 }}>
+        <div style={{ color: '#66625a', fontSize: '12px', maxWidth: 420, lineHeight: 1.5 }}>
           Modelin net yön sınıfına fazla yüklenip yüklenmediğini veya tek yöne aşırı kayıp kaymadığını burada okuyabilirsiniz.
         </div>
       </div>
@@ -2102,8 +2102,8 @@ function DistributionMiniPanel({ data }) {
 function DistributionCard({ row }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '16px',
       padding: '14px'
     }}>
@@ -2113,7 +2113,7 @@ function DistributionCard({ row }) {
         marginBottom: '10px'
       }}>
         <strong>{row.name}</strong>
-        <span style={{ color: '#6b7280', fontSize: '12px' }}>Aşağı / Nötr / Yukarı</span>
+        <span style={{ color: '#66625a', fontSize: '12px' }}>Aşağı / Nötr / Yukarı</span>
       </div>
 
       <div style={{
@@ -2121,7 +2121,7 @@ function DistributionCard({ row }) {
         borderRadius: '999px',
         overflow: 'hidden',
         display: 'flex',
-        background: '#111827',
+        background: '#141312',
         marginBottom: '10px'
       }}>
         <div style={{ width: `${row.down}%`, background: RED }} />
@@ -2132,7 +2132,7 @@ function DistributionCard({ row }) {
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '12px'
       }}>
         <span style={{ color: RED }}>↓ {pct(row.down)}</span>
@@ -2148,27 +2148,27 @@ function DistributionPanel({ data }) {
     <div style={{ height: 360 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 16, right: 24, left: 20, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2825" />
 
           <XAxis
             type="number"
             domain={[0, 100]}
-            tick={{ fill: '#6b7280' }}
+            tick={{ fill: '#66625a' }}
             tickFormatter={v => `${v}%`}
           />
 
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fill: '#d1d5db', fontSize: 13 }}
+            tick={{ fill: '#c7c3b8', fontSize: 13 }}
             width={70}
           />
 
           <Tooltip
             formatter={(value, name) => [`${Number(value).toFixed(2)}%`, name]}
             contentStyle={{
-              background: '#111827',
-              border: '1px solid #1f2937',
+              background: '#141312',
+              border: '1px solid #2a2825',
               borderRadius: '12px',
               color: '#fff'
             }}
@@ -2193,7 +2193,7 @@ function DetailsPanel({ prediction, pm, signal, detailsOpen, setDetailsOpen }) {
         style={{
           background: 'transparent',
           color: '#93c5fd',
-          border: '1px solid #1f2937',
+          border: '1px solid #2a2825',
           borderRadius: '12px',
           padding: '10px 13px',
           cursor: 'pointer',
@@ -2209,7 +2209,7 @@ function DetailsPanel({ prediction, pm, signal, detailsOpen, setDetailsOpen }) {
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))',
           gap: '12px',
-          color: '#d1d5db',
+          color: '#c7c3b8',
           fontSize: '13px'
         }}>
           <Detail label="Model Versiyonu" value={prediction.modelVersion} />
@@ -2245,11 +2245,11 @@ function EmptyState({ selectedStock, loading }) {
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        color: '#9ca3af'
+        color: '#9a968c'
       }}>
         <div>
           <div style={{ fontSize: 44, marginBottom: 12 }}>🧭</div>
-          <h3 style={{ color: '#e5e7eb', marginBottom: 8 }}>
+          <h3 style={{ color: '#e8e5df', marginBottom: 8 }}>
             {selectedStock ? `${selectedStock.symbol} analize hazır` : 'Bir varlık seçerek başlayın'}
           </h3>
           <p style={{ maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
@@ -2292,8 +2292,8 @@ function Toast({ toast }) {
 function Panel({ children, style = {} }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #141312 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '20px',
       padding: '22px',
       marginBottom: '22px',
@@ -2308,8 +2308,8 @@ function Panel({ children, style = {} }) {
 function MetricCard({ label, value, sub, color, icon }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #0f0f10 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '18px',
       padding: '16px',
       minHeight: '104px',
@@ -2326,7 +2326,7 @@ function MetricCard({ label, value, sub, color, icon }) {
         {icon}
       </div>
 
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '8px' }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: '8px' }}>
         {label}
       </div>
 
@@ -2341,7 +2341,7 @@ function MetricCard({ label, value, sub, color, icon }) {
       </div>
 
       <div style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '12px',
         lineHeight: 1.4
       }}>
@@ -2354,8 +2354,8 @@ function MetricCard({ label, value, sub, color, icon }) {
 function CompareBox({ title, model, naive, skill, positive, formatter }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '16px',
       padding: '14px'
     }}>
@@ -2379,13 +2379,13 @@ function CompareBox({ title, model, naive, skill, positive, formatter }) {
         gap: '8px'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 4 }}>Model</div>
-          <div style={{ color: '#e5e7eb', fontWeight: 'bold' }}>{formatter(model)}</div>
+          <div style={{ color: '#66625a', fontSize: '11px', marginBottom: 4 }}>Model</div>
+          <div style={{ color: '#e8e5df', fontWeight: 'bold' }}>{formatter(model)}</div>
         </div>
 
         <div>
-          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 4 }}>Basit model</div>
-          <div style={{ color: '#e5e7eb', fontWeight: 'bold' }}>{formatter(naive)}</div>
+          <div style={{ color: '#66625a', fontSize: '11px', marginBottom: 4 }}>Basit model</div>
+          <div style={{ color: '#e8e5df', fontWeight: 'bold' }}>{formatter(naive)}</div>
         </div>
       </div>
     </div>
@@ -2401,7 +2401,7 @@ function HealthRow({ label, value, color }) {
         display: 'flex',
         justifyContent: 'space-between',
         fontSize: '12px',
-        color: '#9ca3af',
+        color: '#9a968c',
         marginBottom: 4
       }}>
         <span>{label}</span>
@@ -2411,7 +2411,7 @@ function HealthRow({ label, value, color }) {
       <div style={{
         height: 7,
         borderRadius: '999px',
-        background: '#1f2937',
+        background: '#2a2825',
         overflow: 'hidden'
       }}>
         <div style={{
@@ -2433,7 +2433,7 @@ function ScoreGauge({ label, value, color }) {
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        color: '#9ca3af',
+        color: '#9a968c',
         fontSize: '12px',
         marginBottom: 5
       }}>
@@ -2443,8 +2443,8 @@ function ScoreGauge({ label, value, color }) {
 
       <div style={{
         height: 9,
-        background: '#0b1220',
-        border: '1px solid #1f2937',
+        background: '#0f0f10',
+        border: '1px solid #2a2825',
         borderRadius: '999px',
         overflow: 'hidden'
       }}>
@@ -2463,10 +2463,10 @@ function SegmentedButton({ value, setValue, options }) {
   return (
     <div style={{
       display: 'flex',
-      background: '#0b1220',
+      background: '#0f0f10',
       padding: '4px',
       borderRadius: '13px',
-      border: '1px solid #1f2937',
+      border: '1px solid #2a2825',
       flexWrap: 'wrap',
       gap: '3px'
     }}>
@@ -2476,8 +2476,8 @@ function SegmentedButton({ value, setValue, options }) {
           onClick={() => setValue(key)}
           style={{
             padding: '7px 10px',
-            background: value === key ? '#2563eb' : 'transparent',
-            color: value === key ? '#fff' : '#9ca3af',
+            background: value === key ? '#d97706' : 'transparent',
+            color: value === key ? '#fff' : '#9a968c',
             border: 'none',
             borderRadius: '10px',
             cursor: 'pointer',
@@ -2495,15 +2495,15 @@ function SegmentedButton({ value, setValue, options }) {
 function Detail({ label, value }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '13px',
       padding: '12px'
     }}>
-      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>
+      <div style={{ color: '#66625a', fontSize: '11px', marginBottom: '4px' }}>
         {label}
       </div>
-      <div style={{ color: '#e5e7eb', fontWeight: 'bold' }}>
+      <div style={{ color: '#e8e5df', fontWeight: 'bold' }}>
         {value ?? '-'}
       </div>
     </div>
@@ -2529,8 +2529,8 @@ function Badge({ children, color }) {
 const inputStyle = {
   width: '100%',
   padding: '13px 16px',
-  background: '#0b1220',
-  border: '1px solid #1f2937',
+  background: '#0f0f10',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   color: '#fff',
   fontSize: '14px',
@@ -2544,7 +2544,7 @@ const primaryButton = {
   borderRadius: '13px',
   fontWeight: 'bold',
   fontSize: '14px',
-  boxShadow: '0 14px 28px rgba(37,99,235,0.24)'
+  boxShadow: '0 14px 28px rgba(217,119,6,0.24)'
 }
 
 const searchBoxStyle = {
@@ -2552,8 +2552,8 @@ const searchBoxStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: '#111827',
-  border: '1px solid #1f2937',
+  background: '#141312',
+  border: '1px solid #2a2825',
   borderRadius: '14px',
   zIndex: 20,
   maxHeight: '260px',
@@ -2564,7 +2564,7 @@ const searchBoxStyle = {
 const searchItemStyle = {
   padding: '13px 16px',
   cursor: 'pointer',
-  borderBottom: '1px solid #1f2937',
+  borderBottom: '1px solid #2a2825',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center'

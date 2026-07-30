@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Eskiz1.API.Data;
@@ -7,6 +8,7 @@ namespace Eskiz1.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class PortfolioController : ControllerBase
     {
         private readonly AppDbContext _context;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Eskiz1.API.Services;
 using Eskiz1.API.Data;
@@ -19,6 +20,7 @@ namespace Eskiz1.API.Controllers
         }
 
         // post: api/externaldata/sync -> dış piyasa verilerini yahoo finance üzerinden senkronize eder.
+        [Authorize]
         [HttpPost("sync")]
         public async Task<IActionResult> Sync()
         {

@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { getStocks } from '../api/client'
 import { useAnalysis } from '../context/AnalysisContext'
 
-const BLUE = '#3b82f6'
+const BLUE = '#2dd4bf'
 const GREEN = '#10b981'
 const YELLOW = '#f59e0b'
 const RED = '#ef4444'
 const PURPLE = '#8b5cf6'
-const GRAY = '#6b7280'
+const GRAY = '#66625a'
 
 const STORAGE_KEY = 'pusula_ai_watchlist_v1'
 
@@ -203,12 +203,12 @@ export default function Watchlist() {
 
       {message && (
         <div style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
+          background: '#141312',
+          border: '1px solid #2a2825',
           borderRadius: '14px',
           padding: '13px 16px',
           marginBottom: '20px',
-          color: '#d1d5db',
+          color: '#c7c3b8',
           boxShadow: '0 14px 32px rgba(0,0,0,0.18)'
         }}>
           {message}
@@ -237,7 +237,7 @@ export default function Watchlist() {
           marginBottom: '18px'
         }}>
           <div>
-            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+            <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
               Kişisel Takip Alanı
             </div>
 
@@ -246,7 +246,7 @@ export default function Watchlist() {
             </h3>
 
             <p style={{
-              color: '#9ca3af',
+              color: '#9a968c',
               fontSize: '13px',
               marginTop: '7px',
               maxWidth: 720,
@@ -324,9 +324,9 @@ export default function Watchlist() {
                   key={id}
                   style={{
                     background: watched
-                      ? 'radial-gradient(circle at top left, rgba(37,99,235,0.18), transparent 40%), #0b1220'
-                      : '#0b1220',
-                    border: watched ? '1px solid #3b82f666' : '1px solid #1f2937',
+                      ? 'radial-gradient(circle at top left, rgba(217,119,6,0.18), transparent 40%), #0f0f10'
+                      : '#0f0f10',
+                    border: watched ? '1px solid #2dd4bf66' : '1px solid #2a2825',
                     borderRadius: '18px',
                     padding: '16px',
                     minHeight: 178,
@@ -345,7 +345,7 @@ export default function Watchlist() {
                     }}>
                       <div>
                         <div style={{
-                          color: watched ? '#93c5fd' : '#f9fafb',
+                          color: watched ? '#93c5fd' : '#f2f0ec',
                           fontWeight: 'bold',
                           fontSize: '18px',
                           letterSpacing: '-0.3px'
@@ -354,7 +354,7 @@ export default function Watchlist() {
                         </div>
 
                         <div style={{
-                          color: '#6b7280',
+                          color: '#66625a',
                           fontSize: '12px',
                           marginTop: '3px'
                         }}>
@@ -376,7 +376,7 @@ export default function Watchlist() {
                     </div>
 
                     <div style={{
-                      color: '#d1d5db',
+                      color: '#c7c3b8',
                       fontSize: '13px',
                       lineHeight: 1.45,
                       minHeight: 38,
@@ -386,7 +386,7 @@ export default function Watchlist() {
                     </div>
 
                     <div style={{
-                      color: '#6b7280',
+                      color: '#66625a',
                       fontSize: '12px'
                     }}>
                       {getSector(stock) || 'Sektör bilgisi yok'}
@@ -465,7 +465,7 @@ function Header() {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        color: '#6b7280',
+        color: '#66625a',
         fontSize: '13px',
         marginBottom: '8px'
       }}>
@@ -488,7 +488,7 @@ function Header() {
       </h2>
 
       <p style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         marginTop: '9px',
         maxWidth: '860px',
         lineHeight: 1.6
@@ -502,8 +502,8 @@ function Header() {
 function StatCard({ label, value, color, icon }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #0f0f10 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '18px',
       padding: '16px',
       minHeight: '92px',
@@ -520,7 +520,7 @@ function StatCard({ label, value, color, icon }) {
         {icon}
       </div>
 
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '8px' }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: '8px' }}>
         {label}
       </div>
 
@@ -539,8 +539,8 @@ function StatCard({ label, value, color, icon }) {
 function Panel({ children }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #141312 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '20px',
       padding: '22px',
       marginBottom: '22px',
@@ -555,10 +555,10 @@ function SegmentedButton({ value, setValue, options }) {
   return (
     <div style={{
       display: 'flex',
-      background: '#0b1220',
+      background: '#0f0f10',
       padding: '4px',
       borderRadius: '13px',
-      border: '1px solid #1f2937',
+      border: '1px solid #2a2825',
       flexWrap: 'wrap',
       gap: '3px'
     }}>
@@ -568,8 +568,8 @@ function SegmentedButton({ value, setValue, options }) {
           onClick={() => setValue(key)}
           style={{
             padding: '8px 11px',
-            background: value === key ? '#2563eb' : 'transparent',
-            color: value === key ? '#fff' : '#9ca3af',
+            background: value === key ? '#d97706' : 'transparent',
+            color: value === key ? '#fff' : '#9a968c',
             border: 'none',
             borderRadius: '10px',
             cursor: 'pointer',
@@ -591,12 +591,12 @@ function LoadingState() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#9ca3af',
+      color: '#9a968c',
       textAlign: 'center'
     }}>
       <div>
         <div style={{ fontSize: 42, marginBottom: 12 }}>⏳</div>
-        <h3 style={{ margin: 0, color: '#e5e7eb' }}>Varlık listesi yükleniyor</h3>
+        <h3 style={{ margin: 0, color: '#e8e5df' }}>Varlık listesi yükleniyor</h3>
         <p style={{ marginTop: 8 }}>İzleme listesi hazırlanıyor...</p>
       </div>
     </div>
@@ -610,7 +610,7 @@ function EmptyState({ viewMode }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#9ca3af',
+      color: '#9a968c',
       textAlign: 'center'
     }}>
       <div>
@@ -618,7 +618,7 @@ function EmptyState({ viewMode }) {
           {viewMode === 'watchlist' ? '👁️' : '🔎'}
         </div>
 
-        <h3 style={{ margin: 0, color: '#e5e7eb' }}>
+        <h3 style={{ margin: 0, color: '#e8e5df' }}>
           {viewMode === 'watchlist'
             ? 'İzleme listesi boş'
             : 'Sonuç bulunamadı'}
@@ -641,14 +641,14 @@ function EmptyState({ viewMode }) {
 function InfoBlock({ icon, title, text }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '16px',
       padding: '16px'
     }}>
       <div style={{ fontSize: 24, marginBottom: 10 }}>{icon}</div>
-      <h4 style={{ margin: '0 0 7px', color: '#e5e7eb' }}>{title}</h4>
-      <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px', lineHeight: 1.55 }}>
+      <h4 style={{ margin: '0 0 7px', color: '#e8e5df' }}>{title}</h4>
+      <p style={{ margin: 0, color: '#9a968c', fontSize: '13px', lineHeight: 1.55 }}>
         {text}
       </p>
     </div>
@@ -658,8 +658,8 @@ function InfoBlock({ icon, title, text }) {
 const inputStyle = {
   width: '100%',
   padding: '13px 16px',
-  background: '#0b1220',
-  border: '1px solid #1f2937',
+  background: '#0f0f10',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   color: '#fff',
   fontSize: '14px',
@@ -668,12 +668,12 @@ const inputStyle = {
 
 const secondaryButton = {
   padding: '11px 14px',
-  color: '#d1d5db',
-  border: '1px solid #1f2937',
+  color: '#c7c3b8',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   fontWeight: 'bold',
   fontSize: '13px',
-  background: '#0b1220',
+  background: '#0f0f10',
   cursor: 'pointer'
 }
 
@@ -695,7 +695,7 @@ const primaryMiniButton = {
   borderRadius: '11px',
   fontWeight: 'bold',
   fontSize: '12px',
-  background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+  background: '#d97706',
   cursor: 'pointer'
 }
 

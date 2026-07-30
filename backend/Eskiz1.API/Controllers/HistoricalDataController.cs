@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Eskiz1.API.Services;
@@ -57,6 +58,7 @@ namespace Eskiz1.API.Controllers
         }
 
         // post: api/historicaldata/sync/1 -> yahoo finance üzerinden ohlcv verisini senkronize eder ve eksik high/low alanlarını günceller.
+        [Authorize]
         [HttpPost("sync/{stockId}")]
         public async Task<IActionResult> SyncDataFromYahoo(int stockId)
         {
@@ -81,6 +83,7 @@ namespace Eskiz1.API.Controllers
         }
 
         // post: api/historicaldata/syncall -> tüm hisseler için ohlcv verisini senkronize eder ve eksik high/low alanlarını günceller.
+        [Authorize]
         [HttpPost("syncall")]
         public async Task<IActionResult> SyncAllStocks()
         {
@@ -107,6 +110,7 @@ namespace Eskiz1.API.Controllers
 
         // delete: api/historicaldata/stock/1 -> seçili hissenin tarihsel verilerini siler.
         // not: hisse kaydını veya kullanıcı işlemlerini silmez; yalnızca historicaldata kayıtlarını temizler.
+        [Authorize]
         [HttpDelete("stock/{stockId}")]
         public async Task<IActionResult> DeleteHistoricalDataByStock(int stockId)
         {

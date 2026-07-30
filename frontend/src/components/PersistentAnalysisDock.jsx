@@ -52,8 +52,8 @@ export default function PersistentAnalysisDock() {
       right: 0,
       bottom: 0,
       zIndex: 90,
-      background: 'linear-gradient(180deg, rgba(17,24,39,0.96), rgba(8,11,18,0.98))',
-      borderTop: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, rgba(20,19,18,0.96), rgba(12,12,13,0.98))',
+      borderTop: '1px solid #2a2825',
       boxShadow: '0 -18px 45px rgba(0,0,0,0.35)',
       backdropFilter: 'blur(14px)'
     }}>
@@ -66,19 +66,19 @@ export default function PersistentAnalysisDock() {
         flexWrap: 'wrap'
       }}>
         <div style={{ minWidth: '210px' }}>
-          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '3px' }}>
+          <div style={{ color: '#66625a', fontSize: '11px', marginBottom: '3px' }}>
             Pusula AI Canlı Analiz
           </div>
           <div style={{ fontWeight: 'bold', fontSize: '15px' }}>
             {selectedStock?.symbol || 'Henüz varlık seçilmedi'}
-            {loading && <span style={{ color: '#3b82f6', marginLeft: '8px' }}>· analiz ediliyor</span>}
+            {loading && <span style={{ color: '#2dd4bf', marginLeft: '8px' }}>· analiz ediliyor</span>}
           </div>
         </div>
 
         <DockPill
           label="Sinyal"
           value={hasAnalysis ? getBiasLabel(signal?.tradeBias) : '-'}
-          color={hasAnalysis ? biasColor : '#6b7280'}
+          color={hasAnalysis ? biasColor : '#66625a'}
         />
 
         <DockPill
@@ -96,12 +96,12 @@ export default function PersistentAnalysisDock() {
         <DockPill
           label="Action Rate"
           value={hasAnalysis ? pct(pm?.predictedActionRate) : '-'}
-          color={(pm?.predictedActionRate || 0) > 0 ? '#3b82f6' : '#6b7280'}
+          color={(pm?.predictedActionRate || 0) > 0 ? '#2dd4bf' : '#66625a'}
         />
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
           {lastUpdatedAt && (
-            <span style={{ color: '#6b7280', fontSize: '12px' }}>
+            <span style={{ color: '#66625a', fontSize: '12px' }}>
               Son analiz: {new Date(lastUpdatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
@@ -110,20 +110,20 @@ export default function PersistentAnalysisDock() {
             <button
               onClick={() => runPrediction()}
               disabled={loading}
-              style={smallButton(loading ? '#374151' : '#2563eb')}
+              style={smallButton(loading ? '#3a372f' : '#d97706')}
             >
               {loading ? 'Çalışıyor...' : 'Yenile'}
             </button>
           )}
 
           {hasAnalysis && (
-            <button onClick={() => setExpanded(v => !v)} style={smallButton('#111827', '#1f2937')}>
+            <button onClick={() => setExpanded(v => !v)} style={smallButton('#141312', '#2a2825')}>
               {expanded ? 'Küçült' : 'Grafiği Aç'}
             </button>
           )}
 
           {hasAnalysis && (
-            <button onClick={clearAnalysis} style={smallButton('#111827', '#1f2937', '#ef4444')}>
+            <button onClick={clearAnalysis} style={smallButton('#141312', '#2a2825', '#ef4444')}>
               Temizle
             </button>
           )}
@@ -134,19 +134,19 @@ export default function PersistentAnalysisDock() {
         <div style={{ height: 210, padding: '0 28px 18px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={miniData} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
-              <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} width={55} />
+              <XAxis dataKey="date" tick={{ fill: '#66625a', fontSize: 10 }} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: '#66625a', fontSize: 10 }} width={55} />
               <Tooltip
                 contentStyle={{
-                  background: '#111827',
-                  border: '1px solid #1f2937',
+                  background: '#141312',
+                  border: '1px solid #2a2825',
                   borderRadius: '10px',
                   color: '#fff'
                 }}
               />
               <Line type="monotone" dataKey="real" name="Gerçek" stroke="#ffffff" strokeWidth={2} dot={false} connectNulls={false} />
               <Line type="monotone" dataKey="model" name="Model T+5" stroke="#ef4444" strokeWidth={1.8} dot={false} strokeDasharray="4 4" connectNulls={false} />
-              <Line type="monotone" dataKey="mean" name="30G Senaryo" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls={false} />
+              <Line type="monotone" dataKey="mean" name="30G Senaryo" stroke="#2dd4bf" strokeWidth={2} dot={false} connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -158,13 +158,13 @@ export default function PersistentAnalysisDock() {
 function DockPill({ label, value, color }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '12px',
       padding: '8px 12px',
       minWidth: '120px'
     }}>
-      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '3px' }}>{label}</div>
+      <div style={{ color: '#66625a', fontSize: '11px', marginBottom: '3px' }}>{label}</div>
       <div style={{ color, fontWeight: 'bold', fontSize: '13px' }}>{value}</div>
     </div>
   )

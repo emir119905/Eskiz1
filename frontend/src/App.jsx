@@ -1,125 +1,80 @@
-import { useEffect, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useLocation, NavLink } from 'react-router-dom'
+import { Compass, LineChart, Briefcase, Eye, FlaskConical, Database, LogOut } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Portfolio from './pages/Portfolio'
 import Admin from './pages/Admin'
+import Login from './pages/Login'
 import { AnalysisProvider } from './context/AnalysisContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import PersistentAnalysisDock from './components/PersistentAnalysisDock'
 import ModelLab from './pages/ModelLab'
-import Reports from './pages/Reports'
 import Watchlist from './pages/Watchlist'
-
-const BLUE = '#3b82f6'
-const GREEN = '#10b981'
-const YELLOW = '#f59e0b'
-const RED = '#ef4444'
-const PURPLE = '#8b5cf6'
-const GRAY = '#6b7280'
+import { theme } from './theme'
+import { useEffect, useState } from 'react'
 
 const APP_VERSION = 'v11.3'
 const ENGINE_LABEL = 'Multi-Horizon Engine'
-const NEXT_ENGINE = 'v12 Directional Engine'
 
-const navItems = [
-  {
-    to: '/',
-    label: 'Dashboard',
-    icon: '📈',
-    description: 'Canlı analiz radarı'
-  },
-  {
-    to: '/portfolio',
-    label: 'Portföy',
-    icon: '💼',
-    description: 'Sanal portföy ve işlemler'
-  },
-  {
-    to: '/watchlist',
-    label: 'İzleme Listesi',
-    icon: '👁️',
-    description: 'Favori varlık takibi'
-  },
-  {
-    to: '/lab',
-    label: 'Model Lab',
-    icon: '🧪',
-    description: 'Batch test ve metrikler'
-  },
-  {
-    to: '/reports',
-    label: 'Raporlar',
-    icon: '📄',
-    description: 'Proje brifingi'
-  },
-  {
-    to: '/admin',
-    label: 'Veri Yönetimi',
-    icon: '🗄️',
-    description: 'Veri durumu ve senkronizasyon'
-  }
+const mainNavItems = [
+  { to: '/', label: 'Dashboard', Icon: LineChart, description: 'Canlı analiz radarı' },
+  { to: '/portfolio', label: 'Portföy', Icon: Briefcase, description: 'Sanal portföy ve işlemler' },
+  { to: '/watchlist', label: 'İzleme Listesi', Icon: Eye, description: 'Favori varlık takibi' }
 ]
 
-function SidebarItem({ to, label, icon, description }) {
+const devNavItems = [
+  { to: '/lab', label: 'Model Lab', Icon: FlaskConical, description: 'Toplu model testi ve QA' },
+  { to: '/admin', label: 'Veri Yönetimi', Icon: Database, description: 'Veri durumu ve senkronizasyon' }
+]
+
+function SidebarItem({ to, label, Icon, description }) {
   return (
     <NavLink
       to={to}
       style={({ isActive }) => ({
-        color: isActive ? '#ffffff' : '#a1a1aa',
+        color: isActive ? theme.text : theme.textMuted,
         textDecoration: 'none',
-        fontWeight: isActive ? 'bold' : 'normal',
-        padding: '12px 13px',
-        borderRadius: '14px',
-        background: isActive
-          ? 'linear-gradient(135deg, rgba(37,99,235,0.95), rgba(124,58,237,0.88))'
-          : 'transparent',
+        fontWeight: isActive ? 600 : 400,
+        padding: '10px 12px',
+        borderRadius: '10px',
+        background: isActive ? theme.primaryMuted : 'transparent',
+        borderLeft: isActive ? `2px solid ${theme.primary}` : '2px solid transparent',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        transition: 'all 0.2s ease',
-        marginBottom: '6px',
-        border: isActive ? '1px solid rgba(147,197,253,0.32)' : '1px solid transparent',
-        boxShadow: isActive ? '0 16px 30px rgba(37,99,235,0.18)' : 'none'
+        transition: 'background 0.15s ease, color 0.15s ease',
+        marginBottom: '4px'
       })}
     >
-      <span style={{
-        width: 31,
-        height: 31,
-        borderRadius: '10px',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(255,255,255,0.08)',
-        fontSize: '16px',
-        flexShrink: 0
-      }}>
-        {icon}
-      </span>
-
-      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <span style={{ fontSize: '14px', lineHeight: 1.2 }}>
-          {label}
-        </span>
-        <span style={{
-          fontSize: '11px',
-          opacity: 0.65,
-          marginTop: '3px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>
-          {description}
-        </span>
-      </span>
+      {({ isActive }) => (
+        <>
+          <Icon size={17} strokeWidth={1.75} color={isActive ? theme.primaryStrong : theme.textFaint} style={{ flexShrink: 0 }} />
+          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span style={{ fontSize: '13.5px', lineHeight: 1.2 }}>{label}</span>
+            <span style={{
+              fontSize: '11px',
+              opacity: 0.6,
+              marginTop: '2px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {description}
+            </span>
+          </span>
+        </>
+      )}
     </NavLink>
   )
 }
 
 function Sidebar() {
+  const { user, logout } = useAuth()
+
   return (
     <aside style={{
-      width: '280px',
-      background: 'linear-gradient(180deg, #0b1220 0%, #080b12 100%)',
-      borderRight: '1px solid #1f2937',
+      width: '260px',
+      background: theme.surface,
+      borderRight: `1px solid ${theme.border}`,
       display: 'flex',
       flexDirection: 'column',
       position: 'fixed',
@@ -127,106 +82,112 @@ function Sidebar() {
       bottom: 0,
       left: 0,
       zIndex: 100,
-      padding: '22px 16px'
+      padding: '20px 14px'
     }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        marginBottom: '26px',
-        padding: '10px 10px 16px',
-        borderBottom: '1px solid #1f2937'
+        marginBottom: '22px',
+        padding: '8px 8px 16px',
+        borderBottom: `1px solid ${theme.border}`
       }}>
         <div style={{
-          width: 42,
-          height: 42,
-          borderRadius: '15px',
-          background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+          width: 38,
+          height: 38,
+          borderRadius: '11px',
+          background: theme.primary,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 18px 35px rgba(37,99,235,0.25)',
-          fontSize: '22px'
+          flexShrink: 0
         }}>
-          🧭
+          <Compass size={19} color="#141312" strokeWidth={2} />
         </div>
 
-        <div>
-          <div style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            letterSpacing: '-0.4px',
-            color: '#f9fafb'
-          }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '17px', fontWeight: 600, letterSpacing: '-0.2px', color: theme.text }}>
             Pusula AI
           </div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginTop: 2 }}>
+          <div style={{ color: theme.textFaint, fontSize: '11px', marginTop: 1 }}>
             Finansal karar destek paneli
           </div>
         </div>
       </div>
 
       <nav style={{ flex: 1 }}>
-        {navItems.map(item => (
-          <SidebarItem
-            key={item.to}
-            to={item.to}
-            label={item.label}
-            icon={item.icon}
-            description={item.description}
-          />
+        {mainNavItems.map(item => (
+          <SidebarItem key={item.to} {...item} />
+        ))}
+
+        <div style={{
+          margin: '14px 8px 10px',
+          paddingTop: '12px',
+          borderTop: `1px solid ${theme.border}`,
+          color: theme.textFaint,
+          fontSize: '10.5px',
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase'
+        }}>
+          Geliştirici Araçları
+        </div>
+
+        {devNavItems.map(item => (
+          <SidebarItem key={item.to} {...item} />
         ))}
       </nav>
 
-      <div style={{
-        padding: '14px',
-        border: '1px solid #1f2937',
-        borderRadius: '18px',
-        background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
-        marginBottom: '12px'
-      }}>
+      <div style={{ color: theme.textFaint, fontSize: '11px', padding: '4px 8px 12px' }}>
+        {ENGINE_LABEL} · {APP_VERSION}
+      </div>
+
+      {user && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: '8px',
-          marginBottom: '9px',
-          color: '#d1d5db',
-          fontSize: '13px',
-          fontWeight: 'bold'
+          padding: '10px 12px',
+          border: `1px solid ${theme.border}`,
+          borderRadius: '12px',
+          background: theme.surfaceSunken
         }}>
-          <span style={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: GREEN,
-            boxShadow: `0 0 16px ${GREEN}`
-          }} />
-          Sistem Aktif
-        </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{
+              color: theme.text,
+              fontSize: '13px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {user.firstName} {user.lastName}
+            </div>
+            <div style={{ color: theme.textFaint, fontSize: '11px' }}>{user.email}</div>
+          </div>
 
-        <div style={{ color: '#6b7280', fontSize: '12px', lineHeight: 1.5 }}>
-          {ENGINE_LABEL} · {APP_VERSION}
+          <button
+            onClick={logout}
+            title="Çıkış yap"
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              background: 'transparent',
+              border: `1px solid ${theme.border}`,
+              borderRadius: '8px',
+              color: theme.textMuted,
+              cursor: 'pointer'
+            }}
+          >
+            <LogOut size={14} strokeWidth={1.75} />
+          </button>
         </div>
-
-        <div style={{
-          marginTop: '10px',
-          color: '#93c5fd',
-          fontSize: '11px',
-          borderTop: '1px solid #1f2937',
-          paddingTop: '10px'
-        }}>
-          Sonraki hedef: {NEXT_ENGINE}
-        </div>
-      </div>
-
-      <div style={{
-        color: '#4b5563',
-        fontSize: '11px',
-        textAlign: 'center',
-        lineHeight: 1.5
-      }}>
-        Akademik proje · Yapay zeka destekli analiz
-      </div>
+      )}
     </aside>
   )
 }
@@ -239,7 +200,6 @@ function TopStatusBar() {
     '/portfolio': 'Portföy',
     '/watchlist': 'İzleme Listesi',
     '/lab': 'Model Laboratuvarı',
-    '/reports': 'Raporlar',
     '/admin': 'Veri Yönetimi'
   }[location.pathname] || 'Pusula AI'
 
@@ -248,62 +208,23 @@ function TopStatusBar() {
       position: 'sticky',
       top: 0,
       zIndex: 60,
-      background: 'rgba(8, 11, 18, 0.82)',
-      backdropFilter: 'blur(14px)',
-      borderBottom: '1px solid #1f2937',
-      margin: '-40px -48px 28px',
-      padding: '14px 48px',
+      background: 'rgba(12,12,13,0.9)',
+      backdropFilter: 'blur(8px)',
+      borderBottom: `1px solid ${theme.border}`,
+      margin: '-40px -48px 24px',
+      padding: '16px 48px',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '16px'
+      justifyContent: 'space-between'
     }}>
-      <div>
-        <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 3 }}>
-          Aktif Sayfa
-        </div>
-        <div style={{ color: '#f9fafb', fontWeight: 'bold', fontSize: '15px' }}>
-          {pageName}
-        </div>
+      <div style={{ color: theme.text, fontWeight: 600, fontSize: '15px' }}>
+        {pageName}
       </div>
 
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-end'
-      }}>
-        <StatusPill color={GREEN} label="Frontend" value="Online" />
-        <StatusPill color={GREEN} label=".NET API" value="5221" />
-        <StatusPill color={BLUE} label="AI API" value="8000" />
-        <StatusPill color={YELLOW} label="Kapsam" value="Akademik" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: theme.textFaint, fontSize: '12px' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.success }} />
+        Sistem Aktif
       </div>
-    </div>
-  )
-}
-
-function StatusPill({ color, label, value }) {
-  return (
-    <div style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '7px',
-      background: '#0b1220',
-      border: '1px solid #1f2937',
-      borderRadius: '999px',
-      padding: '7px 10px',
-      color: '#d1d5db',
-      fontSize: '12px'
-    }}>
-      <span style={{
-        width: 7,
-        height: 7,
-        borderRadius: '50%',
-        background: color,
-        boxShadow: `0 0 12px ${color}`
-      }} />
-      <span style={{ color: '#6b7280' }}>{label}</span>
-      <strong style={{ color }}>{value}</strong>
     </div>
   )
 }
@@ -313,8 +234,8 @@ function Footer() {
     <footer style={{
       marginTop: '36px',
       paddingTop: '18px',
-      borderTop: '1px solid #1f2937',
-      color: '#6b7280',
+      borderTop: `1px solid ${theme.border}`,
+      color: theme.textFaint,
       fontSize: '12px',
       display: 'flex',
       justifyContent: 'space-between',
@@ -323,7 +244,7 @@ function Footer() {
       lineHeight: 1.6
     }}>
       <div>
-        <strong style={{ color: '#9ca3af' }}>Pusula AI</strong> · Finansal karar destek ve model deney platformu.
+        <strong style={{ color: theme.textMuted }}>Pusula AI</strong> · Finansal karar destek ve model deney platformu.
       </div>
 
       <div>
@@ -338,7 +259,6 @@ const keepAlivePages = [
   { path: '/portfolio', Component: Portfolio },
   { path: '/watchlist', Component: Watchlist },
   { path: '/lab', Component: ModelLab },
-  { path: '/reports', Component: Reports },
   { path: '/admin', Component: Admin }
 ]
 
@@ -391,15 +311,15 @@ function AppShell() {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
-      background:
-        'radial-gradient(circle at top left, rgba(37,99,235,0.08), transparent 34%), #080b12',
-      color: '#ffffff'
+      background: theme.bg,
+      color: theme.text,
+      animation: 'fadeIn 0.25s ease'
     }}>
       <Sidebar />
 
       <main style={{
         flex: 1,
-        marginLeft: '280px',
+        marginLeft: '260px',
         padding: '40px 48px 34px',
         minWidth: 0
       }}>
@@ -415,10 +335,24 @@ function AppShell() {
   )
 }
 
-export default function App() {
+function AuthGate() {
+  const { isAuthenticated } = useAuth()
+
+  if (!isAuthenticated) {
+    return <div key="login" style={{ animation: 'fadeIn 0.25s ease' }}><Login /></div>
+  }
+
   return (
     <AnalysisProvider>
       <AppShell />
     </AnalysisProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   )
 }

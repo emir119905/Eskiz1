@@ -10,12 +10,12 @@ import {
   addStock
 } from '../api/client'
 
-const BLUE = '#3b82f6'
+const BLUE = '#2dd4bf'
 const GREEN = '#10b981'
 const YELLOW = '#f59e0b'
 const RED = '#ef4444'
 const PURPLE = '#8b5cf6'
-const GRAY = '#6b7280'
+const GRAY = '#66625a'
 const CYAN = '#06b6d4'
 
 function asArray(payload) {
@@ -636,12 +636,12 @@ export default function Admin() {
 
       {message && (
         <div style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
+          background: '#141312',
+          border: '1px solid #2a2825',
           borderRadius: '14px',
           padding: '13px 16px',
           marginBottom: '20px',
-          color: '#d1d5db',
+          color: '#c7c3b8',
           boxShadow: '0 14px 32px rgba(0,0,0,0.18)'
         }}>
           {message}
@@ -680,14 +680,14 @@ export default function Admin() {
           marginBottom: '18px'
         }}>
           <div>
-            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+            <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
               Hisse Evreni
             </div>
             <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
               ➕ Yeni Hisse Ekle
             </h3>
             <p style={{
-              color: '#9ca3af',
+              color: '#9a968c',
               fontSize: '13px',
               marginTop: '7px',
               maxWidth: 700,
@@ -758,14 +758,14 @@ export default function Admin() {
           marginBottom: '18px'
         }}>
           <div>
-            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+            <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
               Veri Operasyonları
             </div>
             <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
               Tarihsel Veri Yönetimi
             </h3>
             <p style={{
-              color: '#9ca3af',
+              color: '#9a968c',
               fontSize: '13px',
               marginTop: '7px',
               maxWidth: 660,
@@ -836,8 +836,8 @@ export default function Admin() {
             }}>
               <thead>
                 <tr style={{
-                  borderBottom: '1px solid #1f2937',
-                  color: '#9ca3af',
+                  borderBottom: '1px solid #2a2825',
+                  color: '#9a968c',
                   textAlign: 'left'
                 }}>
                   <th style={th}>Hisse</th>
@@ -862,15 +862,15 @@ export default function Admin() {
                     <tr
                       key={`${row.stockID}-${row.symbol}`}
                       style={{
-                        borderBottom: '1px solid #1f2937',
-                        color: '#d1d5db'
+                        borderBottom: '1px solid #2a2825',
+                        color: '#c7c3b8'
                       }}
                     >
                       <td style={td}>
-                        <div style={{ fontWeight: 'bold', color: '#f9fafb' }}>
+                        <div style={{ fontWeight: 'bold', color: '#f2f0ec' }}>
                           {row.symbol || '-'}
                         </div>
-                        <div style={{ color: '#6b7280', fontSize: '12px' }}>
+                        <div style={{ color: '#66625a', fontSize: '12px' }}>
                           ID: {row.stockID ?? '-'}
                         </div>
                       </td>
@@ -885,7 +885,7 @@ export default function Admin() {
                             : Number(row.rowCount || 0) > 0 ? 'Eski şema' : '-'}
                         </div>
                         {Number(row.ohlcMissingCount || 0) > 0 && (
-                          <div style={{ color: '#9ca3af', fontSize: '12px' }}>
+                          <div style={{ color: '#9a968c', fontSize: '12px' }}>
                             Eksik: {formatNumber(row.ohlcMissingCount)}
                           </div>
                         )}
@@ -1045,14 +1045,14 @@ function ZetaStatusPanel({ status, loading, running, onRefresh, onRun }) {
         marginBottom: '18px'
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: 4 }}>
+          <div style={{ color: '#66625a', fontSize: '12px', marginBottom: 4 }}>
             Senaryo Tarama Katmanı
           </div>
           <h3 style={{ margin: 0, letterSpacing: '-0.4px' }}>
             Zeta Radar Durumu
           </h3>
           <p style={{
-            color: '#9ca3af',
+            color: '#9a968c',
             fontSize: '13px',
             marginTop: '7px',
             maxWidth: 760,
@@ -1089,19 +1089,19 @@ function ZetaStatusPanel({ status, loading, running, onRefresh, onRun }) {
       </div>
 
       {loading ? (
-        <div style={{ color: '#9ca3af', fontSize: '13px', padding: '8px 0' }}>
+        <div style={{ color: '#9a968c', fontSize: '13px', padding: '8px 0' }}>
           Zeta durumu okunuyor...
         </div>
       ) : !status ? (
-        <div style={{ color: '#9ca3af', fontSize: '13px' }}>
+        <div style={{ color: '#9a968c', fontSize: '13px' }}>
           Zeta durum bilgisi alınamadı. Backend API ve `ai_service/artifacts/v12_zeta` klasörünü kontrol edin.
         </div>
       ) : (
         <>
           <div style={{
-            color: status.isStale ? '#fde68a' : '#9ca3af',
-            background: status.isStale ? '#f59e0b14' : '#111827',
-            border: `1px solid ${status.isStale ? '#f59e0b55' : '#1f2937'}`,
+            color: status.isStale ? '#fde68a' : '#9a968c',
+            background: status.isStale ? '#f59e0b14' : '#141312',
+            border: `1px solid ${status.isStale ? '#f59e0b55' : '#2a2825'}`,
             borderRadius: '12px',
             padding: '12px 14px',
             fontSize: '13px',
@@ -1169,7 +1169,7 @@ function ZetaStatusPanel({ status, loading, running, onRefresh, onRun }) {
           {(status.lastRunCompletedAt || status.lastRunMessage) && (
             <div style={{
               marginTop: '14px',
-              color: '#6b7280',
+              color: '#66625a',
               fontSize: '12px',
               lineHeight: 1.55
             }}>
@@ -1188,12 +1188,12 @@ function ZetaStatusPanel({ status, loading, running, onRefresh, onRun }) {
 function ZetaStatusItem({ label, value, color }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '14px',
       padding: '12px 14px'
     }}>
-      <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: 5 }}>{label}</div>
+      <div style={{ color: '#66625a', fontSize: '11px', marginBottom: 5 }}>{label}</div>
       <div style={{ color, fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{value}</div>
     </div>
   )
@@ -1206,7 +1206,7 @@ function Header() {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        color: '#6b7280',
+        color: '#66625a',
         fontSize: '13px',
         marginBottom: '8px'
       }}>
@@ -1229,7 +1229,7 @@ function Header() {
       </h2>
 
       <p style={{
-        color: '#9ca3af',
+        color: '#9a968c',
         marginTop: '9px',
         maxWidth: '780px',
         lineHeight: 1.6
@@ -1244,8 +1244,8 @@ function Header() {
 function StatCard({ label, value, color, icon }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #0f0f10 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '18px',
       padding: '16px',
       minHeight: '92px',
@@ -1262,7 +1262,7 @@ function StatCard({ label, value, color, icon }) {
         {icon}
       </div>
 
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '8px' }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: '8px' }}>
         {label}
       </div>
 
@@ -1281,8 +1281,8 @@ function StatCard({ label, value, color, icon }) {
 function Panel({ children }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #141312 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '20px',
       padding: '22px',
       marginBottom: '22px',
@@ -1297,10 +1297,10 @@ function SegmentedButton({ value, setValue, options }) {
   return (
     <div style={{
       display: 'flex',
-      background: '#0b1220',
+      background: '#0f0f10',
       padding: '4px',
       borderRadius: '13px',
-      border: '1px solid #1f2937',
+      border: '1px solid #2a2825',
       flexWrap: 'wrap',
       gap: '3px'
     }}>
@@ -1310,8 +1310,8 @@ function SegmentedButton({ value, setValue, options }) {
           onClick={() => setValue(key)}
           style={{
             padding: '8px 11px',
-            background: value === key ? '#2563eb' : 'transparent',
-            color: value === key ? '#fff' : '#9ca3af',
+            background: value === key ? '#d97706' : 'transparent',
+            color: value === key ? '#fff' : '#9a968c',
             border: 'none',
             borderRadius: '10px',
             cursor: 'pointer',
@@ -1333,12 +1333,12 @@ function LoadingState() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#9ca3af',
+      color: '#9a968c',
       textAlign: 'center'
     }}>
       <div>
         <div style={{ fontSize: 38, marginBottom: 12 }}>⏳</div>
-        <h3 style={{ margin: 0, color: '#e5e7eb' }}>Veri durumu yükleniyor</h3>
+        <h3 style={{ margin: 0, color: '#e8e5df' }}>Veri durumu yükleniyor</h3>
         <p style={{ marginTop: 8 }}>Stok listesi ve tarihsel veri durumu okunuyor...</p>
       </div>
     </div>
@@ -1352,12 +1352,12 @@ function EmptyState() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#9ca3af',
+      color: '#9a968c',
       textAlign: 'center'
     }}>
       <div>
         <div style={{ fontSize: 38, marginBottom: 12 }}>🔎</div>
-        <h3 style={{ margin: 0, color: '#e5e7eb' }}>Kayıt bulunamadı</h3>
+        <h3 style={{ margin: 0, color: '#e8e5df' }}>Kayıt bulunamadı</h3>
         <p style={{ marginTop: 8 }}>Arama veya filtre kriterlerini değiştirerek tekrar deneyin.</p>
       </div>
     </div>
@@ -1367,14 +1367,14 @@ function EmptyState() {
 function InfoBlock({ icon, title, text }) {
   return (
     <div style={{
-      background: '#0b1220',
-      border: '1px solid #1f2937',
+      background: '#0f0f10',
+      border: '1px solid #2a2825',
       borderRadius: '16px',
       padding: '16px'
     }}>
       <div style={{ fontSize: 24, marginBottom: 10 }}>{icon}</div>
-      <h4 style={{ margin: '0 0 7px', color: '#e5e7eb' }}>{title}</h4>
-      <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px', lineHeight: 1.55 }}>
+      <h4 style={{ margin: '0 0 7px', color: '#e8e5df' }}>{title}</h4>
+      <p style={{ margin: 0, color: '#9a968c', fontSize: '13px', lineHeight: 1.55 }}>
         {text}
       </p>
     </div>
@@ -1384,8 +1384,8 @@ function InfoBlock({ icon, title, text }) {
 const inputStyle = {
   width: '100%',
   padding: '13px 16px',
-  background: '#0b1220',
-  border: '1px solid #1f2937',
+  background: '#0f0f10',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   color: '#fff',
   fontSize: '14px',
@@ -1399,27 +1399,27 @@ const primaryButton = {
   borderRadius: '13px',
   fontWeight: 'bold',
   fontSize: '14px',
-  background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-  boxShadow: '0 14px 28px rgba(37,99,235,0.24)'
+  background: '#d97706',
+  boxShadow: '0 14px 28px rgba(217,119,6,0.24)'
 }
 
 const secondaryButton = {
   padding: '12px 16px',
-  color: '#d1d5db',
-  border: '1px solid #1f2937',
+  color: '#c7c3b8',
+  border: '1px solid #2a2825',
   borderRadius: '13px',
   fontWeight: 'bold',
   fontSize: '14px',
-  background: '#0b1220',
+  background: '#0f0f10',
   cursor: 'pointer'
 }
 
 const smallButton = {
   padding: '8px 12px',
   color: '#fff',
-  border: '1px solid #2563eb55',
+  border: '1px solid #d9770655',
   borderRadius: '10px',
-  background: '#2563eb',
+  background: '#d97706',
   fontWeight: 'bold',
   fontSize: '12px'
 }

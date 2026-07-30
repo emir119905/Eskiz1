@@ -1,3 +1,15 @@
+export function describeAuthError(e, fallback) {
+  if (e.response?.data) {
+    const data = e.response.data
+    if (typeof data === 'string') return data
+    if (data?.title) return data.title
+  }
+  if (!e.response) {
+    return 'Sunucuya ulaşılamadı. Lütfen bağlantınızı kontrol edip tekrar deneyin.'
+  }
+  return fallback
+}
+
 const TRY_SYMBOL_EXCEPTIONS = new Set([
   'KOZAY',
   'KOZAL',

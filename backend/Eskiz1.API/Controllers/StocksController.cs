@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Eskiz1.API.Data;
@@ -55,6 +56,7 @@ namespace Eskiz1.API.Controllers
         }
 
         // post: api/stocks -> yeni hisse kaydı oluşturur.
+        [Authorize]
         [HttpPost]
         public async Task<IActionResult> AddStock(Stock stock)
         {

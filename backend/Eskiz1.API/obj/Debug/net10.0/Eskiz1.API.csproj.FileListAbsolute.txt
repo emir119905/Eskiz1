@@ -160,3 +160,4 @@ C:\Users\ASUS\Desktop\Eskiz-1\backend\Eskiz1.API\obj\Debug\net10.0\ref\Eskiz1.AP
 C:\Users\ASUS\Desktop\Eskiz-1\backend\Eskiz1.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Users\ASUS\Desktop\Eskiz-1\backend\Eskiz1.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\ASUS\Desktop\Eskiz-1\backend\Eskiz1.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\ASUS\Desktop\Eskiz-1\backend\Eskiz1.API\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll

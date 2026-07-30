@@ -1,7 +1,10 @@
 import os
+import threading
 import joblib
 from datetime import datetime
 from typing import Dict, List, Tuple, Any
+
+from config import get_settings
 
 import numpy as np
 import pandas as pd
@@ -30,32 +33,21 @@ from tensorflow.keras.optimizers import Adam
 # ============================================================
 # uygulama
 # ============================================================
+settings = get_settings()
+
 app = FastAPI(title="Pusula AI v11.3 - Horizon Metrics ve Chart Contract")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 os.makedirs("ai_models", exist_ok=True)
 
-DB_CONN_STR = (
-    r"DRIVER={ODBC Driver 17 for SQL Server};"
-    r"SERVER=localhost\SQLEXPRESS;"
-    r"DATABASE=Eskiz1DB;"
-    r"Trusted_Connection=yes;"
-    r"TrustServerCertificate=yes;"
-)
-
 
 def get_connection():
-    return pyodbc.connect(DB_CONN_STR)
+    return pyodbc.connect(settings.connection_string)
 
 
 # ============================================================
@@ -680,6 +672,63 @@ def load_saved_model_bundle(stock_id: int) -> Tuple[Model, MinMaxScaler, np.ndar
     return model, scaler, y_scale, float(ret_sigma), profil, features
 
 
+# stock_id başına eğitim kilidi: aynı hisse için eşzamanlı /predict istekleri
+# çakışıp iki kez eğitim başlatmasın ve DefaultRequestHeaders benzeri race condition'lara yol açmasın diye.
+_training_locks: Dict[int, threading.Lock] = {}
+_training_locks_guard = threading.Lock()
+
+
+def _get_training_lock(stock_id: int) -> threading.Lock:
+    with _training_locks_guard:
+        if stock_id not in _training_locks:
+            _training_locks[stock_id] = threading.Lock()
+        return _training_locks[stock_id]
+
+
+def load_or_train_model(
+    df: pd.DataFrame,
+    stock_id: int,
+    active_features: List[str],
+) -> Tuple[Model, MinMaxScaler, np.ndarray, float, Dict[str, Any], List[str], str]:
+    if not is_model_stale(stock_id, active_features):
+        model, x_scaler, y_scale, ret_sigma, profil, saved_features = load_saved_model_bundle(stock_id)
+        message = (
+            f"Hafizadaki v11.1 Force External Model + v11.3 Horizon Metrics + Chart Fix. "
+            f"[{profil.get('profil', '?')}] ({len(saved_features)} feat)"
+        )
+        return model, x_scaler, y_scale, ret_sigma, profil, saved_features, message
+
+    lock = _get_training_lock(stock_id)
+    if not lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=409,
+            detail=f"StockID {stock_id} için model şu anda başka bir istek tarafından eğitiliyor, lütfen kısa süre sonra tekrar deneyin.",
+        )
+    try:
+        # kilidi beklerken başka bir istek eğitimi bitirmiş olabilir; tekrar kontrol edilir.
+        if is_model_stale(stock_id, active_features):
+            print(f"[Eğitim] {stock_id} eğitiliyor... ({MODEL_VERSION})")
+            model, x_scaler, y_scale, ret_sigma, profil = train_and_save_model(
+                df=df,
+                stock_id=stock_id,
+                features=active_features,
+            )
+            message = (
+                f"v11.1 Force External Model egitildi + v11.3 Horizon Metrics + Chart Fix. "
+                f"[{profil.get('profil', '?')}] ({len(active_features)} feat)"
+            )
+            return model, x_scaler, y_scale, ret_sigma, profil, active_features, message
+
+        model, x_scaler, y_scale, ret_sigma, profil, saved_features = load_saved_model_bundle(stock_id)
+        message = (
+            f"Hafizadaki v11.1 Force External Model + v11.3 Horizon Metrics + Chart Fix. "
+            f"[{profil.get('profil', '?')}] ({len(saved_features)} feat)"
+        )
+        return model, x_scaler, y_scale, ret_sigma, profil, saved_features, message
+    finally:
+        lock.release()
+
+
 # tahmin yardımcıları
 
 def make_seed_inputs(
@@ -1172,26 +1221,11 @@ def predict(stock_id: int):
         if len(active_features) == 0:
             return {"error": "Aktif feature bulunamadı."}
 
-        paths = model_paths(stock_id)
-
-        if is_model_stale(stock_id, active_features):
-            print(f"[Eğitim] {stock_id} eğitiliyor... ({MODEL_VERSION})")
-            model, x_scaler, y_scale, ret_sigma, profil = train_and_save_model(
-                df=df,
-                stock_id=stock_id,
-                features=active_features,
-            )
-            message = (
-                f"v11.1 Force External Model egitildi + v11.3 Horizon Metrics + Chart Fix. "
-                f"[{profil.get('profil', '?')}] ({len(active_features)} feat)"
-            )
-        else:
-            model, x_scaler, y_scale, ret_sigma, profil, saved_features = load_saved_model_bundle(stock_id)
-            active_features = saved_features
-            message = (
-                f"Hafizadaki v11.1 Force External Model + v11.3 Horizon Metrics + Chart Fix. "
-                f"[{profil.get('profil', '?')}] ({len(active_features)} feat)"
-            )
+        model, x_scaler, y_scale, ret_sigma, profil, active_features, message = load_or_train_model(
+            df=df,
+            stock_id=stock_id,
+            active_features=active_features,
+        )
 
         backtest = horizon_aligned_backtest(
             model=model,
@@ -1297,6 +1331,8 @@ def predict(stock_id: int):
             ),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1709,4 +1745,4 @@ def health():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=settings.api_host, port=settings.api_port)

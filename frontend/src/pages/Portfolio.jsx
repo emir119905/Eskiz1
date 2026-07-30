@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getPortfolio, addTransaction, searchStocks } from '../api/client'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { useAuth } from '../context/AuthContext'
 import {
   getCurrencySymbol,
   money
 } from '../utils/formatters'
 
-const USER_ID = 1
-
 const PIE_COLORS = [
-  '#3b82f6',
+  '#2dd4bf',
   '#10b981',
   '#f59e0b',
   '#ef4444',
@@ -49,6 +48,8 @@ function KarZararBadge({ deger, yuzde, symbol }) {
 }
 
 export default function Portfolio() {
+  const { userId } = useAuth()
+
   const [portfolio, setPortfolio] = useState(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -60,13 +61,13 @@ export default function Portfolio() {
   const [txLoading, setTxLoading] = useState(false)
 
   useEffect(() => {
-    fetchPortfolio()
-  }, [])
+    if (userId) fetchPortfolio()
+  }, [userId])
 
   async function fetchPortfolio() {
     try {
       setLoading(true)
-      const res = await getPortfolio(USER_ID)
+      const res = await getPortfolio(userId)
       setPortfolio(res.data)
     } catch (e) {
       setMessage('❌ Portföy yüklenemedi: ' + e.message)
@@ -109,7 +110,7 @@ export default function Portfolio() {
 
     try {
       const res = await addTransaction({
-        UserID: USER_ID,
+        UserID: userId,
         StockID: selectedStock.stockID,
         TransactionType: type,
         Quantity: safeQty
@@ -135,25 +136,25 @@ export default function Portfolio() {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '6px' }}>
+        <div style={{ color: '#66625a', fontSize: '13px', marginBottom: '6px' }}>
           Pusula AI · Portföy Simülasyonu
         </div>
         <h2 style={{ margin: 0, letterSpacing: '-0.5px', fontSize: '28px' }}>
           💼 Portföy Simülasyonu
         </h2>
-        <p style={{ color: '#9ca3af', marginTop: '8px', maxWidth: '720px', lineHeight: 1.55 }}>
+        <p style={{ color: '#9a968c', marginTop: '8px', maxWidth: '720px', lineHeight: 1.55 }}>
           Sanal portföyünüzü takip edin, pozisyon dağılımını inceleyin ve hızlı alım/satım işlemleriyle senaryoları test edin.
         </p>
       </div>
 
       {message && (
         <div style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
+          background: '#141312',
+          border: '1px solid #2a2825',
           borderRadius: '12px',
           padding: '12px 16px',
           marginBottom: '20px',
-          color: '#d1d5db'
+          color: '#c7c3b8'
         }}>
           {message}
         </div>
@@ -174,7 +175,7 @@ export default function Portfolio() {
           <SummaryCard
             label="Portföy Değeri"
             value={portfolio.toplamPortfoyDegeri}
-            color="#3b82f6"
+            color="#2dd4bf"
           />
           <SummaryCard
             label="Toplam Varlık"
@@ -200,12 +201,12 @@ export default function Portfolio() {
           <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Pozisyonlar</h3>
 
           {loading ? (
-            <p style={{ color: '#6b7280' }}>Yükleniyor...</p>
+            <p style={{ color: '#66625a' }}>Yükleniyor...</p>
           ) : portfolio?.sahipOlunanHisseler?.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #1f2937', color: '#9ca3af', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '1px solid #2a2825', color: '#9a968c', textAlign: 'left' }}>
                     <th style={th}>Hisse</th>
                     <th style={th}>Lot</th>
                     <th style={th}>Ort. Maliyet</th>
@@ -217,10 +218,10 @@ export default function Portfolio() {
 
                 <tbody>
                   {portfolio.sahipOlunanHisseler.map(h => (
-                    <tr key={h.stockID} style={{ borderBottom: '1px solid #1f2937' }}>
+                    <tr key={h.stockID} style={{ borderBottom: '1px solid #2a2825' }}>
                       <td style={td}>
-                        <div style={{ fontWeight: 'bold', color: '#f9fafb' }}>{h.symbol}</div>
-                        <div style={{ color: '#6b7280', fontSize: '12px' }}>{h.companyName}</div>
+                        <div style={{ fontWeight: 'bold', color: '#f2f0ec' }}>{h.symbol}</div>
+                        <div style={{ color: '#66625a', fontSize: '12px' }}>{h.companyName}</div>
                       </td>
                       <td style={td}>{h.lot}</td>
                       <td style={td}>{formatMoney(h.ortMaliyet, h.symbol)}</td>
@@ -239,7 +240,7 @@ export default function Portfolio() {
               </table>
             </div>
           ) : (
-            <p style={{ color: '#6b7280' }}>Henüz hisse yok.</p>
+            <p style={{ color: '#66625a' }}>Henüz hisse yok.</p>
           )}
         </Panel>
 
@@ -271,8 +272,8 @@ export default function Portfolio() {
                 <Tooltip
                   formatter={(value, name) => [formatMoney(value, name), name]}
                   contentStyle={{
-                    background: '#111827',
-                    border: '1px solid #1f2937',
+                    background: '#141312',
+                    border: '1px solid #2a2825',
                     borderRadius: '10px',
                     color: '#fff'
                   }}
@@ -293,7 +294,7 @@ export default function Portfolio() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    color: '#d1d5db',
+                    color: '#c7c3b8',
                     fontSize: '13px'
                   }}
                 >
@@ -337,14 +338,14 @@ export default function Portfolio() {
                       setResults([])
                     }}
                     style={searchItemStyle}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#1f2937' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#2a2825' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >
                     <div>
                       <div style={{ fontWeight: 'bold', color: '#60a5fa' }}>{s.symbol}</div>
-                      <div style={{ color: '#9ca3af', fontSize: '12px' }}>{s.companyName}</div>
+                      <div style={{ color: '#9a968c', fontSize: '12px' }}>{s.companyName}</div>
                     </div>
-                    <span style={{ color: '#6b7280', fontSize: '12px' }}>Seç</span>
+                    <span style={{ color: '#66625a', fontSize: '12px' }}>Seç</span>
                   </div>
                 ))}
               </div>
@@ -353,17 +354,17 @@ export default function Portfolio() {
 
           {selectedStock && (
             <div style={{
-              background: '#0b1220',
-              border: '1px solid #1f2937',
+              background: '#0f0f10',
+              border: '1px solid #2a2825',
               borderRadius: '10px',
               padding: '10px 12px',
               marginBottom: '12px',
               fontSize: '13px'
             }}>
-              <div style={{ color: '#3b82f6', fontWeight: 'bold' }}>
+              <div style={{ color: '#2dd4bf', fontWeight: 'bold' }}>
                 {selectedStock.symbol}
               </div>
-              <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '3px' }}>
+              <div style={{ color: '#66625a', fontSize: '12px', marginTop: '3px' }}>
                 {selectedStock.companyName}
               </div>
             </div>
@@ -411,13 +412,13 @@ export default function Portfolio() {
 function SummaryCard({ label, value, color, prefix = '' }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #0f0f10 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '16px',
       padding: '16px',
       minHeight: '86px'
     }}>
-      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '8px' }}>
+      <div style={{ color: '#66625a', fontSize: '12px', marginBottom: '8px' }}>
         {label}
       </div>
       <div style={{ color, fontWeight: 'bold', fontSize: '20px' }}>
@@ -430,8 +431,8 @@ function SummaryCard({ label, value, color, prefix = '' }) {
 function Panel({ children }) {
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)',
-      border: '1px solid #1f2937',
+      background: 'linear-gradient(180deg, #141312 0%, #141312 100%)',
+      border: '1px solid #2a2825',
       borderRadius: '18px',
       padding: '20px',
       boxShadow: '0 18px 40px rgba(0,0,0,0.22)'
@@ -449,15 +450,15 @@ const th = {
 
 const td = {
   padding: '11px 12px',
-  color: '#d1d5db',
+  color: '#c7c3b8',
   whiteSpace: 'nowrap'
 }
 
 const inputStyle = {
   width: '100%',
   padding: '11px 12px',
-  background: '#0b1220',
-  border: '1px solid #1f2937',
+  background: '#0f0f10',
+  border: '1px solid #2a2825',
   borderRadius: '10px',
   color: '#fff',
   fontSize: '14px',
@@ -469,8 +470,8 @@ const searchBoxStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: '#111827',
-  border: '1px solid #1f2937',
+  background: '#141312',
+  border: '1px solid #2a2825',
   borderRadius: '12px',
   zIndex: 20,
   maxHeight: '220px',
@@ -481,7 +482,7 @@ const searchBoxStyle = {
 const searchItemStyle = {
   padding: '12px 14px',
   cursor: 'pointer',
-  borderBottom: '1px solid #1f2937',
+  borderBottom: '1px solid #2a2825',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center'
