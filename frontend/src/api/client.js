@@ -74,13 +74,15 @@ export const getPrediction   = (stockId) => aiApi.get(`/predict/${stockId}`)
 export const getBehaviorSignal = (stockId) => aiApi.get(`/behavior-signal/${stockId}`)
 
 // PORTFÖY
-export const getPortfolio    = (userId)  => api.get(`/portfolio/${userId}`)
+export const getPortfolio        = (userId)  => api.get(`/portfolio/${userId}`)
+export const getPortfolioHistory = (userId)  => api.get(`/portfolio/${userId}/history`)
 
 // İŞLEM
 export const addTransaction  = (tx)      => api.post('/transactions', tx)
 
 // VERİTABANI DURUMU
 export const getDbStatus     = ()        => api.get('/historicaldata/status')
+export const getLatestPrice  = (stockId) => api.get(`/historicaldata/latest/${stockId}`)
 export const syncStock       = (stockId) => api.post(`/historicaldata/sync/${stockId}`)
 export const syncAllStocks   = ()        => api.post('/historicaldata/syncall')
 export const deleteStockHistoricalData = (stockId) => api.delete(`/historicaldata/stock/${stockId}`)

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Database } from 'lucide-react'
 import {
   getStocks,
   getDbStatus,
@@ -9,13 +10,14 @@ import {
   deleteStockHistoricalData,
   addStock
 } from '../api/client'
+import { theme } from '../theme'
 
-const BLUE = '#2dd4bf'
-const GREEN = '#10b981'
-const YELLOW = '#f59e0b'
-const RED = '#ef4444'
-const PURPLE = '#8b5cf6'
-const GRAY = '#66625a'
+const BLUE = theme.info
+const GREEN = theme.success
+const YELLOW = theme.warning
+const RED = theme.danger
+const PURPLE = theme.secondary
+const GRAY = theme.textFaint
 const CYAN = '#06b6d4'
 
 function asArray(payload) {
@@ -1223,9 +1225,13 @@ function Header() {
       <h2 style={{
         margin: 0,
         letterSpacing: '-0.8px',
-        fontSize: '31px'
+        fontSize: '31px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
       }}>
-        🗄️ Veri Yönetimi
+        <Database size={26} strokeWidth={1.75} color="#f59e0b" />
+        Veri Yönetimi
       </h2>
 
       <p style={{

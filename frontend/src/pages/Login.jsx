@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Compass, Check, X } from 'lucide-react'
+import { Compass, Check, X, LineChart, Briefcase, Radar } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { theme } from '../theme'
 
@@ -51,12 +51,69 @@ export default function Login() {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
       background: theme.bg,
-      color: theme.text,
-      padding: '20px'
+      color: theme.text
     }}>
+      <div className="login-brand-panel" style={{
+        flex: 1,
+        flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '60px',
+        background: `linear-gradient(160deg, ${theme.surface} 0%, ${theme.bg} 75%)`,
+        borderRight: `1px solid ${theme.border}`
+      }}>
+        <div style={{ maxWidth: '440px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px' }}>
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '14px',
+              background: theme.primary,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Compass size={26} color="#141312" strokeWidth={2} />
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.4px' }}>Pusula AI</div>
+          </div>
+
+          <h1 style={{ fontSize: '30px', lineHeight: 1.3, margin: '0 0 16px', letterSpacing: '-0.6px' }}>
+            Finansal kararların için bir pusula.
+          </h1>
+
+          <p style={{ color: theme.textMuted, fontSize: '15px', lineHeight: 1.6, marginBottom: '32px' }}>
+            Çok ufuklu LSTM tahmin motoru, sanal portföy simülasyonu ve BIST geneli piyasa taraması — tek panelde.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <FeatureRow
+              Icon={LineChart}
+              title="Çok Ufuklu Analiz"
+              text="Model çıktısını basit karşılaştırma modeliyle kıyaslar, düşük güvenli sonuçlarda sinyal üretmez."
+            />
+            <FeatureRow
+              Icon={Briefcase}
+              title="Sanal Portföy Simülasyonu"
+              text="Gerçek para riski olmadan alım/satım senaryolarını test et."
+            />
+            <FeatureRow
+              Icon={Radar}
+              title="Piyasa Taraması"
+              text="BIST genelinde öne çıkan fırsatları tek ekranda gör."
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
       <div style={{
         width: '100%',
         maxWidth: '380px',
@@ -200,6 +257,35 @@ export default function Login() {
             Yeni hesaplara sanal portföy simülasyonu için başlangıç bakiyesi tanımlanır.
           </p>
         )}
+      </div>
+      </div>
+    </div>
+  )
+}
+
+function FeatureRow({ Icon, title, text }) {
+  return (
+    <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+      <div style={{
+        width: 36,
+        height: 36,
+        borderRadius: '10px',
+        background: theme.surfaceRaised,
+        border: `1px solid ${theme.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}>
+        <Icon size={17} strokeWidth={1.75} color={theme.primaryStrong} />
+      </div>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: '14px', color: theme.text, marginBottom: '2px' }}>
+          {title}
+        </div>
+        <div style={{ color: theme.textFaint, fontSize: '12.5px', lineHeight: 1.5 }}>
+          {text}
+        </div>
       </div>
     </div>
   )

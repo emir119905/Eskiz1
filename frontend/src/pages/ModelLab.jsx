@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { FlaskConical } from 'lucide-react'
 import { getStocks, getPrediction, getBehaviorSignal } from '../api/client'
 import {
   pct,
@@ -7,13 +8,14 @@ import {
   getBiasLabel,
   getBiasColor
 } from '../utils/formatters'
+import { theme } from '../theme'
 
-const BLUE = '#2dd4bf'
-const GREEN = '#10b981'
-const YELLOW = '#f59e0b'
-const RED = '#ef4444'
-const PURPLE = '#8b5cf6'
-const GRAY = '#66625a'
+const BLUE = theme.info
+const GREEN = theme.success
+const YELLOW = theme.warning
+const RED = theme.danger
+const PURPLE = theme.secondary
+const GRAY = theme.textFaint
 
 const PROBLEM_SET_IDS = [31, 32, 34, 4, 6, 28, 21, 3, 33]
 const DYNAMIC_PROBLEM_STORAGE_KEY = 'pusula_ai_model_lab_dynamic_problem_ids_v1'
@@ -1236,7 +1238,11 @@ export default function ModelLab() {
             </table>
           </div>
         ) : (
-          <EmptyResults />
+          <EmptyResults
+            onRunBatch={runBatch}
+            running={running}
+            selectedCount={selectedIds.size}
+          />
         )}
       </Panel>
     </div>
@@ -1267,9 +1273,13 @@ function Header() {
       <h2 style={{
         margin: 0,
         letterSpacing: '-0.8px',
-        fontSize: '31px'
+        fontSize: '31px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
       }}>
-        🧪 Model Laboratuvarı
+        <FlaskConical size={26} strokeWidth={1.75} color="#f59e0b" />
+        Model Laboratuvarı
       </h2>
 
       <p style={{
@@ -1501,7 +1511,7 @@ function LoadingState() {
   )
 }
 
-function EmptyResults() {
+function EmptyResults({ onRunBatch, running, selectedCount }) {
   return (
     <div style={{
       minHeight: 260,
@@ -1517,6 +1527,21 @@ function EmptyResults() {
         <p style={{ marginTop: 8, maxWidth: 520, lineHeight: 1.55 }}>
           Problem set veya istediğin hisseleri seçip batch analizi başlat. Sonuçlar burada directionScore, actionRate ve naive karşılaştırmasıyla listelenecek.
         </p>
+
+        {selectedCount > 0 && (
+          <button
+            onClick={onRunBatch}
+            disabled={running}
+            style={{
+              ...primaryButton,
+              marginTop: '16px',
+              opacity: running ? 0.65 : 1,
+              cursor: running ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {running ? '⏳ Analiz Sürüyor...' : `🚀 Şimdi Başlat (${selectedCount} hisse seçili)`}
+          </button>
+        )}
       </div>
     </div>
   )

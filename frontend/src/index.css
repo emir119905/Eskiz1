@@ -25,6 +25,16 @@ body {
   animation: spin 0.9s linear infinite;
 }
 
+.login-brand-panel {
+  display: flex;
+}
+
+@media (max-width: 900px) {
+  .login-brand-panel {
+    display: none;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #141312; }

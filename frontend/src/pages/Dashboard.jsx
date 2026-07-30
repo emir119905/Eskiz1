@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { LineChart as LineChartIcon } from 'lucide-react'
 import { getBehaviorSignal, getZetaLatestRadar, searchStocks } from '../api/client'
 import { useAnalysis } from '../context/AnalysisContext'
 import {
@@ -24,13 +25,16 @@ import {
   getBiasColor
 } from '../utils/formatters'
 import { buildFusionSummary } from '../utils/fusionLayer'
+import { theme } from '../theme'
 
-const BLUE = '#2dd4bf'
-const GREEN = '#10b981'
-const YELLOW = '#f59e0b'
-const RED = '#ef4444'
-const PURPLE = '#8b5cf6'
-const GRAY = '#66625a'
+// not: YELLOW gerçek bir uyarı sarısıdır (theme.warning) — marka turuncusuyla (theme.primary) karıştırılmamalı,
+// marka rengi yalnızca CTA/aktif nav için ayrılmıştır.
+const BLUE = theme.info
+const GREEN = theme.success
+const YELLOW = theme.warning
+const RED = theme.danger
+const PURPLE = theme.secondary
+const GRAY = theme.textFaint
 
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
@@ -220,6 +224,14 @@ export default function Dashboard() {
     setSearchQ(stock.symbol)
     setSearchResults([])
   }
+
+  const quickPicks = useMemo(() => {
+    const list = zetaRadar?.allStocks || []
+    const sorted = [...list].sort((a, b) => (b.score || 0) - (a.score || 0))
+    const momentum = sorted.filter(s => s.scenario === 'MOMENTUM_LONG')
+    const source = momentum.length >= 3 ? momentum : sorted
+    return source.slice(0, 5)
+  }, [zetaRadar])
 
   function firstNonNull(data, keys) {
     for (const row of data) {
@@ -498,7 +510,12 @@ export default function Dashboard() {
       )}
 
       {!prediction && (
-        <EmptyState selectedStock={selectedStock} loading={loading} />
+        <EmptyState
+          selectedStock={selectedStock}
+          loading={loading}
+          quickPicks={quickPicks}
+          onQuickPick={handleSelectStock}
+        />
       )}
     </div>
   )
@@ -536,9 +553,13 @@ function HeaderBlock() {
           <h2 style={{
             margin: 0,
             letterSpacing: '-0.8px',
-            fontSize: '31px'
+            fontSize: '31px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
           }}>
-            📈 Finansal Analiz Paneli
+            <LineChartIcon size={26} strokeWidth={1.75} color="#f59e0b" />
+            Finansal Analiz Paneli
           </h2>
 
           <p style={{
@@ -2236,7 +2257,7 @@ function DetailsPanel({ prediction, pm, signal, detailsOpen, setDetailsOpen }) {
   )
 }
 
-function EmptyState({ selectedStock, loading }) {
+function EmptyState({ selectedStock, loading, quickPicks = [], onQuickPick }) {
   return (
     <Panel>
       <div style={{
@@ -2252,11 +2273,42 @@ function EmptyState({ selectedStock, loading }) {
           <h3 style={{ color: '#e8e5df', marginBottom: 8 }}>
             {selectedStock ? `${selectedStock.symbol} analize hazır` : 'Bir varlık seçerek başlayın'}
           </h3>
-          <p style={{ maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ maxWidth: 520, lineHeight: 1.6, margin: '0 auto' }}>
             {loading
               ? 'Analiz hazırlanıyor. Sonuçlar tamamlandığında burada görünecek.'
               : 'Pusula AI, model çıktısını basit karşılaştırma modeliyle karşılaştırır ve düşük güvenli sonuçlarda işlem sinyali üretmez.'}
           </p>
+
+          {!selectedStock && !loading && quickPicks.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 12, color: '#66625a', marginBottom: 10 }}>
+                Hızlı başlangıç · Piyasa Taraması'ndan bugün öne çıkanlar
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {quickPicks.map(s => (
+                  <button
+                    key={s.stockID}
+                    onClick={() => onQuickPick(s)}
+                    style={{
+                      padding: '8px 14px',
+                      background: '#0f0f10',
+                      border: '1px solid #2a2825',
+                      borderRadius: '999px',
+                      color: '#f2f0ec',
+                      fontSize: '12.5px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#d97706' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a2825' }}
+                  >
+                    {s.symbol}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Panel>

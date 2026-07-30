@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Eye } from 'lucide-react'
 import { getStocks } from '../api/client'
 import { useAnalysis } from '../context/AnalysisContext'
+import { theme } from '../theme'
 
-const BLUE = '#2dd4bf'
-const GREEN = '#10b981'
-const YELLOW = '#f59e0b'
-const RED = '#ef4444'
-const PURPLE = '#8b5cf6'
-const GRAY = '#66625a'
+const BLUE = theme.info
+const GREEN = theme.success
+const YELLOW = theme.warning
+const RED = theme.danger
+const PURPLE = theme.secondary
+const GRAY = theme.textFaint
 
 const STORAGE_KEY = 'pusula_ai_watchlist_v1'
 
@@ -425,34 +427,12 @@ export default function Watchlist() {
             })}
           </div>
         ) : (
-          <EmptyState viewMode={viewMode} />
+          <EmptyState
+            viewMode={viewMode}
+            onBrowseAll={() => setViewMode('all')}
+            onAddStarterPack={selectStarterPack}
+          />
         )}
-      </Panel>
-
-      <Panel>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))',
-          gap: '16px'
-        }}>
-          <InfoBlock
-            icon="⚡"
-            title="Hızlı Akış"
-            text="Bir varlığı izleme listesine ekle, sonra Dashboard’da açarak mevcut analiz motoruyla çalıştır."
-          />
-
-          <InfoBlock
-            icon="💾"
-            title="LocalStorage"
-            text="Bu liste tarayıcıda saklanır. Veritabanına yazılmaz ve uygulama verilerini değiştirmez."
-          />
-
-          <InfoBlock
-            icon="🧪"
-            title="v12 Hazırlığı"
-            text="İleride Model Lab sonuçlarına göre problemli hisseleri otomatik izleme listesine ekleyebiliriz."
-          />
-        </div>
       </Panel>
     </div>
   )
@@ -482,9 +462,13 @@ function Header() {
       <h2 style={{
         margin: 0,
         letterSpacing: '-0.8px',
-        fontSize: '31px'
+        fontSize: '31px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
       }}>
-        👁️ İzleme Listesi
+        <Eye size={26} strokeWidth={1.75} color="#f59e0b" />
+        İzleme Listesi
       </h2>
 
       <p style={{
@@ -603,7 +587,7 @@ function LoadingState() {
   )
 }
 
-function EmptyState({ viewMode }) {
+function EmptyState({ viewMode, onBrowseAll, onAddStarterPack }) {
   return (
     <div style={{
       minHeight: 260,
@@ -630,27 +614,21 @@ function EmptyState({ viewMode }) {
           lineHeight: 1.55
         }}>
           {viewMode === 'watchlist'
-            ? 'Tüm Varlıklar sekmesine geçip takip etmek istediğin hisseleri ekleyebilirsin.'
+            ? 'Takip etmek istediğin hisseleri tek tıkla ekleyebilir ya da tüm varlıkları gözden geçirebilirsin.'
             : 'Arama veya filtre kriterlerini değiştirerek tekrar deneyebilirsin.'}
         </p>
-      </div>
-    </div>
-  )
-}
 
-function InfoBlock({ icon, title, text }) {
-  return (
-    <div style={{
-      background: '#0f0f10',
-      border: '1px solid #2a2825',
-      borderRadius: '16px',
-      padding: '16px'
-    }}>
-      <div style={{ fontSize: 24, marginBottom: 10 }}>{icon}</div>
-      <h4 style={{ margin: '0 0 7px', color: '#e8e5df' }}>{title}</h4>
-      <p style={{ margin: 0, color: '#9a968c', fontSize: '13px', lineHeight: 1.55 }}>
-        {text}
-      </p>
+        {viewMode === 'watchlist' && (
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '16px' }}>
+            <button onClick={onAddStarterPack} style={primaryMiniButton}>
+              Başlangıç Paketini Ekle
+            </button>
+            <button onClick={onBrowseAll} style={secondaryButton}>
+              Tüm Varlıklara Geç
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
-import { getPortfolio, addTransaction, searchStocks } from '../api/client'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { Briefcase } from 'lucide-react'
+import { getPortfolio, getPortfolioHistory, addTransaction, searchStocks, getLatestPrice } from '../api/client'
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  ComposedChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ReferenceDot, Legend
+} from 'recharts'
 import { useAuth } from '../context/AuthContext'
+import { theme } from '../theme'
 import {
   getCurrencySymbol,
   money
 } from '../utils/formatters'
 
+// pasta grafikteki dilimler kategoriktir (hangi hisse hangi renk sırayla),
+// kâr/zarar veya marka gibi bir anlam taşımaz; bu yüzden ayrı bir kategorik palet olarak kalır.
 const PIE_COLORS = [
   '#2dd4bf',
   '#10b981',
@@ -32,7 +39,7 @@ function formatPercent(value) {
 function KarZararBadge({ deger, yuzde, symbol }) {
   const safeValue = Number(deger || 0)
   const pozitif = safeValue >= 0
-  const renk = pozitif ? '#10b981' : '#ef4444'
+  const renk = pozitif ? theme.success : theme.danger
   const curr = getCurrencySymbol(symbol)
 
   return (
@@ -54,14 +61,50 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
 
+  const [history, setHistory] = useState(null)
+  const [historyLoading, setHistoryLoading] = useState(true)
+
   const [searchQ, setSearchQ] = useState('')
   const [searchResults, setResults] = useState([])
   const [selectedStock, setSelected] = useState(null)
   const [qty, setQty] = useState(10)
   const [txLoading, setTxLoading] = useState(false)
 
+  const [selectedPrice, setSelectedPrice] = useState(null)
+  const [priceLoading, setPriceLoading] = useState(false)
+  const [priceError, setPriceError] = useState('')
+
   useEffect(() => {
-    if (userId) fetchPortfolio()
+    if (!selectedStock) {
+      setSelectedPrice(null)
+      setPriceError('')
+      return
+    }
+
+    let cancelled = false
+    setPriceLoading(true)
+    setPriceError('')
+    setSelectedPrice(null)
+
+    getLatestPrice(selectedStock.stockID)
+      .then(res => {
+        if (!cancelled) setSelectedPrice(res.data)
+      })
+      .catch(e => {
+        if (!cancelled) setPriceError(e.response?.data || 'Fiyat verisi alınamadı.')
+      })
+      .finally(() => {
+        if (!cancelled) setPriceLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [selectedStock])
+
+  useEffect(() => {
+    if (userId) {
+      fetchPortfolio()
+      fetchHistory()
+    }
   }, [userId])
 
   async function fetchPortfolio() {
@@ -73,6 +116,18 @@ export default function Portfolio() {
       setMessage('❌ Portföy yüklenemedi: ' + e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchHistory() {
+    try {
+      setHistoryLoading(true)
+      const res = await getPortfolioHistory(userId)
+      setHistory(res.data)
+    } catch {
+      setHistory(null)
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
@@ -121,6 +176,7 @@ export default function Portfolio() {
       )
 
       fetchPortfolio()
+      fetchHistory()
     } catch (e) {
       setMessage('❌ ' + (e.response?.data || e.message))
     } finally {
@@ -133,14 +189,43 @@ export default function Portfolio() {
     value: h.anlikDeger
   })) || []
 
+  function formatDayLabel(tarih) {
+    return new Date(tarih).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  }
+
+  const chartData = (history?.gunler || []).map(g => ({
+    tarih: g.tarih,
+    label: formatDayLabel(g.tarih),
+    getiri: g.getiriYuzde,
+    bist: g.bist100GetiriYuzde
+  }))
+
+  const markers = (history?.islemler || [])
+    .map(t => {
+      const txDay = String(t.tarih).slice(0, 10)
+      const point = chartData.find(d => String(d.tarih).slice(0, 10) === txDay)
+        || chartData.find(d => String(d.tarih).slice(0, 10) >= txDay)
+      if (!point) return null
+      return { ...t, label: point.label, getiri: point.getiri }
+    })
+    .filter(Boolean)
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ marginBottom: '24px' }}>
         <div style={{ color: '#66625a', fontSize: '13px', marginBottom: '6px' }}>
           Pusula AI · Portföy Simülasyonu
         </div>
-        <h2 style={{ margin: 0, letterSpacing: '-0.5px', fontSize: '28px' }}>
-          💼 Portföy Simülasyonu
+        <h2 style={{
+          margin: 0,
+          letterSpacing: '-0.5px',
+          fontSize: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <Briefcase size={24} strokeWidth={1.75} color="#f59e0b" />
+          Portföy Simülasyonu
         </h2>
         <p style={{ color: '#9a968c', marginTop: '8px', maxWidth: '720px', lineHeight: 1.55 }}>
           Sanal portföyünüzü takip edin, pozisyon dağılımını inceleyin ve hızlı alım/satım işlemleriyle senaryoları test edin.
@@ -170,25 +255,81 @@ export default function Portfolio() {
           <SummaryCard
             label="Nakit Bakiye"
             value={portfolio.nakitBakiye}
-            color="#10b981"
+            color={theme.success}
           />
           <SummaryCard
             label="Portföy Değeri"
             value={portfolio.toplamPortfoyDegeri}
-            color="#2dd4bf"
+            color={theme.info}
           />
           <SummaryCard
             label="Toplam Varlık"
             value={portfolio.toplamVarlik}
-            color="#8b5cf6"
+            color={theme.secondary}
           />
           <SummaryCard
             label="Toplam K/Z"
             value={portfolio.toplamKarZarar}
-            color={portfolio.toplamKarZarar >= 0 ? '#10b981' : '#ef4444'}
+            color={portfolio.toplamKarZarar >= 0 ? theme.success : theme.danger}
             prefix={portfolio.toplamKarZarar >= 0 ? '+' : ''}
           />
         </div>
+      )}
+
+      {!historyLoading && chartData.length > 1 && (
+        <Panel style={{ marginBottom: '20px' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '4px' }}>Performans</h3>
+          <p style={{ color: '#66625a', fontSize: '12px', marginTop: 0, marginBottom: '16px' }}>
+            İlk işleminizden bu yana getiri, BIST100 endeksiyle kıyaslamalı olarak gösterilir. Noktalar alım/satım işlemlerinizi işaretler.
+          </p>
+
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2825" />
+
+              <XAxis
+                dataKey="label"
+                tick={{ fill: '#66625a', fontSize: 11 }}
+                interval="preserveStartEnd"
+              />
+
+              <YAxis
+                tick={{ fill: '#66625a', fontSize: 11 }}
+                tickFormatter={v => `${v}%`}
+                width={56}
+              />
+
+              <ReferenceLine y={0} stroke="#3a372f" strokeDasharray="4 4" />
+
+              <Tooltip
+                formatter={(value, name) => [formatPercent(value), name]}
+                contentStyle={{
+                  background: '#141312',
+                  border: '1px solid #2a2825',
+                  borderRadius: '10px',
+                  color: '#fff'
+                }}
+              />
+
+              <Legend wrapperStyle={{ fontSize: '12px', color: '#9a968c' }} />
+
+              <Line type="monotone" dataKey="getiri" name="Portföyüm" stroke={theme.info} strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="bist" name="BIST100" stroke={theme.secondary} strokeWidth={2} strokeDasharray="5 4" dot={false} />
+
+              {markers.map((m, i) => (
+                <ReferenceDot
+                  key={i}
+                  x={m.label}
+                  y={m.getiri}
+                  r={5}
+                  fill={m.tip === 'BUY' ? theme.success : theme.danger}
+                  stroke="#0c0c0d"
+                  strokeWidth={1.5}
+                />
+              ))}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </Panel>
       )}
 
       <div style={{
@@ -203,6 +344,7 @@ export default function Portfolio() {
           {loading ? (
             <p style={{ color: '#66625a' }}>Yükleniyor...</p>
           ) : portfolio?.sahipOlunanHisseler?.length > 0 ? (
+            <>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                 <thead>
@@ -239,6 +381,18 @@ export default function Portfolio() {
                 </tbody>
               </table>
             </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              marginTop: '8px',
+              color: '#66625a',
+              fontSize: '11px'
+            }}>
+              ↔ Dar ekranlarda tabloyu yatay kaydırabilirsiniz
+            </div>
+            </>
           ) : (
             <p style={{ color: '#66625a' }}>Henüz hisse yok.</p>
           )}
@@ -361,12 +515,37 @@ export default function Portfolio() {
               marginBottom: '12px',
               fontSize: '13px'
             }}>
-              <div style={{ color: '#2dd4bf', fontWeight: 'bold' }}>
-                {selectedStock.symbol}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div style={{ color: theme.info, fontWeight: 'bold' }}>
+                  {selectedStock.symbol}
+                </div>
+
+                {priceLoading ? (
+                  <span style={{ color: '#66625a', fontSize: '12px' }}>Fiyat yükleniyor...</span>
+                ) : selectedPrice ? (
+                  <span style={{ color: '#f2f0ec', fontWeight: 'bold' }}>
+                    {formatMoney(selectedPrice.closePrice, selectedStock.symbol)}
+                  </span>
+                ) : priceError ? (
+                  <span style={{ color: theme.danger, fontSize: '12px' }}>Fiyat yok</span>
+                ) : null}
               </div>
+
               <div style={{ color: '#66625a', fontSize: '12px', marginTop: '3px' }}>
                 {selectedStock.companyName}
               </div>
+
+              {priceError && (
+                <div style={{ color: theme.danger, fontSize: '12px', marginTop: '6px' }}>
+                  {priceError}
+                </div>
+              )}
+
+              {selectedPrice && Number(qty) > 0 && (
+                <div style={{ color: '#9a968c', fontSize: '12px', marginTop: '6px' }}>
+                  Tahmini tutar: {formatMoney(Number(qty) * selectedPrice.closePrice, selectedStock.symbol)}
+                </div>
+              )}
             </div>
           )}
 
@@ -383,7 +562,7 @@ export default function Portfolio() {
             onClick={() => executeTrade(0)}
             disabled={txLoading}
             style={{
-              ...btnStyle('#10b981'),
+              ...btnStyle(theme.success),
               width: '100%',
               marginBottom: '8px',
               opacity: txLoading ? 0.65 : 1
@@ -396,7 +575,7 @@ export default function Portfolio() {
             onClick={() => executeTrade(1)}
             disabled={txLoading}
             style={{
-              ...btnStyle('#ef4444'),
+              ...btnStyle(theme.danger),
               width: '100%',
               opacity: txLoading ? 0.65 : 1
             }}
@@ -428,14 +607,15 @@ function SummaryCard({ label, value, color, prefix = '' }) {
   )
 }
 
-function Panel({ children }) {
+function Panel({ children, style }) {
   return (
     <div style={{
       background: 'linear-gradient(180deg, #141312 0%, #141312 100%)',
       border: '1px solid #2a2825',
       borderRadius: '18px',
       padding: '20px',
-      boxShadow: '0 18px 40px rgba(0,0,0,0.22)'
+      boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
+      ...style
     }}>
       {children}
     </div>

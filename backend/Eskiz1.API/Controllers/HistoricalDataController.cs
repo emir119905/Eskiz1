@@ -57,6 +57,31 @@ namespace Eskiz1.API.Controllers
             return $"{symbol} zaten güncel.";
         }
 
+        // get: api/historicaldata/latest/1 -> hissenin en son kapanış fiyatını döndürür.
+        // frontend, alım/satım öncesi kağıdın güncel fiyatını göstermek için bu endpoint'i kullanır.
+        [HttpGet("latest/{stockId}")]
+        public async Task<IActionResult> GetLatestPrice(int stockId)
+        {
+            var stock = await _context.Stocks.FindAsync(stockId);
+            if (stock == null) return NotFound("Hisse bulunamadı.");
+
+            var latest = await _context.HistoricalData
+                .Where(h => h.StockID == stockId)
+                .OrderByDescending(h => h.Date)
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return NotFound("Bu hisse için fiyat verisi bulunamadı. Önce Yahoo Finance üzerinden verileri senkronize edin.");
+
+            return Ok(new
+            {
+                StockID = stockId,
+                Symbol = stock.Symbol,
+                ClosePrice = latest.ClosePrice,
+                Date = latest.Date
+            });
+        }
+
         // post: api/historicaldata/sync/1 -> yahoo finance üzerinden ohlcv verisini senkronize eder ve eksik high/low alanlarını günceller.
         [Authorize]
         [HttpPost("sync/{stockId}")]

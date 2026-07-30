@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import {
   pct,
   num,
@@ -14,10 +14,12 @@ import {
   Tooltip
 } from 'recharts'
 import { useAnalysis } from '../context/AnalysisContext'
+import { SidebarLayoutContext } from '../context/SidebarLayoutContext'
 
 
 export default function PersistentAnalysisDock() {
   const { selectedStock, prediction, loading, lastUpdatedAt, runPrediction, clearAnalysis } = useAnalysis()
+  const { width: sidebarWidth } = useContext(SidebarLayoutContext)
   const [expanded, setExpanded] = useState(false)
 
   const pm = prediction?.practicalHorizonMetrics
@@ -45,17 +47,45 @@ export default function PersistentAnalysisDock() {
   const hasAnalysis = Boolean(prediction)
   const biasColor = getBiasColor(signal?.tradeBias)
 
+  if (!selectedStock) {
+    return (
+      <div style={{
+        position: 'fixed',
+        left: sidebarWidth,
+        right: 0,
+        bottom: 0,
+        zIndex: 90,
+        background: 'linear-gradient(180deg, rgba(20,19,18,0.96), rgba(12,12,13,0.98))',
+        borderTop: '1px solid #2a2825',
+        backdropFilter: 'blur(14px)',
+        transition: 'left 0.2s ease'
+      }}>
+        <div style={{
+          minHeight: '44px',
+          padding: '10px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          color: '#66625a',
+          fontSize: '13px'
+        }}>
+          🧭 Bir varlık seçerek analiz akışını başlatın — Dashboard, Piyasa Taraması veya İzleme Listesi üzerinden seçebilirsiniz.
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{
       position: 'fixed',
-      left: 260,
+      left: sidebarWidth,
       right: 0,
       bottom: 0,
       zIndex: 90,
       background: 'linear-gradient(180deg, rgba(20,19,18,0.96), rgba(12,12,13,0.98))',
       borderTop: '1px solid #2a2825',
       boxShadow: '0 -18px 45px rgba(0,0,0,0.35)',
-      backdropFilter: 'blur(14px)'
+      backdropFilter: 'blur(14px)',
+      transition: 'left 0.2s ease'
     }}>
       <div style={{
         minHeight: '64px',
@@ -70,7 +100,7 @@ export default function PersistentAnalysisDock() {
             Pusula AI Canlı Analiz
           </div>
           <div style={{ fontWeight: 'bold', fontSize: '15px' }}>
-            {selectedStock?.symbol || 'Henüz varlık seçilmedi'}
+            {selectedStock.symbol}
             {loading && <span style={{ color: '#2dd4bf', marginLeft: '8px' }}>· analiz ediliyor</span>}
           </div>
         </div>

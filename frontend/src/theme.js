@@ -14,8 +14,9 @@ export const theme = {
   primaryStrong: '#f59e0b',
   primaryMuted: 'rgba(217,119,6,0.14)',
 
-  success: '#22c55e',
+  success: '#10b981',
   danger: '#ef4444',
   warning: '#eab308',
-  info: '#2dd4bf'
+  info: '#2dd4bf',
+  secondary: '#8b5cf6'
 }
