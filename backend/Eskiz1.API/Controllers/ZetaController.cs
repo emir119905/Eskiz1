@@ -99,7 +99,7 @@ public class ZetaController : ControllerBase
         });
     }
 
-    [Authorize]
+    [Authorize(Roles = "Developer,Admin")]
     [HttpPost("run")]
     public async Task<IActionResult> RunRadar(CancellationToken cancellationToken)
     {

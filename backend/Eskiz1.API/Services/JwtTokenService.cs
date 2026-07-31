@@ -31,6 +31,8 @@ namespace Eskiz1.API.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("firstName", user.FirstName),
                 new Claim("lastName", user.LastName),
+                // [Authorize(Roles = "Developer,Admin")] bu claim'i kontrol eder.
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
             };
 
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));

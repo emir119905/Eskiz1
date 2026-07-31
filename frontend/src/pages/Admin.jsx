@@ -304,7 +304,7 @@ function getHealth(row) {
     return {
       label: 'OHLC Eksik',
       color: YELLOW,
-      bg: '#f59e0b18'
+      bg: `${YELLOW}18`
     }
   }
 
@@ -312,7 +312,7 @@ function getHealth(row) {
     return {
       label: 'OHLC Eksik',
       color: YELLOW,
-      bg: '#f59e0b18'
+      bg: `${YELLOW}18`
     }
   }
 
@@ -328,7 +328,7 @@ function getHealth(row) {
     return {
       label: 'Boşluk Var',
       color: YELLOW,
-      bg: '#f59e0b18'
+      bg: `${YELLOW}18`
     }
   }
 
@@ -336,7 +336,7 @@ function getHealth(row) {
     return {
       label: 'Eksik / Kontrol',
       color: YELLOW,
-      bg: '#f59e0b18'
+      bg: `${YELLOW}18`
     }
   }
 
@@ -1101,9 +1101,9 @@ function ZetaStatusPanel({ status, loading, running, onRefresh, onRun }) {
       ) : (
         <>
           <div style={{
-            color: status.isStale ? '#fde68a' : '#9a968c',
-            background: status.isStale ? '#f59e0b14' : '#141312',
-            border: `1px solid ${status.isStale ? '#f59e0b55' : '#2a2825'}`,
+            color: status.isStale ? YELLOW : '#9a968c',
+            background: status.isStale ? `${YELLOW}14` : '#141312',
+            border: `1px solid ${status.isStale ? `${YELLOW}55` : '#2a2825'}`,
             borderRadius: '12px',
             padding: '12px 14px',
             fontSize: '13px',

@@ -26,5 +26,11 @@ namespace Eskiz1.API.Models
         public decimal Balance { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        // Geliştirici Araçları erişimi için rol; yeni kayıtlar her zaman User ile başlar.
+        public UserRole Role { get; set; } = UserRole.User;
+
+        // ileride ücretli üyelik katmanları için hazır tutulur; şu an hiçbir yeri kısıtlamaz.
+        public MembershipTier MembershipTier { get; set; } = MembershipTier.Free;
     }
 }

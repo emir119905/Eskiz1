@@ -56,7 +56,7 @@ namespace Eskiz1.API.Controllers
         }
 
         // post: api/stocks -> yeni hisse kaydı oluşturur.
-        [Authorize]
+        [Authorize(Roles = "Developer,Admin")]
         [HttpPost]
         public async Task<IActionResult> AddStock(Stock stock)
         {

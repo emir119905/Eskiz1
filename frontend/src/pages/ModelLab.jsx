@@ -377,18 +377,19 @@ function getPredictionMetrics(stock, prediction, behaviorSignal = null) {
 
 function getQualityBadge(row) {
   if (row.error) {
-    return { label: 'Hata', color: RED, bg: '#ef444418' }
+    return { label: 'Hata', color: RED, bg: `${RED}18` }
   }
 
   if (row.quality === 'good') {
-    return { label: 'İyi', color: GREEN, bg: '#10b98118' }
+    return { label: 'İyi', color: GREEN, bg: `${GREEN}18` }
   }
 
   if (row.quality === 'problem') {
-    return { label: 'Problem', color: RED, bg: '#ef444418' }
+    return { label: 'Problem', color: RED, bg: `${RED}18` }
   }
 
-  return { label: 'İzle', color: YELLOW, bg: '#f59e0b18' }
+  // not: uyarı sarısı marka turuncusuyla (theme.primary) karıştırılmamalı — bg de YELLOW'dan türetilir.
+  return { label: 'İzle', color: YELLOW, bg: `${YELLOW}18` }
 }
 
 function getRiskLabel(tag) {
@@ -940,12 +941,12 @@ export default function ModelLab() {
                     background: selected
                       ? '#d9770622'
                       : dynamicProblem
-                        ? '#f59e0b12'
+                        ? `${YELLOW}12`
                         : '#0f0f10',
                     border: selected
                       ? '1px solid #2dd4bf'
                       : dynamicProblem
-                        ? '1px solid #f59e0b55'
+                        ? `1px solid ${YELLOW}55`
                         : '1px solid #2a2825',
                     borderRadius: '14px',
                     padding: '12px',
@@ -1216,10 +1217,10 @@ export default function ModelLab() {
                                 }
                                 bg={
                                   tag === 'LOW_EDGE' || tag === 'BEHAVIOR_STRONG_MODEL_WEAK'
-                                    ? '#f59e0b18'
+                                    ? `${YELLOW}18`
                                     : tag === 'V12_DIVERGENCE'
-                                      ? '#8b5cf618'
-                                      : '#ef444418'
+                                      ? `${PURPLE}18`
+                                      : `${RED}18`
                                 }
                               >
                                 {getRiskLabel(tag)}

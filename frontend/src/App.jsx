@@ -123,7 +123,7 @@ function SidebarItem({ to, label, Icon, description, collapsed }) {
 }
 
 function Sidebar({ pinned, onTogglePin }) {
-  const { user, logout } = useAuth()
+  const { user, logout, isDeveloper } = useAuth()
   const [devModeOpen, setDevModeOpen] = useState(loadDevMode)
   const [hovering, setHovering] = useState(false)
   const hoverTimerRef = useRef(null)
@@ -235,7 +235,7 @@ function Sidebar({ pinned, onTogglePin }) {
           <SidebarItem key={item.to} {...item} collapsed={collapsed} />
         ))}
 
-        {!collapsed && (
+        {!collapsed && isDeveloper && (
           <div style={{
             margin: '14px 4px 4px',
             paddingTop: '12px',
@@ -338,6 +338,8 @@ function Sidebar({ pinned, onTogglePin }) {
 
 function TopStatusBar() {
   const location = useLocation()
+  const { isDeveloper } = useAuth()
+  const knownPath = getKnownPath(location.pathname, isDeveloper)
 
   const pageName = {
     '/': 'Dashboard',
@@ -346,7 +348,7 @@ function TopStatusBar() {
     '/tarama': 'Piyasa Taraması',
     '/lab': 'Model Laboratuvarı',
     '/admin': 'Veri Yönetimi'
-  }[location.pathname] || 'Pusula AI'
+  }[knownPath] || 'Pusula AI'
 
   return (
     <div style={{
@@ -408,7 +410,13 @@ const keepAlivePages = [
   { path: '/admin', Component: Admin }
 ]
 
-function getKnownPath(pathname) {
+const DEV_PATHS = new Set(['/lab', '/admin'])
+
+// Geliştirici Araçları sayfaları (Model Lab, Veri Yönetimi) sadece Developer/Admin rolündeki
+// hesaplar için mount edilir; diğer hesaplar için bilinmeyen yol gibi ele alınıp Dashboard'a düşer.
+function getKnownPath(pathname, isDeveloper) {
+  if (DEV_PATHS.has(pathname) && !isDeveloper) return '/'
+
   return keepAlivePages.some(page => page.path === pathname)
     ? pathname
     : '/'
@@ -416,7 +424,8 @@ function getKnownPath(pathname) {
 
 function KeepAlivePages() {
   const location = useLocation()
-  const activePath = getKnownPath(location.pathname)
+  const { isDeveloper } = useAuth()
+  const activePath = getKnownPath(location.pathname, isDeveloper)
   const [mountedPaths, setMountedPaths] = useState(() => new Set([activePath]))
 
   useEffect(() => {
@@ -494,17 +503,37 @@ function AppShell() {
   )
 }
 
+const AUTH_TRANSITION_MS = 200
+
 function AuthGate() {
   const { isAuthenticated } = useAuth()
+  const [renderedAuth, setRenderedAuth] = useState(isAuthenticated)
+  const [visible, setVisible] = useState(true)
 
-  if (!isAuthenticated) {
-    return <div key="login" style={{ animation: 'fadeIn 0.25s ease' }}><Login /></div>
-  }
+  // login/logout arasındaki geçiş sert bir unmount/mount yerine kısa bir cross-fade
+  // olsun diye görünürlük ile gerçek içerik değişimi bir adım geciktirilerek ayrıştırılır.
+  useEffect(() => {
+    if (isAuthenticated === renderedAuth) return
+
+    setVisible(false)
+    const timer = setTimeout(() => {
+      setRenderedAuth(isAuthenticated)
+      setVisible(true)
+    }, AUTH_TRANSITION_MS)
+
+    return () => clearTimeout(timer)
+  }, [isAuthenticated, renderedAuth])
 
   return (
-    <AnalysisProvider>
-      <AppShell />
-    </AnalysisProvider>
+    <div style={{ opacity: visible ? 1 : 0, transition: `opacity ${AUTH_TRANSITION_MS}ms ease` }}>
+      {renderedAuth ? (
+        <AnalysisProvider>
+          <AppShell />
+        </AnalysisProvider>
+      ) : (
+        <Login />
+      )}
+    </div>
   )
 }
 

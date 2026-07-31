@@ -79,6 +79,8 @@ namespace Eskiz1.API.Controllers
                 LastName = user.LastName,
                 Email = user.Email,
                 Balance = user.Balance,
+                Role = user.Role,
+                MembershipTier = user.MembershipTier,
             };
         }
     }

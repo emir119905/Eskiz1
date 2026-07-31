@@ -54,16 +54,20 @@ export function AuthProvider({ children }) {
     setAuth(null)
   }
 
+  // Role: 0 = User, 1 = Developer, 2 = Admin (backend Eskiz1.API.Models.UserRole ile eşleşir).
+  const isDeveloper = auth?.role === 1 || auth?.role === 2
+
   const value = useMemo(() => ({
     user: auth,
     userId: auth?.userId ?? null,
     isAuthenticated: Boolean(auth?.token),
+    isDeveloper,
     loading,
     error,
     login,
     register,
     logout
-  }), [auth, loading, error])
+  }), [auth, loading, error, isDeveloper])
 
   return (
     <AuthContext.Provider value={value}>
