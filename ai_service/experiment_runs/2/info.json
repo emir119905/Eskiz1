@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "likelyOverfit": false,
+    "okCount": 1,
+    "pctStocksBeatingNaive": 100.0,
+    "totalCount": 1
+  },
+  "tags": [
+    "faz1",
+    "baseline"
+  ]
+}

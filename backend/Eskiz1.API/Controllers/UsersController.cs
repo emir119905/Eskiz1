@@ -20,7 +20,9 @@ namespace Eskiz1.API.Controllers
             _context = context;
         }
 
-        // get: api/users -> sistemdeki tüm kullanıcıları listeler.
+        // get: api/users -> sistemdeki tüm kullanıcıları listeler (rol/üyelik yönetim ekranı için).
+        // sadece Admin görebilir; e-posta/bakiye gibi tüm kullanıcılara ait veriler burada döner.
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
@@ -31,8 +33,8 @@ namespace Eskiz1.API.Controllers
         }
 
         // put: api/users/1/role -> bir kullanıcının rolünü değiştirir (Developer/Admin -> Geliştirici Araçları erişimi).
-        // sadece mevcut Developer/Admin hesaplar başka hesaplara rol atayabilir.
-        [Authorize(Roles = "Developer,Admin")]
+        // sadece Admin rolündeki hesaplar rol atayabilir; Admin, Developer'ın üstünde bir yetki katmanıdır.
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}/role")]
         public async Task<IActionResult> UpdateRole(int id, UpdateRoleRequest request)
         {
@@ -46,8 +48,8 @@ namespace Eskiz1.API.Controllers
         }
 
         // put: api/users/1/membership -> bir kullanıcının üyelik katmanını değiştirir.
-        // şu an hiçbir yeri kısıtlamıyor; ileride ücretli üyelik eklenirse kullanılacak.
-        [Authorize(Roles = "Developer,Admin")]
+        // şu an hiçbir yeri kısıtlamıyor; ileride ücretli üyelik eklenirse kullanılacak. sadece Admin değiştirebilir.
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}/membership")]
         public async Task<IActionResult> UpdateMembership(int id, UpdateMembershipRequest request)
         {

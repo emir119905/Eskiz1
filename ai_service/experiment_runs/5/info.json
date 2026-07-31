@@ -1,0 +1,11 @@
+{
+  "metrics": {
+    "avgPathsBeatingNaivePct": 0.0,
+    "consistentCount": 0,
+    "okStocks": 1
+  },
+  "tags": [
+    "faz2",
+    "cpcv"
+  ]
+}

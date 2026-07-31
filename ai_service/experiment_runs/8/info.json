@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "downsideRiskExcessReturn10": -2.0184,
+    "momentumLongExcessReturn10": 0.0,
+    "overallTrustworthy": false
+  },
+  "tags": [
+    "faz3",
+    "zeta",
+    "meta_labeling"
+  ]
+}

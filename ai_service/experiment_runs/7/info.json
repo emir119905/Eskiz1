@@ -1,0 +1,13 @@
+{
+  "metrics": {
+    "consistency": "no_signal",
+    "meanActionPrecision": 49.51,
+    "pathsBeatingNaivePct": 0.0
+  },
+  "tags": [
+    "faz1",
+    "faz2",
+    "pooled",
+    "hipotez2"
+  ]
+}

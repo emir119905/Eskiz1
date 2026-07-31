@@ -1,13 +1,14 @@
 {
-  "generatedAt": "2026-05-29T01:09:46",
-  "version": "v12_zeta_scenario_screener_v1",
-  "architecture": "bist_global_panel_model_plus_rule_scenario_scorer",
-  "selectedModel": "hist_gradient_boosting",
+  "generatedAt": "2026-07-31T22:20:11",
+  "version": "v12_zeta_scenario_screener_v2_meta_labeling",
+  "architecture": "pooled_panel_primary_model_plus_meta_labeling",
+  "selectedModel": "logistic",
+  "metaModelTrained": true,
   "universe": "BIST",
   "horizon": 10,
   "validationStart": "2023-01-01",
   "testStart": "2024-01-01",
-  "featureCount": 90,
+  "featureCount": 81,
   "features": [
     "Return",
     "ReturnLag1",
@@ -26,17 +27,13 @@
     "MA50_norm",
     "MASpread10_20",
     "MASpread20_50",
-    "DistanceMA20",
-    "DistanceMA50",
     "RSI14",
     "Volatility10",
     "Volatility20",
     "Volatility60",
     "VolRatio10_60",
     "VolRatio20_60",
-    "TrueRange",
     "TrueRangePct",
-    "ATR14",
     "ATRPercent",
     "IntradayRangePct",
     "IntradayRangeATR",
@@ -66,16 +63,11 @@
     "BIST100_Mom20",
     "Gold_Mom20",
     "BrentOil_Mom20",
-    "XU100_Return",
-    "XU100_Mom5",
-    "XU100_Mom20",
-    "XU100_Vol20",
-    "XU100_RangePosition60",
-    "RelativeReturnToXU100",
-    "RelativeMom5ToXU100",
-    "RelativeMom20ToXU100",
-    "RelativeVol20ToXU100",
-    "RangePositionVsXU100",
+    "RelativeReturnToIndex",
+    "RelativeMom5ToIndex",
+    "RelativeMom20ToIndex",
+    "RelativeVol20ToIndex",
+    "RangePositionVsIndex",
     "Return_Rank",
     "Mom5_Rank",
     "Mom10_Rank",
@@ -92,413 +84,107 @@
     "BehaviorMomentumScore_Rank",
     "BehaviorDirectionComposite_Rank",
     "BehaviorFlatRisk_Rank",
-    "RelativeReturnToXU100_Rank",
-    "RelativeMom5ToXU100_Rank",
-    "RelativeMom20ToXU100_Rank",
-    "RelativeVol20ToXU100_Rank",
+    "RelativeReturnToIndex_Rank",
+    "RelativeMom5ToIndex_Rank",
+    "RelativeMom20ToIndex_Rank",
+    "RelativeVol20ToIndex_Rank",
     "CloseLocationValue_Rank",
     "UpperWickPct_Rank",
     "LowerWickPct_Rank"
   ],
   "dataset": {
-    "panelRows": 30571,
-    "symbols": 37,
-    "trainRows": 17427,
-    "validationRows": 2599,
-    "testRows": 10081,
+    "panelRows": 32365,
+    "symbols": 39,
+    "trainRows": 18129,
+    "validationRows": 2855,
+    "testRows": 10903,
     "trainClassDistribution": {
-      "downPct": 20.8,
-      "flatPct": 46.53,
-      "upPct": 32.67,
-      "downCount": 3625,
-      "flatCount": 8108,
-      "upCount": 5694,
-      "samples": 17427
-    },
-    "validationClassDistribution": {
-      "downPct": 28.9,
-      "flatPct": 46.83,
-      "upPct": 24.28,
-      "downCount": 751,
-      "flatCount": 1217,
-      "upCount": 631,
-      "samples": 2599
+      "downPct": 34.67,
+      "flatPct": 12.2,
+      "upPct": 53.12,
+      "downCount": 6286,
+      "flatCount": 2212,
+      "upCount": 9631,
+      "samples": 18129
     },
     "testClassDistribution": {
-      "downPct": 24.98,
-      "flatPct": 43.69,
-      "upPct": 31.34,
-      "downCount": 2518,
-      "flatCount": 4404,
-      "upCount": 3159,
-      "samples": 10081
+      "downPct": 39.13,
+      "flatPct": 8.41,
+      "upPct": 52.46,
+      "downCount": 4266,
+      "flatCount": 917,
+      "upCount": 5720,
+      "samples": 10903
     }
   },
-  "models": {
-    "logistic_balanced": {
-      "validation": {
-        "score": 478.3345,
-        "classification": {
-          "samples": 2599,
-          "accuracy": 41.44,
-          "actionPrecision": 30.05,
-          "actionRecall": 31.11,
-          "actionRate": 55.06,
-          "realActionRate": 53.17,
-          "flatRate": 44.94,
-          "confusionMatrix": {
-            "labels": [
-              "down",
-              "flat",
-              "up"
-            ],
-            "matrix": [
-              [
-                197,
-                261,
-                293
-              ],
-              [
-                226,
-                647,
-                344
-              ],
-              [
-                138,
-                260,
-                233
-              ]
-            ]
-          }
-        },
-        "meanProbabilityEdge": 0.1041,
-        "selectionDiagnostics": {
-          "targetActionRate": 28.0,
-          "rateScore": 29.644,
-          "overActionPenalty": 67.77,
-          "excessiveFlatPenalty": 0.0,
-          "weakPrecisionPenalty": 0.0
-        }
-      },
-      "test": {
-        "samples": 10081,
-        "accuracy": 38.38,
-        "actionPrecision": 31.77,
-        "actionRecall": 38.74,
-        "actionRate": 68.65,
-        "realActionRate": 56.31,
-        "flatRate": 31.35,
-        "confusionMatrix": {
-          "labels": [
-            "down",
-            "flat",
-            "up"
-          ],
-          "matrix": [
-            [
-              1005,
-              698,
-              815
-            ],
-            [
-              1432,
-              1670,
-              1302
-            ],
-            [
-              1173,
-              792,
-              1194
-            ]
-          ]
-        }
-      }
+  "gate": {
+    "momentumLong": {
+      "trustworthy": false,
+      "days": 0,
+      "avgExcessReturn10Pct": null,
+      "reason": "yetersiz veri"
     },
-    "random_forest_balanced": {
-      "validation": {
-        "score": 520.1364,
-        "classification": {
-          "samples": 2599,
-          "accuracy": 41.52,
-          "actionPrecision": 29.7,
-          "actionRecall": 26.19,
-          "actionRate": 46.9,
-          "realActionRate": 53.17,
-          "flatRate": 53.1,
-          "confusionMatrix": {
-            "labels": [
-              "down",
-              "flat",
-              "up"
-            ],
-            "matrix": [
-              [
-                160,
-                369,
-                222
-              ],
-              [
-                206,
-                717,
-                294
-              ],
-              [
-                135,
-                294,
-                202
-              ]
-            ]
-          }
-        },
-        "meanProbabilityEdge": 0.0334,
-        "selectionDiagnostics": {
-          "targetActionRate": 28.0,
-          "rateScore": 50.86,
-          "overActionPenalty": 31.05,
-          "excessiveFlatPenalty": 0.0,
-          "weakPrecisionPenalty": 1.5
-        }
-      },
-      "test": {
-        "samples": 10081,
-        "accuracy": 37.37,
-        "actionPrecision": 31.35,
-        "actionRecall": 40.07,
-        "actionRate": 71.99,
-        "realActionRate": 56.31,
-        "flatRate": 28.01,
-        "confusionMatrix": {
-          "labels": [
-            "down",
-            "flat",
-            "up"
-          ],
-          "matrix": [
-            [
-              892,
-              599,
-              1027
-            ],
-            [
-              1291,
-              1492,
-              1621
-            ],
-            [
-              1043,
-              733,
-              1383
-            ]
-          ]
-        }
-      }
+    "dipRebound": {
+      "trustworthy": false,
+      "days": 0,
+      "avgExcessReturn10Pct": null,
+      "reason": "yetersiz veri"
     },
-    "gradient_boosting": {
-      "validation": {
-        "score": 458.0313,
-        "classification": {
-          "samples": 2599,
-          "accuracy": 41.71,
-          "actionPrecision": 22.48,
-          "actionRecall": 10.49,
-          "actionRate": 24.82,
-          "realActionRate": 53.17,
-          "flatRate": 75.18,
-          "confusionMatrix": {
-            "labels": [
-              "down",
-              "flat",
-              "up"
-            ],
-            "matrix": [
-              [
-                4,
-                561,
-                186
-              ],
-              [
-                39,
-                939,
-                239
-              ],
-              [
-                36,
-                454,
-                141
-              ]
-            ]
-          }
-        },
-        "meanProbabilityEdge": 0.0296,
-        "selectionDiagnostics": {
-          "targetActionRate": 28.0,
-          "rateScore": 91.732,
-          "overActionPenalty": 0.0,
-          "excessiveFlatPenalty": 0.0,
-          "weakPrecisionPenalty": 37.6
-        }
-      },
-      "test": {
-        "samples": 10081,
-        "accuracy": 44.3,
-        "actionPrecision": 39.2,
-        "actionRecall": 21.45,
-        "actionRate": 30.82,
-        "realActionRate": 56.31,
-        "flatRate": 69.18,
-        "confusionMatrix": {
-          "labels": [
-            "down",
-            "flat",
-            "up"
-          ],
-          "matrix": [
-            [
-              184,
-              1744,
-              590
-            ],
-            [
-              151,
-              3248,
-              1005
-            ],
-            [
-              143,
-              1982,
-              1034
-            ]
-          ]
-        }
-      }
+    "downsideRisk": {
+      "trustworthy": false,
+      "days": 13,
+      "avgExcessReturn10Pct": -2.0184,
+      "reason": "yetersiz veri"
     },
-    "hist_gradient_boosting": {
-      "validation": {
-        "score": 626.8422,
-        "classification": {
-          "samples": 2599,
-          "accuracy": 43.82,
-          "actionPrecision": 31.01,
-          "actionRecall": 16.71,
-          "actionRate": 28.66,
-          "realActionRate": 53.17,
-          "flatRate": 71.34,
-          "confusionMatrix": {
-            "labels": [
-              "down",
-              "flat",
-              "up"
-            ],
-            "matrix": [
-              [
-                51,
-                518,
-                182
-              ],
-              [
-                50,
-                908,
-                259
-              ],
-              [
-                23,
-                428,
-                180
-              ]
-            ]
-          }
-        },
-        "meanProbabilityEdge": 0.0509,
-        "selectionDiagnostics": {
-          "targetActionRate": 28.0,
-          "rateScore": 98.284,
-          "overActionPenalty": 0.0,
-          "excessiveFlatPenalty": 0.0,
-          "weakPrecisionPenalty": 0.0
-        }
-      },
-      "test": {
-        "samples": 10081,
-        "accuracy": 42.94,
-        "actionPrecision": 37.02,
-        "actionRecall": 27.32,
-        "actionRate": 41.56,
-        "realActionRate": 56.31,
-        "flatRate": 58.44,
-        "confusionMatrix": {
-          "labels": [
-            "down",
-            "flat",
-            "up"
-          ],
-          "matrix": [
-            [
-              224,
-              1460,
-              834
-            ],
-            [
-              271,
-              2778,
-              1355
-            ],
-            [
-              179,
-              1653,
-              1327
-            ]
-          ]
-        }
-      }
-    }
+    "overallTrustworthy": false
   },
   "latestRadar": {
-    "date": "2026-05-06",
+    "date": "2026-07-29",
     "universe": "BIST",
-    "totalStocks": 35,
+    "totalStocks": 39,
     "allStocks": [
       {
         "stockID": 21,
         "symbol": "AKBNK.IS",
         "scenario": "NEUTRAL",
-        "score": 75.58,
-        "confidence": 26.99,
-        "closePrice": 74.35,
+        "score": 10.0,
+        "confidence": 42.38,
+        "closePrice": 63.3,
         "modelProbabilities": {
-          "down": 0.1148,
-          "flat": 0.4376,
-          "up": 0.4476
+          "down": 0.5751,
+          "flat": 0.1,
+          "up": 0.3249
         },
         "scores": {
-          "momentumLong": 21.37,
-          "dipRebound": 41.8,
-          "downsideRisk": 38.76,
-          "flatRisk": 75.58,
-          "fallingKnifeRisk": 28.1
+          "momentumLong": 13.77,
+          "dipRebound": 6.41,
+          "downsideRisk": 24.37,
+          "flatRisk": 10.0,
+          "fallingKnifeRisk": 21.27
         },
         "reasonTags": [],
         "warningTags": [
-          "HIGH_FLAT_RISK"
+          "NO_CLEAR_EDGE"
         ]
       },
       {
         "stockID": 11,
         "symbol": "ALARK.IS",
         "scenario": "NEUTRAL",
-        "score": 47.94,
-        "confidence": 38.2,
-        "closePrice": 100.3,
+        "score": 12.43,
+        "confidence": 40.39,
+        "closePrice": 101.5,
         "modelProbabilities": {
-          "down": 0.0919,
-          "flat": 0.4428,
-          "up": 0.4653
+          "down": 0.5406,
+          "flat": 0.1243,
+          "up": 0.3351
         },
         "scores": {
-          "momentumLong": 41.91,
-          "dipRebound": 41.46,
-          "downsideRisk": 19.2,
-          "flatRisk": 47.94,
-          "fallingKnifeRisk": 12.75
+          "momentumLong": 13.54,
+          "dipRebound": 2.14,
+          "downsideRisk": 21.84,
+          "flatRisk": 12.43,
+          "fallingKnifeRisk": 19.19
         },
         "reasonTags": [],
         "warningTags": [
@@ -508,54 +194,47 @@
       {
         "stockID": 13,
         "symbol": "ALTNY.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 74.62,
-        "confidence": 79.28,
-        "closePrice": 17.75,
+        "scenario": "NEUTRAL",
+        "score": 51.27,
+        "confidence": 38.48,
+        "closePrice": 15.45,
         "modelProbabilities": {
-          "down": 0.1281,
-          "flat": 0.4301,
-          "up": 0.4418
+          "down": 0.2841,
+          "flat": 0.5127,
+          "up": 0.2032
         },
         "scores": {
-          "momentumLong": 74.62,
-          "dipRebound": 37.94,
-          "downsideRisk": 1.93,
-          "flatRisk": 18.04,
-          "fallingKnifeRisk": 0.87
+          "momentumLong": 7.82,
+          "dipRebound": 4.12,
+          "downsideRisk": 10.93,
+          "flatRisk": 51.27,
+          "fallingKnifeRisk": 9.67
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 6,
         "symbol": "ASELS.IS",
         "scenario": "NEUTRAL",
-        "score": 31.97,
-        "confidence": 54.07,
-        "closePrice": 434.0,
+        "score": 32.49,
+        "confidence": 44.93,
+        "closePrice": 354.5,
         "modelProbabilities": {
-          "down": 0.1214,
-          "flat": 0.5195,
-          "up": 0.3591
+          "down": 0.4812,
+          "flat": 0.3249,
+          "up": 0.1938
         },
         "scores": {
-          "momentumLong": 56.94,
-          "dipRebound": 15.09,
-          "downsideRisk": 12.36,
-          "flatRisk": 31.97,
-          "fallingKnifeRisk": 18.07
+          "momentumLong": 8.71,
+          "dipRebound": 0.0,
+          "downsideRisk": 21.62,
+          "flatRisk": 32.49,
+          "fallingKnifeRisk": 18.71
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH"
-        ],
+        "reasonTags": [],
         "warningTags": [
           "NO_CLEAR_EDGE"
         ]
@@ -564,26 +243,22 @@
         "stockID": 30,
         "symbol": "ASTOR.IS",
         "scenario": "NEUTRAL",
-        "score": 22.11,
-        "confidence": 56.86,
-        "closePrice": 317.75,
+        "score": 26.26,
+        "confidence": 43.82,
+        "closePrice": 278.0,
         "modelProbabilities": {
-          "down": 0.1253,
-          "flat": 0.5197,
-          "up": 0.3551
+          "down": 0.5193,
+          "flat": 0.2626,
+          "up": 0.2181
         },
         "scores": {
-          "momentumLong": 56.55,
-          "dipRebound": 28.54,
-          "downsideRisk": 0.0,
-          "flatRisk": 22.11,
-          "fallingKnifeRisk": 0.0
+          "momentumLong": 9.56,
+          "dipRebound": 0.0,
+          "downsideRisk": 22.76,
+          "flatRisk": 26.26,
+          "fallingKnifeRisk": 19.77
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH"
-        ],
+        "reasonTags": [],
         "warningTags": [
           "NO_CLEAR_EDGE"
         ]
@@ -591,47 +266,45 @@
       {
         "stockID": 29,
         "symbol": "BIMAS.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 71.02,
-        "confidence": 87.46,
-        "closePrice": 390.5,
+        "scenario": "NEUTRAL",
+        "score": 27.66,
+        "confidence": 42.45,
+        "closePrice": 386.5,
         "modelProbabilities": {
-          "down": 0.1011,
-          "flat": 0.2177,
-          "up": 0.6811
+          "down": 0.4581,
+          "flat": 0.2766,
+          "up": 0.2653
         },
         "scores": {
-          "momentumLong": 71.02,
-          "dipRebound": 33.08,
-          "downsideRisk": 9.55,
-          "flatRisk": 11.03,
-          "fallingKnifeRisk": 10.95
+          "momentumLong": 11.26,
+          "dipRebound": 0.0,
+          "downsideRisk": 19.45,
+          "flatRisk": 27.66,
+          "fallingKnifeRisk": 16.97
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 9,
         "symbol": "DOFER.IS",
         "scenario": "NEUTRAL",
-        "score": 68.06,
-        "confidence": 31.08,
-        "closePrice": 33.72,
+        "score": 10.12,
+        "confidence": 35.41,
+        "closePrice": 28.1,
         "modelProbabilities": {
-          "down": 0.143,
-          "flat": 0.2904,
-          "up": 0.5666
+          "down": 0.5645,
+          "flat": 0.1012,
+          "up": 0.3343
         },
         "scores": {
-          "momentumLong": 13.03,
-          "dipRebound": 35.03,
-          "downsideRisk": 40.08,
-          "flatRisk": 68.06,
-          "fallingKnifeRisk": 34.86
+          "momentumLong": 11.84,
+          "dipRebound": 3.03,
+          "downsideRisk": 19.99,
+          "flatRisk": 10.12,
+          "fallingKnifeRisk": 17.86
         },
         "reasonTags": [],
         "warningTags": [
@@ -642,20 +315,20 @@
         "stockID": 12,
         "symbol": "ECZYT.IS",
         "scenario": "NEUTRAL",
-        "score": 46.99,
-        "confidence": 44.94,
-        "closePrice": 370.0,
+        "score": 44.35,
+        "confidence": 35.16,
+        "closePrice": 298.75,
         "modelProbabilities": {
-          "down": 0.0626,
-          "flat": 0.4542,
-          "up": 0.4832
+          "down": 0.3193,
+          "flat": 0.4435,
+          "up": 0.2372
         },
         "scores": {
-          "momentumLong": 46.67,
-          "dipRebound": 37.97,
-          "downsideRisk": 12.89,
-          "flatRisk": 46.99,
-          "fallingKnifeRisk": 11.92
+          "momentumLong": 8.34,
+          "dipRebound": 0.2,
+          "downsideRisk": 11.22,
+          "flatRisk": 44.35,
+          "fallingKnifeRisk": 10.04
         },
         "reasonTags": [],
         "warningTags": [
@@ -666,20 +339,20 @@
         "stockID": 36,
         "symbol": "EGEEN.IS",
         "scenario": "NEUTRAL",
-        "score": 66.85,
-        "confidence": 17.12,
-        "closePrice": 6422.5,
+        "score": 32.73,
+        "confidence": 41.74,
+        "closePrice": 5312.5,
         "modelProbabilities": {
-          "down": 0.0352,
-          "flat": 0.6255,
-          "up": 0.3393
+          "down": 0.4131,
+          "flat": 0.3273,
+          "up": 0.2595
         },
         "scores": {
-          "momentumLong": 29.87,
-          "dipRebound": 27.58,
-          "downsideRisk": 23.36,
-          "flatRisk": 66.85,
-          "fallingKnifeRisk": 15.03
+          "momentumLong": 10.83,
+          "dipRebound": 2.49,
+          "downsideRisk": 17.24,
+          "flatRisk": 32.73,
+          "fallingKnifeRisk": 15.08
         },
         "reasonTags": [],
         "warningTags": [
@@ -689,54 +362,47 @@
       {
         "stockID": 24,
         "symbol": "ENKAI.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 61.4,
-        "confidence": 64.54,
-        "closePrice": 110.5,
+        "scenario": "NEUTRAL",
+        "score": 9.2,
+        "confidence": 42.25,
+        "closePrice": 87.55,
         "modelProbabilities": {
-          "down": 0.1182,
-          "flat": 0.4428,
-          "up": 0.4391
+          "down": 0.5763,
+          "flat": 0.092,
+          "up": 0.3317
         },
         "scores": {
-          "momentumLong": 61.4,
-          "dipRebound": 29.81,
-          "downsideRisk": 7.48,
-          "flatRisk": 23.12,
-          "fallingKnifeRisk": 2.98
+          "momentumLong": 14.01,
+          "dipRebound": 1.17,
+          "downsideRisk": 24.35,
+          "flatRisk": 9.2,
+          "fallingKnifeRisk": 21.26
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 4,
         "symbol": "EREGL.IS",
         "scenario": "NEUTRAL",
-        "score": 28.51,
-        "confidence": 53.32,
-        "closePrice": 37.68,
+        "score": 19.13,
+        "confidence": 42.61,
+        "closePrice": 43.16,
         "modelProbabilities": {
-          "down": 0.1189,
-          "flat": 0.5316,
-          "up": 0.3495
+          "down": 0.46,
+          "flat": 0.1913,
+          "up": 0.3487
         },
         "scores": {
-          "momentumLong": 55.23,
-          "dipRebound": 33.91,
-          "downsideRisk": 0.43,
-          "flatRisk": 28.51,
-          "fallingKnifeRisk": 0.03
+          "momentumLong": 14.86,
+          "dipRebound": 0.0,
+          "downsideRisk": 19.6,
+          "flatRisk": 19.13,
+          "fallingKnifeRisk": 17.09
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH"
-        ],
+        "reasonTags": [],
         "warningTags": [
           "NO_CLEAR_EDGE"
         ]
@@ -744,72 +410,93 @@
       {
         "stockID": 7,
         "symbol": "FROTO.IS",
-        "scenario": "DIP_REBOUND_WATCH",
-        "score": 63.79,
-        "confidence": 64.7,
-        "closePrice": 99.0,
+        "scenario": "NEUTRAL",
+        "score": 11.12,
+        "confidence": 39.49,
+        "closePrice": 76.1,
         "modelProbabilities": {
-          "down": 0.11,
-          "flat": 0.2831,
-          "up": 0.6069
+          "down": 0.51,
+          "flat": 0.1112,
+          "up": 0.3788
         },
         "scores": {
-          "momentumLong": 20.17,
-          "dipRebound": 63.79,
-          "downsideRisk": 36.16,
-          "flatRisk": 47.09,
-          "fallingKnifeRisk": 20.2
+          "momentumLong": 14.96,
+          "dipRebound": 3.87,
+          "downsideRisk": 20.14,
+          "flatRisk": 11.12,
+          "fallingKnifeRisk": 17.75
         },
-        "reasonTags": [
-          "CONTROLLED_VOLATILITY",
-          "LOWER_WICK_SUPPORT",
-          "LOW_RANGE_POSITION",
-          "RECOVERY_CLOSE"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 19,
         "symbol": "GARAN.IS",
         "scenario": "NEUTRAL",
-        "score": 78.48,
-        "confidence": 27.78,
-        "closePrice": 136.6,
+        "score": 5.11,
+        "confidence": 40.68,
+        "closePrice": 126.3,
         "modelProbabilities": {
-          "down": 0.0926,
-          "flat": 0.5694,
-          "up": 0.3381
+          "down": 0.6232,
+          "flat": 0.0511,
+          "up": 0.3257
         },
         "scores": {
-          "momentumLong": 18.16,
-          "dipRebound": 46.66,
-          "downsideRisk": 38.01,
-          "flatRisk": 78.48,
-          "fallingKnifeRisk": 23.81
+          "momentumLong": 13.25,
+          "dipRebound": 2.6,
+          "downsideRisk": 25.35,
+          "flatRisk": 5.11,
+          "fallingKnifeRisk": 22.26
         },
         "reasonTags": [],
         "warningTags": [
-          "HIGH_FLAT_RISK"
+          "NO_CLEAR_EDGE"
+        ]
+      },
+      {
+        "stockID": 41,
+        "symbol": "IEYHO.IS",
+        "scenario": "NEUTRAL",
+        "score": 9.63,
+        "confidence": 50.81,
+        "closePrice": 165.5,
+        "modelProbabilities": {
+          "down": 0.4617,
+          "flat": 0.0963,
+          "up": 0.4421
+        },
+        "scores": {
+          "momentumLong": 22.46,
+          "dipRebound": 0.0,
+          "downsideRisk": 23.46,
+          "flatRisk": 9.63,
+          "fallingKnifeRisk": 19.88
+        },
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
         ]
       },
       {
         "stockID": 39,
         "symbol": "ISCTR.IS",
         "scenario": "NEUTRAL",
-        "score": 64.88,
-        "confidence": 34.46,
-        "closePrice": 14.49,
+        "score": 9.73,
+        "confidence": 40.85,
+        "closePrice": 12.3,
         "modelProbabilities": {
-          "down": 0.1508,
-          "flat": 0.4036,
-          "up": 0.4456
+          "down": 0.5142,
+          "flat": 0.0973,
+          "up": 0.3885
         },
         "scores": {
-          "momentumLong": 22.88,
-          "dipRebound": 46.85,
-          "downsideRisk": 27.88,
-          "flatRisk": 64.88,
-          "fallingKnifeRisk": 19.59
+          "momentumLong": 15.87,
+          "dipRebound": 6.73,
+          "downsideRisk": 21.0,
+          "flatRisk": 9.73,
+          "fallingKnifeRisk": 18.43
         },
         "reasonTags": [],
         "warningTags": [
@@ -820,27 +507,22 @@
         "stockID": 33,
         "symbol": "ISDMR.IS",
         "scenario": "NEUTRAL",
-        "score": 28.34,
-        "confidence": 56.93,
-        "closePrice": 53.0,
+        "score": 5.19,
+        "confidence": 40.95,
+        "closePrice": 52.35,
         "modelProbabilities": {
-          "down": 0.0837,
-          "flat": 0.5152,
-          "up": 0.4011
+          "down": 0.6038,
+          "flat": 0.0519,
+          "up": 0.3444
         },
         "scores": {
-          "momentumLong": 55.74,
-          "dipRebound": 34.3,
-          "downsideRisk": 0.0,
-          "flatRisk": 28.34,
-          "fallingKnifeRisk": 0.0
+          "momentumLong": 14.1,
+          "dipRebound": 2.25,
+          "downsideRisk": 24.72,
+          "flatRisk": 5.19,
+          "fallingKnifeRisk": 21.69
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH",
-          "UP_PROBABILITY_SUPPORT"
-        ],
+        "reasonTags": [],
         "warningTags": [
           "NO_CLEAR_EDGE"
         ]
@@ -849,20 +531,44 @@
         "stockID": 37,
         "symbol": "IZENR.IS",
         "scenario": "NEUTRAL",
-        "score": 43.26,
-        "confidence": 46.65,
-        "closePrice": 10.55,
+        "score": 8.26,
+        "confidence": 35.47,
+        "closePrice": 8.77,
         "modelProbabilities": {
-          "down": 0.0799,
-          "flat": 0.3772,
-          "up": 0.5429
+          "down": 0.6984,
+          "flat": 0.0826,
+          "up": 0.219
         },
         "scores": {
-          "momentumLong": 45.59,
-          "dipRebound": 43.92,
-          "downsideRisk": 8.27,
-          "flatRisk": 43.26,
-          "fallingKnifeRisk": 7.35
+          "momentumLong": 7.77,
+          "dipRebound": 2.63,
+          "downsideRisk": 24.77,
+          "flatRisk": 8.26,
+          "fallingKnifeRisk": 22.14
+        },
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
+      },
+      {
+        "stockID": 42,
+        "symbol": "KARSN.IS",
+        "scenario": "NEUTRAL",
+        "score": 11.56,
+        "confidence": 41.52,
+        "closePrice": 10.02,
+        "modelProbabilities": {
+          "down": 0.551,
+          "flat": 0.1156,
+          "up": 0.3334
+        },
+        "scores": {
+          "momentumLong": 13.84,
+          "dipRebound": 7.94,
+          "downsideRisk": 22.88,
+          "flatRisk": 11.56,
+          "fallingKnifeRisk": 20.03
         },
         "reasonTags": [],
         "warningTags": [
@@ -872,47 +578,45 @@
       {
         "stockID": 10,
         "symbol": "KCAER.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 58.96,
-        "confidence": 59.61,
-        "closePrice": 12.46,
+        "scenario": "NEUTRAL",
+        "score": 13.16,
+        "confidence": 42.37,
+        "closePrice": 15.07,
         "modelProbabilities": {
-          "down": 0.119,
-          "flat": 0.3707,
-          "up": 0.5103
+          "down": 0.5426,
+          "flat": 0.1316,
+          "up": 0.3258
         },
         "scores": {
-          "momentumLong": 58.96,
-          "dipRebound": 16.61,
-          "downsideRisk": 19.56,
-          "flatRisk": 37.28,
-          "fallingKnifeRisk": 27.43
+          "momentumLong": 13.81,
+          "dipRebound": 0.0,
+          "downsideRisk": 22.99,
+          "flatRisk": 13.16,
+          "fallingKnifeRisk": 20.07
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 17,
         "symbol": "KCHOL.IS",
         "scenario": "NEUTRAL",
-        "score": 43.36,
-        "confidence": 46.53,
-        "closePrice": 210.5,
+        "score": 8.28,
+        "confidence": 38.67,
+        "closePrice": 193.6,
         "modelProbabilities": {
-          "down": 0.1521,
-          "flat": 0.3754,
-          "up": 0.4724
+          "down": 0.5674,
+          "flat": 0.0828,
+          "up": 0.3498
         },
         "scores": {
-          "momentumLong": 50.49,
-          "dipRebound": 31.13,
-          "downsideRisk": 20.76,
-          "flatRisk": 43.36,
-          "fallingKnifeRisk": 17.69
+          "momentumLong": 13.53,
+          "dipRebound": 0.0,
+          "downsideRisk": 21.94,
+          "flatRisk": 8.28,
+          "fallingKnifeRisk": 19.4
         },
         "reasonTags": [],
         "warningTags": [
@@ -923,44 +627,45 @@
         "stockID": 32,
         "symbol": "KONTR.IS",
         "scenario": "NEUTRAL",
-        "score": 78.09,
-        "confidence": 20.09,
-        "closePrice": 9.75,
+        "score": 72.45,
+        "confidence": 45.17,
+        "closePrice": 4.66,
         "modelProbabilities": {
-          "down": 0.0542,
-          "flat": 0.5432,
-          "up": 0.4026
+          "down": 0.1259,
+          "flat": 0.7245,
+          "up": 0.1496
         },
         "scores": {
-          "momentumLong": 21.38,
-          "dipRebound": 35.23,
-          "downsideRisk": 27.85,
-          "flatRisk": 78.09,
-          "fallingKnifeRisk": 19.63
+          "momentumLong": 6.76,
+          "dipRebound": 0.0,
+          "downsideRisk": 5.69,
+          "flatRisk": 72.45,
+          "fallingKnifeRisk": 4.91
         },
         "reasonTags": [],
         "warningTags": [
-          "HIGH_FLAT_RISK"
+          "HIGH_FLAT_RISK",
+          "NO_CLEAR_EDGE"
         ]
       },
       {
         "stockID": 1,
         "symbol": "KONYA.IS",
         "scenario": "NEUTRAL",
-        "score": 67.75,
-        "confidence": 17.41,
-        "closePrice": 4285.0,
+        "score": 68.8,
+        "confidence": 44.15,
+        "closePrice": 3635.0,
         "modelProbabilities": {
-          "down": 0.0493,
-          "flat": 0.7339,
-          "up": 0.2168
+          "down": 0.1916,
+          "flat": 0.688,
+          "up": 0.1204
         },
         "scores": {
-          "momentumLong": 27.41,
-          "dipRebound": 35.26,
-          "downsideRisk": 18.21,
-          "flatRisk": 67.75,
-          "fallingKnifeRisk": 7.25
+          "momentumLong": 5.31,
+          "dipRebound": 5.44,
+          "downsideRisk": 8.46,
+          "flatRisk": 68.8,
+          "fallingKnifeRisk": 7.34
         },
         "reasonTags": [],
         "warningTags": [
@@ -971,20 +676,20 @@
         "stockID": 8,
         "symbol": "KRDMD.IS",
         "scenario": "NEUTRAL",
-        "score": 32.02,
-        "confidence": 45.27,
-        "closePrice": 39.9,
+        "score": 21.23,
+        "confidence": 43.02,
+        "closePrice": 41.84,
         "modelProbabilities": {
-          "down": 0.1434,
-          "flat": 0.4733,
-          "up": 0.3834
+          "down": 0.5056,
+          "flat": 0.2123,
+          "up": 0.2822
         },
         "scores": {
-          "momentumLong": 48.08,
-          "dipRebound": 30.07,
-          "downsideRisk": 7.83,
-          "flatRisk": 32.02,
-          "fallingKnifeRisk": 9.07
+          "momentumLong": 12.14,
+          "dipRebound": 0.0,
+          "downsideRisk": 21.75,
+          "flatRisk": 21.23,
+          "fallingKnifeRisk": 18.94
         },
         "reasonTags": [],
         "warningTags": [
@@ -994,74 +699,69 @@
       {
         "stockID": 35,
         "symbol": "MAVI.IS",
-        "scenario": "DIP_REBOUND_WATCH",
-        "score": 68.02,
-        "confidence": 61.57,
-        "closePrice": 43.86,
+        "scenario": "NEUTRAL",
+        "score": 23.91,
+        "confidence": 41.06,
+        "closePrice": 38.48,
         "modelProbabilities": {
-          "down": 0.1119,
-          "flat": 0.4089,
-          "up": 0.4792
+          "down": 0.4699,
+          "flat": 0.2391,
+          "up": 0.291
         },
         "scores": {
-          "momentumLong": 25.97,
-          "dipRebound": 68.02,
-          "downsideRisk": 16.17,
-          "flatRisk": 55.15,
-          "fallingKnifeRisk": 0.0
+          "momentumLong": 11.95,
+          "dipRebound": 0.0,
+          "downsideRisk": 19.29,
+          "flatRisk": 23.91,
+          "fallingKnifeRisk": 16.92
         },
-        "reasonTags": [
-          "CONTROLLED_VOLATILITY",
-          "LOWER_WICK_SUPPORT",
-          "LOW_RANGE_POSITION",
-          "RECOVERY_CLOSE"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 26,
         "symbol": "MIATK.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 63.45,
-        "confidence": 69.72,
-        "closePrice": 43.54,
+        "scenario": "NEUTRAL",
+        "score": 13.53,
+        "confidence": 44.72,
+        "closePrice": 31.52,
         "modelProbabilities": {
-          "down": 0.0927,
-          "flat": 0.3815,
-          "up": 0.5258
+          "down": 0.6793,
+          "flat": 0.1353,
+          "up": 0.1854
         },
         "scores": {
-          "momentumLong": 63.45,
-          "dipRebound": 32.25,
-          "downsideRisk": 14.09,
-          "flatRisk": 25.41,
-          "fallingKnifeRisk": 18.57
+          "momentumLong": 8.29,
+          "dipRebound": 4.05,
+          "downsideRisk": 30.38,
+          "flatRisk": 13.53,
+          "fallingKnifeRisk": 26.3
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 38,
         "symbol": "OBAMS.IS",
         "scenario": "NEUTRAL",
-        "score": 68.15,
-        "confidence": 31.06,
-        "closePrice": 8.44,
+        "score": 21.95,
+        "confidence": 42.62,
+        "closePrice": 4.9,
         "modelProbabilities": {
-          "down": 0.1389,
-          "flat": 0.2613,
-          "up": 0.5998
+          "down": 0.4655,
+          "flat": 0.2195,
+          "up": 0.315
         },
         "scores": {
-          "momentumLong": 38.78,
-          "dipRebound": 19.41,
-          "downsideRisk": 36.34,
-          "flatRisk": 68.15,
-          "fallingKnifeRisk": 43.1
+          "momentumLong": 13.43,
+          "dipRebound": 8.48,
+          "downsideRisk": 19.84,
+          "flatRisk": 21.95,
+          "fallingKnifeRisk": 17.3
         },
         "reasonTags": [],
         "warningTags": [
@@ -1071,48 +771,69 @@
       {
         "stockID": 15,
         "symbol": "ONRYT.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 70.54,
-        "confidence": 73.55,
-        "closePrice": 68.6,
+        "scenario": "NEUTRAL",
+        "score": 15.07,
+        "confidence": 43.2,
+        "closePrice": 56.5,
         "modelProbabilities": {
-          "down": 0.1314,
-          "flat": 0.3687,
-          "up": 0.4999
+          "down": 0.6199,
+          "flat": 0.1507,
+          "up": 0.2294
         },
         "scores": {
-          "momentumLong": 70.54,
-          "dipRebound": 43.83,
-          "downsideRisk": 4.5,
-          "flatRisk": 28.26,
-          "fallingKnifeRisk": 1.51
+          "momentumLong": 9.91,
+          "dipRebound": 3.83,
+          "downsideRisk": 26.78,
+          "flatRisk": 15.07,
+          "fallingKnifeRisk": 23.31
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 16,
         "symbol": "OTKAR.IS",
         "scenario": "NEUTRAL",
-        "score": 47.84,
-        "confidence": 48.79,
-        "closePrice": 374.75,
+        "score": 30.93,
+        "confidence": 43.22,
+        "closePrice": 302.75,
         "modelProbabilities": {
-          "down": 0.1504,
-          "flat": 0.2214,
-          "up": 0.6282
+          "down": 0.4181,
+          "flat": 0.3093,
+          "up": 0.2726
         },
         "scores": {
-          "momentumLong": 19.89,
-          "dipRebound": 48.81,
-          "downsideRisk": 45.44,
-          "flatRisk": 47.84,
-          "fallingKnifeRisk": 35.87
+          "momentumLong": 11.78,
+          "dipRebound": 9.77,
+          "downsideRisk": 18.07,
+          "flatRisk": 30.93,
+          "fallingKnifeRisk": 15.73
+        },
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
+      },
+      {
+        "stockID": 43,
+        "symbol": "PCILT.IS",
+        "scenario": "NEUTRAL",
+        "score": 11.71,
+        "confidence": 40.16,
+        "closePrice": 30.24,
+        "modelProbabilities": {
+          "down": 0.6296,
+          "flat": 0.1171,
+          "up": 0.2534
+        },
+        "scores": {
+          "momentumLong": 10.18,
+          "dipRebound": 1.39,
+          "downsideRisk": 25.28,
+          "flatRisk": 11.71,
+          "fallingKnifeRisk": 22.24
         },
         "reasonTags": [],
         "warningTags": [
@@ -1123,20 +844,20 @@
         "stockID": 34,
         "symbol": "PETKM.IS",
         "scenario": "NEUTRAL",
-        "score": 37.84,
-        "confidence": 44.84,
-        "closePrice": 24.12,
+        "score": 40.27,
+        "confidence": 36.9,
+        "closePrice": 19.95,
         "modelProbabilities": {
-          "down": 0.1481,
-          "flat": 0.4737,
-          "up": 0.3783
+          "down": 0.3885,
+          "flat": 0.4027,
+          "up": 0.2087
         },
         "scores": {
-          "momentumLong": 50.02,
-          "dipRebound": 30.38,
-          "downsideRisk": 12.36,
-          "flatRisk": 37.84,
-          "fallingKnifeRisk": 14.44
+          "momentumLong": 7.7,
+          "dipRebound": 0.0,
+          "downsideRisk": 14.34,
+          "flatRisk": 40.27,
+          "fallingKnifeRisk": 12.75
         },
         "reasonTags": [],
         "warningTags": [
@@ -1147,20 +868,20 @@
         "stockID": 28,
         "symbol": "REEDR.IS",
         "scenario": "NEUTRAL",
-        "score": 67.99,
-        "confidence": 27.6,
-        "closePrice": 7.74,
+        "score": 20.17,
+        "confidence": 43.26,
+        "closePrice": 6.61,
         "modelProbabilities": {
-          "down": 0.1024,
-          "flat": 0.3605,
-          "up": 0.5371
+          "down": 0.5431,
+          "flat": 0.2017,
+          "up": 0.2552
         },
         "scores": {
-          "momentumLong": 27.09,
-          "dipRebound": 36.18,
-          "downsideRisk": 26.22,
-          "flatRisk": 67.99,
-          "fallingKnifeRisk": 22.69
+          "momentumLong": 11.04,
+          "dipRebound": 0.0,
+          "downsideRisk": 23.5,
+          "flatRisk": 20.17,
+          "fallingKnifeRisk": 20.45
         },
         "reasonTags": [],
         "warningTags": [
@@ -1171,20 +892,44 @@
         "stockID": 40,
         "symbol": "SAHOL.IS",
         "scenario": "NEUTRAL",
-        "score": 54.32,
-        "confidence": 31.6,
-        "closePrice": 100.7,
+        "score": 5.43,
+        "confidence": 41.4,
+        "closePrice": 84.8,
         "modelProbabilities": {
-          "down": 0.1441,
-          "flat": 0.3871,
-          "up": 0.4688
+          "down": 0.5604,
+          "flat": 0.0543,
+          "up": 0.3853
         },
         "scores": {
-          "momentumLong": 39.25,
-          "dipRebound": 30.43,
-          "downsideRisk": 23.88,
-          "flatRisk": 54.32,
-          "fallingKnifeRisk": 18.5
+          "momentumLong": 15.95,
+          "dipRebound": 4.74,
+          "downsideRisk": 23.2,
+          "flatRisk": 5.43,
+          "fallingKnifeRisk": 20.32
+        },
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
+      },
+      {
+        "stockID": 31,
+        "symbol": "SASA.IS",
+        "scenario": "NEUTRAL",
+        "score": 13.47,
+        "confidence": 40.92,
+        "closePrice": 2.45,
+        "modelProbabilities": {
+          "down": 0.5134,
+          "flat": 0.1347,
+          "up": 0.3519
+        },
+        "scores": {
+          "momentumLong": 14.4,
+          "dipRebound": 0.0,
+          "downsideRisk": 21.01,
+          "flatRisk": 13.47,
+          "fallingKnifeRisk": 18.43
         },
         "reasonTags": [],
         "warningTags": [
@@ -1194,132 +939,119 @@
       {
         "stockID": 14,
         "symbol": "SDTTR.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 64.01,
-        "confidence": 72.84,
-        "closePrice": 265.5,
+        "scenario": "NEUTRAL",
+        "score": 6.45,
+        "confidence": 44.49,
+        "closePrice": 240.0,
         "modelProbabilities": {
-          "down": 0.0775,
-          "flat": 0.4142,
-          "up": 0.5082
+          "down": 0.6302,
+          "flat": 0.0645,
+          "up": 0.3052
         },
         "scores": {
-          "momentumLong": 64.01,
-          "dipRebound": 33.97,
-          "downsideRisk": 0.0,
-          "flatRisk": 17.83,
-          "fallingKnifeRisk": 0.0
+          "momentumLong": 13.58,
+          "dipRebound": 3.05,
+          "downsideRisk": 28.04,
+          "flatRisk": 6.45,
+          "fallingKnifeRisk": 24.3
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 5,
         "symbol": "SISE.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 61.05,
-        "confidence": 59.43,
-        "closePrice": 49.62,
+        "scenario": "NEUTRAL",
+        "score": 7.41,
+        "confidence": 40.79,
+        "closePrice": 41.84,
         "modelProbabilities": {
-          "down": 0.1305,
-          "flat": 0.4372,
-          "up": 0.4323
+          "down": 0.6108,
+          "flat": 0.0741,
+          "up": 0.3151
         },
         "scores": {
-          "momentumLong": 61.05,
-          "dipRebound": 15.94,
-          "downsideRisk": 24.65,
-          "flatRisk": 34.79,
-          "fallingKnifeRisk": 34.84
+          "momentumLong": 12.85,
+          "dipRebound": 1.76,
+          "downsideRisk": 24.91,
+          "flatRisk": 7.41,
+          "fallingKnifeRisk": 21.86
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "UP_PROBABILITY_SUPPORT"
-        ],
+        "reasonTags": [],
         "warningTags": [
-          "HIGH_VOLUME_WEAK_CLOSE"
+          "NO_CLEAR_EDGE"
         ]
       },
       {
         "stockID": 27,
         "symbol": "TABGD.IS",
-        "scenario": "MOMENTUM_LONG",
-        "score": 59.5,
-        "confidence": 69.0,
-        "closePrice": 270.0,
+        "scenario": "NEUTRAL",
+        "score": 43.29,
+        "confidence": 44.43,
+        "closePrice": 235.7,
         "modelProbabilities": {
-          "down": 0.1318,
-          "flat": 0.2001,
-          "up": 0.6681
+          "down": 0.4021,
+          "flat": 0.4329,
+          "up": 0.165
         },
         "scores": {
-          "momentumLong": 59.5,
-          "dipRebound": 43.24,
-          "downsideRisk": 8.6,
-          "flatRisk": 26.49,
-          "fallingKnifeRisk": 3.67
+          "momentumLong": 7.33,
+          "dipRebound": 0.0,
+          "downsideRisk": 17.86,
+          "flatRisk": 43.29,
+          "fallingKnifeRisk": 15.48
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "UP_PROBABILITY_SUPPORT"
-        ],
-        "warningTags": []
+        "reasonTags": [],
+        "warningTags": [
+          "NO_CLEAR_EDGE"
+        ]
       },
       {
         "stockID": 2,
         "symbol": "THYAO.IS",
         "scenario": "NEUTRAL",
-        "score": 76.66,
-        "confidence": 17.79,
-        "closePrice": 309.75,
+        "score": 21.07,
+        "confidence": 43.04,
+        "closePrice": 313.25,
         "modelProbabilities": {
-          "down": 0.1057,
-          "flat": 0.5344,
-          "up": 0.3598
+          "down": 0.5185,
+          "flat": 0.2107,
+          "up": 0.2708
         },
         "scores": {
-          "momentumLong": 21.48,
-          "dipRebound": 29.94,
-          "downsideRisk": 35.73,
-          "flatRisk": 76.66,
-          "fallingKnifeRisk": 29.57
+          "momentumLong": 11.65,
+          "dipRebound": 1.62,
+          "downsideRisk": 22.32,
+          "flatRisk": 21.07,
+          "fallingKnifeRisk": 19.44
         },
         "reasonTags": [],
         "warningTags": [
-          "HIGH_FLAT_RISK"
+          "NO_CLEAR_EDGE"
         ]
       },
       {
         "stockID": 18,
         "symbol": "TOASO.IS",
         "scenario": "NEUTRAL",
-        "score": 43.04,
-        "confidence": 49.13,
-        "closePrice": 312.5,
+        "score": 6.53,
+        "confidence": 38.1,
+        "closePrice": 271.75,
         "modelProbabilities": {
-          "down": 0.1358,
-          "flat": 0.5079,
-          "up": 0.3563
+          "down": 0.535,
+          "flat": 0.0653,
+          "up": 0.3997
         },
         "scores": {
-          "momentumLong": 56.47,
-          "dipRebound": 50.04,
-          "downsideRisk": 5.51,
-          "flatRisk": 43.04,
-          "fallingKnifeRisk": 0.0
+          "momentumLong": 15.23,
+          "dipRebound": 4.17,
+          "downsideRisk": 20.38,
+          "flatRisk": 6.53,
+          "fallingKnifeRisk": 18.05
         },
-        "reasonTags": [
-          "BREAKOUT_PRESSURE",
-          "POSITIVE_MOMENTUM",
-          "RELATIVE_STRENGTH"
-        ],
+        "reasonTags": [],
         "warningTags": [
           "NO_CLEAR_EDGE"
         ]
@@ -1328,20 +1060,20 @@
         "stockID": 3,
         "symbol": "TUPRS.IS",
         "scenario": "NEUTRAL",
-        "score": 38.88,
-        "confidence": 36.81,
-        "closePrice": 271.0,
+        "score": 28.52,
+        "confidence": 42.57,
+        "closePrice": 297.75,
         "modelProbabilities": {
-          "down": 0.1822,
-          "flat": 0.4134,
-          "up": 0.4043
+          "down": 0.4453,
+          "flat": 0.2852,
+          "up": 0.2695
         },
         "scores": {
-          "momentumLong": 42.64,
-          "dipRebound": 42.39,
-          "downsideRisk": 11.8,
-          "flatRisk": 38.88,
-          "fallingKnifeRisk": 8.43
+          "momentumLong": 11.47,
+          "dipRebound": 0.0,
+          "downsideRisk": 18.95,
+          "flatRisk": 28.52,
+          "fallingKnifeRisk": 16.53
         },
         "reasonTags": [],
         "warningTags": [
@@ -1350,255 +1082,67 @@
       }
     ],
     "radars": {
-      "momentumLong": [
-        {
-          "stockID": 13,
-          "symbol": "ALTNY.IS",
-          "scenario": "MOMENTUM_LONG",
-          "score": 74.62,
-          "confidence": 79.28,
-          "closePrice": 17.75,
-          "modelProbabilities": {
-            "down": 0.1281,
-            "flat": 0.4301,
-            "up": 0.4418
-          },
-          "scores": {
-            "momentumLong": 74.62,
-            "dipRebound": 37.94,
-            "downsideRisk": 1.93,
-            "flatRisk": 18.04,
-            "fallingKnifeRisk": 0.87
-          },
-          "reasonTags": [
-            "BREAKOUT_PRESSURE",
-            "POSITIVE_MOMENTUM",
-            "RELATIVE_STRENGTH",
-            "UP_PROBABILITY_SUPPORT"
-          ],
-          "warningTags": []
-        },
-        {
-          "stockID": 29,
-          "symbol": "BIMAS.IS",
-          "scenario": "MOMENTUM_LONG",
-          "score": 71.02,
-          "confidence": 87.46,
-          "closePrice": 390.5,
-          "modelProbabilities": {
-            "down": 0.1011,
-            "flat": 0.2177,
-            "up": 0.6811
-          },
-          "scores": {
-            "momentumLong": 71.02,
-            "dipRebound": 33.08,
-            "downsideRisk": 9.55,
-            "flatRisk": 11.03,
-            "fallingKnifeRisk": 10.95
-          },
-          "reasonTags": [
-            "BREAKOUT_PRESSURE",
-            "POSITIVE_MOMENTUM",
-            "UP_PROBABILITY_SUPPORT"
-          ],
-          "warningTags": []
-        },
-        {
-          "stockID": 15,
-          "symbol": "ONRYT.IS",
-          "scenario": "MOMENTUM_LONG",
-          "score": 70.54,
-          "confidence": 73.55,
-          "closePrice": 68.6,
-          "modelProbabilities": {
-            "down": 0.1314,
-            "flat": 0.3687,
-            "up": 0.4999
-          },
-          "scores": {
-            "momentumLong": 70.54,
-            "dipRebound": 43.83,
-            "downsideRisk": 4.5,
-            "flatRisk": 28.26,
-            "fallingKnifeRisk": 1.51
-          },
-          "reasonTags": [
-            "BREAKOUT_PRESSURE",
-            "POSITIVE_MOMENTUM",
-            "RELATIVE_STRENGTH",
-            "UP_PROBABILITY_SUPPORT"
-          ],
-          "warningTags": []
-        },
-        {
-          "stockID": 14,
-          "symbol": "SDTTR.IS",
-          "scenario": "MOMENTUM_LONG",
-          "score": 64.01,
-          "confidence": 72.84,
-          "closePrice": 265.5,
-          "modelProbabilities": {
-            "down": 0.0775,
-            "flat": 0.4142,
-            "up": 0.5082
-          },
-          "scores": {
-            "momentumLong": 64.01,
-            "dipRebound": 33.97,
-            "downsideRisk": 0.0,
-            "flatRisk": 17.83,
-            "fallingKnifeRisk": 0.0
-          },
-          "reasonTags": [
-            "BREAKOUT_PRESSURE",
-            "POSITIVE_MOMENTUM",
-            "RELATIVE_STRENGTH",
-            "UP_PROBABILITY_SUPPORT"
-          ],
-          "warningTags": []
-        },
-        {
-          "stockID": 26,
-          "symbol": "MIATK.IS",
-          "scenario": "MOMENTUM_LONG",
-          "score": 63.45,
-          "confidence": 69.72,
-          "closePrice": 43.54,
-          "modelProbabilities": {
-            "down": 0.0927,
-            "flat": 0.3815,
-            "up": 0.5258
-          },
-          "scores": {
-            "momentumLong": 63.45,
-            "dipRebound": 32.25,
-            "downsideRisk": 14.09,
-            "flatRisk": 25.41,
-            "fallingKnifeRisk": 18.57
-          },
-          "reasonTags": [
-            "BREAKOUT_PRESSURE",
-            "POSITIVE_MOMENTUM",
-            "UP_PROBABILITY_SUPPORT"
-          ],
-          "warningTags": []
-        }
-      ],
-      "dipRebound": [
-        {
-          "stockID": 35,
-          "symbol": "MAVI.IS",
-          "scenario": "DIP_REBOUND_WATCH",
-          "score": 68.02,
-          "confidence": 61.57,
-          "closePrice": 43.86,
-          "modelProbabilities": {
-            "down": 0.1119,
-            "flat": 0.4089,
-            "up": 0.4792
-          },
-          "scores": {
-            "momentumLong": 25.97,
-            "dipRebound": 68.02,
-            "downsideRisk": 16.17,
-            "flatRisk": 55.15,
-            "fallingKnifeRisk": 0.0
-          },
-          "reasonTags": [
-            "CONTROLLED_VOLATILITY",
-            "LOWER_WICK_SUPPORT",
-            "LOW_RANGE_POSITION",
-            "RECOVERY_CLOSE"
-          ],
-          "warningTags": []
-        },
-        {
-          "stockID": 7,
-          "symbol": "FROTO.IS",
-          "scenario": "DIP_REBOUND_WATCH",
-          "score": 63.79,
-          "confidence": 64.7,
-          "closePrice": 99.0,
-          "modelProbabilities": {
-            "down": 0.11,
-            "flat": 0.2831,
-            "up": 0.6069
-          },
-          "scores": {
-            "momentumLong": 20.17,
-            "dipRebound": 63.79,
-            "downsideRisk": 36.16,
-            "flatRisk": 47.09,
-            "fallingKnifeRisk": 20.2
-          },
-          "reasonTags": [
-            "CONTROLLED_VOLATILITY",
-            "LOWER_WICK_SUPPORT",
-            "LOW_RANGE_POSITION",
-            "RECOVERY_CLOSE"
-          ],
-          "warningTags": []
-        }
-      ],
+      "momentumLong": [],
+      "dipRebound": [],
       "downsideRisk": [],
       "riskWatch": [],
       "neutral": [
         {
-          "stockID": 19,
-          "symbol": "GARAN.IS",
-          "scenario": "NEUTRAL",
-          "score": 78.48,
-          "confidence": 27.78,
-          "closePrice": 136.6,
-          "reasonTags": [],
-          "warningTags": [
-            "HIGH_FLAT_RISK"
-          ]
-        },
-        {
           "stockID": 32,
           "symbol": "KONTR.IS",
           "scenario": "NEUTRAL",
-          "score": 78.09,
-          "confidence": 20.09,
-          "closePrice": 9.75,
+          "score": 72.45,
+          "confidence": 45.17,
+          "closePrice": 4.66,
           "reasonTags": [],
           "warningTags": [
-            "HIGH_FLAT_RISK"
+            "HIGH_FLAT_RISK",
+            "NO_CLEAR_EDGE"
           ]
         },
         {
-          "stockID": 2,
-          "symbol": "THYAO.IS",
+          "stockID": 1,
+          "symbol": "KONYA.IS",
           "scenario": "NEUTRAL",
-          "score": 76.66,
-          "confidence": 17.79,
-          "closePrice": 309.75,
+          "score": 68.8,
+          "confidence": 44.15,
+          "closePrice": 3635.0,
           "reasonTags": [],
           "warningTags": [
-            "HIGH_FLAT_RISK"
+            "NO_CLEAR_EDGE"
           ]
         },
         {
-          "stockID": 21,
-          "symbol": "AKBNK.IS",
+          "stockID": 13,
+          "symbol": "ALTNY.IS",
           "scenario": "NEUTRAL",
-          "score": 75.58,
-          "confidence": 26.99,
-          "closePrice": 74.35,
+          "score": 51.27,
+          "confidence": 38.48,
+          "closePrice": 15.45,
           "reasonTags": [],
           "warningTags": [
-            "HIGH_FLAT_RISK"
+            "NO_CLEAR_EDGE"
           ]
         },
         {
-          "stockID": 38,
-          "symbol": "OBAMS.IS",
+          "stockID": 12,
+          "symbol": "ECZYT.IS",
           "scenario": "NEUTRAL",
-          "score": 68.15,
-          "confidence": 31.06,
-          "closePrice": 8.44,
+          "score": 44.35,
+          "confidence": 35.16,
+          "closePrice": 298.75,
+          "reasonTags": [],
+          "warningTags": [
+            "NO_CLEAR_EDGE"
+          ]
+        },
+        {
+          "stockID": 27,
+          "symbol": "TABGD.IS",
+          "scenario": "NEUTRAL",
+          "score": 43.29,
+          "confidence": 44.43,
+          "closePrice": 235.7,
           "reasonTags": [],
           "warningTags": [
             "NO_CLEAR_EDGE"
@@ -1607,57 +1151,59 @@
       ]
     },
     "summary": {
-      "momentumLongCount": 9,
-      "dipReboundCount": 2,
+      "momentumLongCount": 0,
+      "dipReboundCount": 0,
       "downsideRiskCount": 0,
       "riskWatchCount": 0,
-      "neutralCount": 24
-    }
+      "neutralCount": 39
+    },
+    "gate": {
+      "momentumLong": {
+        "trustworthy": false,
+        "days": 0,
+        "avgExcessReturn10Pct": null,
+        "reason": "yetersiz veri"
+      },
+      "dipRebound": {
+        "trustworthy": false,
+        "days": 0,
+        "avgExcessReturn10Pct": null,
+        "reason": "yetersiz veri"
+      },
+      "downsideRisk": {
+        "trustworthy": false,
+        "days": 13,
+        "avgExcessReturn10Pct": -2.0184,
+        "reason": "yetersiz veri"
+      },
+      "overallTrustworthy": false
+    },
+    "lowConfidence": true
   },
   "scenarioBacktest": {
     "momentumLong": {
-      "days": 241,
-      "avgCount": 2.96,
-      "avgReturn10Pct": 0.8735,
-      "avgReturn20Pct": 2.3786,
-      "avgExcessReturn10Pct": -0.1007,
-      "avgMaxReturn10Pct": 8.5215,
-      "avgMaxDrawdown10Pct": -6.0958,
-      "rewardRisk10": 1.3979,
-      "upperHitRate10Pct": 54.46,
-      "lowerHitRate10Pct": 41.07,
-      "hitSpread10Pct": 13.39
+      "days": 0
     },
     "dipRebound": {
-      "days": 163,
-      "avgCount": 2.64,
-      "avgReturn10Pct": 1.7868,
-      "avgReturn20Pct": 4.2363,
-      "avgExcessReturn10Pct": 0.5395,
-      "avgMaxReturn10Pct": 8.6265,
-      "avgMaxDrawdown10Pct": -4.9861,
-      "rewardRisk10": 1.7301,
-      "upperHitRate10Pct": 56.67,
-      "lowerHitRate10Pct": 36.46,
-      "hitSpread10Pct": 20.2
+      "days": 0
     },
     "downsideRisk": {
-      "days": 203,
-      "avgCount": 3.43,
-      "avgReturn10Pct": -0.2946,
-      "avgReturn20Pct": 0.9162,
-      "avgExcessReturn10Pct": -1.3492,
-      "avgMaxReturn10Pct": 6.6729,
-      "avgMaxDrawdown10Pct": -5.8265,
-      "rewardRisk10": 1.1453,
-      "upperHitRate10Pct": 44.75,
-      "lowerHitRate10Pct": 44.18,
-      "hitSpread10Pct": 0.57
+      "days": 13,
+      "avgCount": 1.0,
+      "avgReturn10Pct": 0.5028,
+      "avgReturn20Pct": 5.1331,
+      "avgExcessReturn10Pct": -2.0184,
+      "avgMaxReturn10Pct": 10.3789,
+      "avgMaxDrawdown10Pct": -5.9019,
+      "rewardRisk10": 1.7586,
+      "upperHitRate10Pct": 92.31,
+      "lowerHitRate10Pct": 7.69,
+      "hitSpread10Pct": 84.62
     },
     "universe": {
-      "days": 287,
-      "avgReturn10Pct": 1.0018,
-      "avgReturn20Pct": 2.1506
+      "days": 286,
+      "avgReturn10Pct": 1.1158,
+      "avgReturn20Pct": 2.2477
     }
   }
 }

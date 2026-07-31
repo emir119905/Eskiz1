@@ -1,0 +1,11 @@
+{
+  "metrics": {
+    "fullSpreadTStat": 1.85,
+    "oosExcessTStat": 0.45,
+    "oosSpreadTStat": 0.02
+  },
+  "tags": [
+    "ranking_strategy",
+    "faktor_backtest"
+  ]
+}

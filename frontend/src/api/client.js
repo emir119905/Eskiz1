@@ -93,3 +93,8 @@ export const getZetaLatestRadar      = () => api.get('/zeta/latest-radar')
 export const getZetaBacktestSummary  = () => api.get('/zeta/backtest-summary')
 export const getZetaScenarioReport   = () => api.get('/zeta/scenario-report')
 export const runZetaRadar            = () => api.post('/zeta/run')
+
+// KULLANICI YÖNETİMİ (Admin-only)
+export const getUsers             = ()                  => api.get('/users')
+export const updateUserRole       = (userId, role)      => api.put(`/users/${userId}/role`, { role })
+export const updateUserMembership = (userId, tier)      => api.put(`/users/${userId}/membership`, { membershipTier: tier })

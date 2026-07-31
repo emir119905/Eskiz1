@@ -1,0 +1,35 @@
+{
+  "downsideRiskExcessReturn10": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-07-31T19:20:15.917491"
+    ],
+    "values": [
+      -2.0184
+    ]
+  },
+  "momentumLongExcessReturn10": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-07-31T19:20:15.917491"
+    ],
+    "values": [
+      0.0
+    ]
+  },
+  "overallTrustworthy": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-07-31T19:20:15.917491"
+    ],
+    "values": [
+      0.0
+    ]
+  }
+}

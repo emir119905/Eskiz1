@@ -1,7 +1,7 @@
 import { useLocation, NavLink } from 'react-router-dom'
 import {
   Compass, LineChart, Briefcase, Eye, Radar, FlaskConical, Database, LogOut,
-  PanelLeftClose, PanelLeftOpen, Wrench, ChevronDown, ChevronUp
+  PanelLeftClose, PanelLeftOpen, Wrench, ChevronDown, ChevronUp, Users
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Portfolio from './pages/Portfolio'
@@ -13,6 +13,7 @@ import PersistentAnalysisDock from './components/PersistentAnalysisDock'
 import ModelLab from './pages/ModelLab'
 import Watchlist from './pages/Watchlist'
 import MarketScreener from './pages/MarketScreener'
+import UserManagement from './pages/UserManagement'
 import { theme } from './theme'
 import { SidebarLayoutContext } from './context/SidebarLayoutContext'
 import { useEffect, useRef, useState } from 'react'
@@ -77,6 +78,11 @@ const devNavItems = [
   { to: '/admin', label: 'Veri Yönetimi', Icon: Database, description: 'Veri durumu ve senkronizasyon' }
 ]
 
+// Admin-only: Developer rolü bu araca erişemez, sadece Admin (bkz. UsersController rol hiyerarşisi).
+const adminNavItems = [
+  { to: '/kullanicilar', label: 'Kullanıcı Yönetimi', Icon: Users, description: 'Rol ve üyelik yönetimi' }
+]
+
 function SidebarItem({ to, label, Icon, description, collapsed }) {
   return (
     <NavLink
@@ -123,7 +129,7 @@ function SidebarItem({ to, label, Icon, description, collapsed }) {
 }
 
 function Sidebar({ pinned, onTogglePin }) {
-  const { user, logout, isDeveloper } = useAuth()
+  const { user, logout, isDeveloper, isAdmin } = useAuth()
   const [devModeOpen, setDevModeOpen] = useState(loadDevMode)
   const [hovering, setHovering] = useState(false)
   const hoverTimerRef = useRef(null)
@@ -272,6 +278,9 @@ function Sidebar({ pinned, onTogglePin }) {
                 {devNavItems.map(item => (
                   <SidebarItem key={item.to} {...item} collapsed={collapsed} />
                 ))}
+                {isAdmin && adminNavItems.map(item => (
+                  <SidebarItem key={item.to} {...item} collapsed={collapsed} />
+                ))}
               </div>
             )}
           </div>
@@ -338,8 +347,8 @@ function Sidebar({ pinned, onTogglePin }) {
 
 function TopStatusBar() {
   const location = useLocation()
-  const { isDeveloper } = useAuth()
-  const knownPath = getKnownPath(location.pathname, isDeveloper)
+  const { isDeveloper, isAdmin } = useAuth()
+  const knownPath = getKnownPath(location.pathname, isDeveloper, isAdmin)
 
   const pageName = {
     '/': 'Dashboard',
@@ -347,8 +356,11 @@ function TopStatusBar() {
     '/watchlist': 'İzleme Listesi',
     '/tarama': 'Piyasa Taraması',
     '/lab': 'Model Laboratuvarı',
-    '/admin': 'Veri Yönetimi'
+    '/admin': 'Veri Yönetimi',
+    '/kullanicilar': 'Kullanıcı Yönetimi'
   }[knownPath] || 'Pusula AI'
+
+  const PageIcon = [...mainNavItems, ...devNavItems, ...adminNavItems].find(item => item.to === knownPath)?.Icon
 
   return (
     <div style={{
@@ -364,7 +376,8 @@ function TopStatusBar() {
       alignItems: 'center',
       justifyContent: 'space-between'
     }}>
-      <div style={{ color: theme.text, fontWeight: 600, fontSize: '15px' }}>
+      <div style={{ color: theme.text, fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {PageIcon && <PageIcon size={17} strokeWidth={1.75} color={theme.textMuted} />}
         {pageName}
       </div>
 
@@ -407,14 +420,18 @@ const keepAlivePages = [
   { path: '/watchlist', Component: Watchlist },
   { path: '/tarama', Component: MarketScreener },
   { path: '/lab', Component: ModelLab },
-  { path: '/admin', Component: Admin }
+  { path: '/admin', Component: Admin },
+  { path: '/kullanicilar', Component: UserManagement }
 ]
 
 const DEV_PATHS = new Set(['/lab', '/admin'])
+const ADMIN_PATHS = new Set(['/kullanicilar'])
 
 // Geliştirici Araçları sayfaları (Model Lab, Veri Yönetimi) sadece Developer/Admin rolündeki
-// hesaplar için mount edilir; diğer hesaplar için bilinmeyen yol gibi ele alınıp Dashboard'a düşer.
-function getKnownPath(pathname, isDeveloper) {
+// hesaplar için mount edilir; Kullanıcı Yönetimi ise sadece Admin için. Diğer durumlarda
+// bilinmeyen yol gibi ele alınıp Dashboard'a düşer.
+function getKnownPath(pathname, isDeveloper, isAdmin) {
+  if (ADMIN_PATHS.has(pathname)) return isAdmin ? pathname : '/'
   if (DEV_PATHS.has(pathname) && !isDeveloper) return '/'
 
   return keepAlivePages.some(page => page.path === pathname)
@@ -424,8 +441,8 @@ function getKnownPath(pathname, isDeveloper) {
 
 function KeepAlivePages() {
   const location = useLocation()
-  const { isDeveloper } = useAuth()
-  const activePath = getKnownPath(location.pathname, isDeveloper)
+  const { isDeveloper, isAdmin } = useAuth()
+  const activePath = getKnownPath(location.pathname, isDeveloper, isAdmin)
   const [mountedPaths, setMountedPaths] = useState(() => new Set([activePath]))
 
   useEffect(() => {

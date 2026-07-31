@@ -1,0 +1,24 @@
+{
+  "meanActionPrecision": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-07-31T17:48:35.056646"
+    ],
+    "values": [
+      48.59
+    ]
+  },
+  "pathsBeatingNaivePct": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-07-31T17:48:35.056646"
+    ],
+    "values": [
+      25.0
+    ]
+  }
+}

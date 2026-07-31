@@ -1,0 +1,12 @@
+{
+  "embargo_days": 5,
+  "horizon": 10,
+  "min_threshold": 0.01,
+  "nStocks": 42,
+  "n_groups": 6,
+  "n_test_groups": 2,
+  "n_trials": 45,
+  "panelRows": 34552,
+  "seed": 645967844,
+  "vol_mult": 0.6
+}

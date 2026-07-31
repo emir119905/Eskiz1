@@ -1,0 +1,8 @@
+{
+  "embargo_days": 5,
+  "horizon": 10,
+  "n_groups": 6,
+  "n_test_groups": 2,
+  "seed": 382053588,
+  "stock": "2"
+}

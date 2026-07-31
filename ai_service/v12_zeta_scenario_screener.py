@@ -1,8 +1,47 @@
+"""
+Faz 3 - Zeta Radar: score_row heuristigi yerine meta-labeling + backtest gate.
+
+CANLI URUNE BAGLI DOSYA: backend/Eskiz1.API/Controllers/ZetaController.cs bu
+scripti calistirip zeta_latest_radar.json / zeta_backtest_summary.json /
+zeta_scenario_report.json / zeta_latest_radar.csv dosyalarini okuyor,
+frontend/src/pages/MarketScreener.jsx bunlari gosteriyor. Bu yuzden JSON
+SEMASI (root: date/universe/totalStocks/allStocks/radars/summary; her hisse:
+stockID/symbol/scenario/score/confidence/closePrice/modelProbabilities/scores/
+reasonTags/warningTags) KORUNDU - sadece bu degerlerin NASIL hesaplandigi
+degisti. read_sql_data()/get_db_connection() da aynen korundu, cunku
+engine_baseline.py ve v12_direction_lab.py bunlari import ediyor.
+
+Eski mimari: score_row, ~250 satirlik elle agirliklandirilmis (0.45, 0.22,
+-0.14 gibi sabitlerle) bir kural motoruydu; kendi evaluate_scenario_backtest'i
+kotu ciksa bile hicbir gate olmadan radar yayinlaniyordu.
+
+Yeni mimari (bkz. plan curried-juggling-summit.md, Faz 3):
+- Feature/label uretimi artik shared_features + shared_labeling (gercek
+  triple-barrier) uzerinden - tek kaynak, main.py/v12_direction_lab.py ile ayni.
+- BIRINCIL model: pooled/kesitsel (Faz1/2'de dogrulanan mimari) down/flat/up
+  siniflandiricisi.
+- META-LABELING modeli (Lopez de Prado): birincilin cagirdigi yon dogru mu,
+  ikili siniflandirma - ProbUp/ProbDown/ProbFlat ARTIK score_row'a değil, bu
+  meta modele giriyor. "confidence" artik hand-tuned degil, meta modelin
+  gercek olasilik ciktisi.
+- GATE: evaluate_scenario_backtest (orijinal, degismedi) her senaryonun
+  gercek excess return'unu olcuyor; yetersiz/negatif ciksa "lowConfidence"
+  olarak isaretleniyor, sessizce yayinlanmiyor.
+
+ONEMLI DURUSTLUK NOTU (2026-07-31, bkz. [[project-engine-rebuild]] memory):
+Ayni evrende (43 BIST hissesi) rigorous CPCV testi, basit teknik
+siniflandiricilarin zorlu naive baseline'i (majority class) TUTARLI sekilde
+GECEMEDIGINI gosterdi (0/15 path). Bu motorun da guclu bir edge gostermesi
+garanti degil - gate mekanizmasi TAM DA bunun icin var.
+
+Calistirma:
+    python v12_zeta_scenario_screener.py --horizon 10
+"""
+
 import argparse
 import json
 import math
 import os
-import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -10,97 +49,70 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-warnings.filterwarnings("ignore")
-
-
-CLASS_DOWN = 0
-CLASS_FLAT = 1
-CLASS_UP = 2
+from shared_features import (
+    add_price_features,
+    prepare_external_features,
+    build_index_reference,
+    add_relative_features,
+    add_cross_sectional_ranks,
+    STANDARD_FEATURE_COLS,
+)
+from shared_labeling import apply_triple_barrier, CLASS_DOWN, CLASS_FLAT, CLASS_UP, class_distribution
+from shared_models import build_classifier_candidates
+from shared_eval import purged_embargo_split, evaluate_classification
+from experiment_log import log_run
 
 SCENARIO_MOMENTUM_LONG = "MOMENTUM_LONG"
 SCENARIO_DIP_REBOUND = "DIP_REBOUND_WATCH"
 SCENARIO_DOWNSIDE_RISK = "DOWNSIDE_RISK"
 SCENARIO_NEUTRAL = "NEUTRAL"
 
-BIST_SYMBOL_EXCEPTIONS = {
-    "KOZAY",
-    "KOZAL",
-    "KOZAA",
-}
+INDEX_SYMBOL = "XU100.IS"
+
+# gate esikleri: bir senaryonun radarda "guvenilir" sayilmasi icin
+GATE_MIN_DAYS = 20
+GATE_MIN_EXCESS_RETURN10_PCT = 0.0  # universe'u en az bu kadar gecmeli
 
 
-# yardımcı fonksiyonlar
+# ---------- kucuk, jenerik yardimcilar (feature-engineering degil, burada kaliyor) ----------
 
-def clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
-    if not np.isfinite(value):
-        return 0.0
-
-    return float(max(low, min(high, value)))
-
-
-def norm01(value: float, low: float, high: float, invert: bool = False) -> float:
-    if not np.isfinite(value) or high == low:
-        out = 0.0
-    else:
-        out = (value - low) / (high - low)
-
-    out = max(0.0, min(1.0, out))
-
-    if invert:
-        return 1.0 - out
-
-    return out
+def detect_market(symbol: str) -> str:
+    symbol = str(symbol or "").upper().strip()
+    if symbol == INDEX_SYMBOL:
+        return "BIST_INDEX"
+    if symbol.endswith(".IS"):
+        return "BIST"
+    return "US"
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:
     try:
-        out = float(value)
-        return out if np.isfinite(out) else default
-    except Exception:
+        v = float(value)
+        return v if np.isfinite(v) else default
+    except (TypeError, ValueError):
         return default
-
-
-def detect_market(symbol: str) -> str:
-    symbol = str(symbol or "").upper().strip()
-
-    if symbol == "XU100.IS":
-        return "BIST_INDEX"
-
-    if symbol.endswith(".IS") or symbol in BIST_SYMBOL_EXCEPTIONS:
-        return "BIST"
-
-    return "US"
 
 
 def to_serializable(obj: Any) -> Any:
     if isinstance(obj, dict):
-        return {str(k): to_serializable(v) for k, v in obj.items()}
-
-    if isinstance(obj, list):
+        return {k: to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
         return [to_serializable(x) for x in obj]
-
-    if isinstance(obj, tuple):
-        return [to_serializable(x) for x in obj]
-
     if isinstance(obj, np.integer):
         return int(obj)
-
     if isinstance(obj, np.floating):
         return float(obj)
-
     if isinstance(obj, (pd.Timestamp, datetime)):
         return obj.isoformat()
-
     try:
         if pd.isna(obj):
             return None
     except Exception:
         pass
-
     return obj
 
 
-# veritabanı bağlantısı
+# ---------- veritabani erisimi (main.py/v12_direction_lab.py/engine_baseline.py bunu kullanir) ----------
 
 def get_db_connection():
     """
@@ -110,7 +122,6 @@ def get_db_connection():
     3) ortam değişkeni: DB_CONN_STR
     4) yerel sql server varsayılan bağlantısı
     """
-
     try:
         from main import get_connection
         return get_connection()
@@ -124,7 +135,6 @@ def get_db_connection():
         pass
 
     conn_str = os.getenv("DB_CONN_STR")
-
     if not conn_str:
         conn_str = (
             r"DRIVER={ODBC Driver 17 for SQL Server};"
@@ -143,46 +153,19 @@ def read_sql_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     try:
         stocks = pd.read_sql(
-            """
-            SELECT StockID, Symbol, CompanyName, Sector
-            FROM Stocks
-            ORDER BY StockID
-            """,
-            conn,
+            "SELECT StockID, Symbol, CompanyName, Sector FROM Stocks ORDER BY StockID", conn,
         )
-
         historical = pd.read_sql(
             """
-            SELECT
-                StockID,
-                Date,
-                OpenPrice,
-                HighPrice,
-                LowPrice,
-                ClosePrice,
-                Volume
-            FROM HistoricalData
-            ORDER BY StockID, Date
+            SELECT StockID, Date, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume
+            FROM HistoricalData ORDER BY StockID, Date
             """,
             conn,
         )
-
         external = pd.read_sql(
-            """
-            SELECT
-                Date,
-                USDTRY,
-                BIST100,
-                Gold,
-                BrentOil
-            FROM ExternalData
-            ORDER BY Date
-            """,
-            conn,
+            "SELECT Date, USDTRY, BIST100, Gold, BrentOil FROM ExternalData ORDER BY Date", conn,
         )
-
         return stocks, historical, external
-
     finally:
         try:
             conn.close()
@@ -190,1117 +173,311 @@ def read_sql_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             pass
 
 
-# temel feature yardımcıları
+# ---------- panel + coklu-ufuk tanisal ciktilar (evaluate_scenario_backtest icin) ----------
 
-def clean_numeric(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
-    for col in cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    return df
-
-
-def compute_rsi(series: pd.Series, period: int = 14) -> pd.Series:
-    delta = series.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
-
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs))
-
-    return rsi.fillna(50)
-
-
-def prepare_external(external: pd.DataFrame) -> pd.DataFrame:
-    external = external.copy()
-
-    if external.empty:
-        return pd.DataFrame(columns=[
-            "DateKey",
-            "USDTRY_Return",
-            "BIST100_Return",
-            "Gold_Return",
-            "BrentOil_Return",
-            "USDTRY_Mom5",
-            "BIST100_Mom5",
-            "Gold_Mom5",
-            "BrentOil_Mom5",
-            "USDTRY_Mom20",
-            "BIST100_Mom20",
-            "Gold_Mom20",
-            "BrentOil_Mom20",
-        ])
-
-    external["Date"] = pd.to_datetime(external["Date"])
-    external = external.sort_values("Date").reset_index(drop=True)
-    external["DateKey"] = external["Date"].dt.date
-
-    for col in ["USDTRY", "BIST100", "Gold", "BrentOil"]:
-        external[col] = pd.to_numeric(external[col], errors="coerce")
-        external[f"{col}_Return"] = external[col].pct_change()
-        external[f"{col}_Mom5"] = external[col].pct_change(5)
-        external[f"{col}_Mom20"] = external[col].pct_change(20)
-
-    return external[[
-        "DateKey",
-        "USDTRY_Return",
-        "BIST100_Return",
-        "Gold_Return",
-        "BrentOil_Return",
-        "USDTRY_Mom5",
-        "BIST100_Mom5",
-        "Gold_Mom5",
-        "BrentOil_Mom5",
-        "USDTRY_Mom20",
-        "BIST100_Mom20",
-        "Gold_Mom20",
-        "BrentOil_Mom20",
-    ]]
-
-
-def build_index_reference(hist: pd.DataFrame, stocks: pd.DataFrame) -> pd.DataFrame:
-    stocks = stocks.copy()
-    stocks["SymbolNorm"] = stocks["Symbol"].astype(str).str.upper().str.strip()
-
-    index_row = stocks[stocks["SymbolNorm"] == "XU100.IS"]
-
-    if index_row.empty:
-        return pd.DataFrame(columns=[
-            "DateKey",
-            "XU100_Return",
-            "XU100_Mom5",
-            "XU100_Mom20",
-            "XU100_Vol20",
-            "XU100_RangePosition60",
-        ])
-
-    index_id = int(index_row.iloc[0]["StockID"])
-    idx = hist[hist["StockID"] == index_id].copy()
-
-    if idx.empty:
-        return pd.DataFrame(columns=[
-            "DateKey",
-            "XU100_Return",
-            "XU100_Mom5",
-            "XU100_Mom20",
-            "XU100_Vol20",
-            "XU100_RangePosition60",
-        ])
-
-    idx["Date"] = pd.to_datetime(idx["Date"])
-    idx = idx.sort_values("Date").reset_index(drop=True)
-    idx = clean_numeric(idx, ["OpenPrice", "HighPrice", "LowPrice", "ClosePrice", "Volume"])
-    idx = idx.dropna(subset=["Date", "ClosePrice"])
-    idx = idx[idx["ClosePrice"] > 0].copy()
-
-    close = idx["ClosePrice"].astype(float)
-    returns = close.pct_change()
-
-    idx["DateKey"] = idx["Date"].dt.date
-    idx["XU100_Return"] = returns
-    idx["XU100_Mom5"] = close.pct_change(5)
-    idx["XU100_Mom20"] = close.pct_change(20)
-    idx["XU100_Vol20"] = returns.rolling(20).std()
-
-    high60 = close.rolling(60).max()
-    low60 = close.rolling(60).min()
-
-    idx["XU100_RangePosition60"] = (
-        (close - low60) / (high60 - low60).replace(0, np.nan)
-    ).clip(0, 1)
-
-    return idx[[
-        "DateKey",
-        "XU100_Return",
-        "XU100_Mom5",
-        "XU100_Mom20",
-        "XU100_Vol20",
-        "XU100_RangePosition60",
-    ]]
-
-def add_price_features(df: pd.DataFrame) -> pd.DataFrame:
-    close = df["ClosePrice"].astype(float)
-    open_price = df["OpenPrice"].astype(float)
-    high = df["HighPrice"].astype(float)
-    low = df["LowPrice"].astype(float)
-    volume = df["Volume"].fillna(0).astype(float)
-
-    previous_close = close.shift(1)
-
-    df["Return"] = close.pct_change()
-    df["ReturnLag1"] = df["Return"].shift(1)
-    df["ReturnLag2"] = df["Return"].shift(2)
-    df["ReturnLag3"] = df["Return"].shift(3)
-    df["OpenReturn"] = (close / open_price.replace(0, np.nan)) - 1
-    df["GapReturn"] = (open_price / previous_close.replace(0, np.nan)) - 1
-    df["VolumeChange"] = np.log1p(volume).diff()
-
-    df["Mom3"] = close.pct_change(3)
-    df["Mom5"] = close.pct_change(5)
-    df["Mom10"] = close.pct_change(10)
-    df["Mom20"] = close.pct_change(20)
-    df["Mom60"] = close.pct_change(60)
-
-    ma10 = close.rolling(10).mean()
-    ma20 = close.rolling(20).mean()
-    ma50 = close.rolling(50).mean()
-
-    df["MA10_norm"] = (close / ma10.replace(0, np.nan)) - 1
-    df["MA20_norm"] = (close / ma20.replace(0, np.nan)) - 1
-    df["MA50_norm"] = (close / ma50.replace(0, np.nan)) - 1
-    df["MASpread10_20"] = (ma10 / ma20.replace(0, np.nan)) - 1
-    df["MASpread20_50"] = (ma20 / ma50.replace(0, np.nan)) - 1
-    df["DistanceMA20"] = df["MA20_norm"]
-    df["DistanceMA50"] = df["MA50_norm"]
-
-    df["RSI14"] = compute_rsi(close, 14)
-
-    df["Volatility10"] = df["Return"].rolling(10).std()
-    df["Volatility20"] = df["Return"].rolling(20).std()
-    df["Volatility60"] = df["Return"].rolling(60).std()
-    df["VolRatio10_60"] = df["Volatility10"] / df["Volatility60"].replace(0, np.nan)
-    df["VolRatio20_60"] = df["Volatility20"] / df["Volatility60"].replace(0, np.nan)
-
-    true_range = pd.concat(
-        [
-            high - low,
-            (high - previous_close).abs(),
-            (low - previous_close).abs(),
-        ],
-        axis=1,
-    ).max(axis=1)
-
-    intraday_range = (high - low).replace(0, np.nan)
-    candle_body = (close - open_price).abs()
-
-    df["TrueRange"] = true_range
-    df["TrueRangePct"] = true_range / close.replace(0, np.nan)
-    df["ATR14"] = true_range.rolling(14).mean()
-    df["ATRPercent"] = df["ATR14"] / close.replace(0, np.nan)
-    df["IntradayRangePct"] = (high - low) / close.replace(0, np.nan)
-    df["IntradayRangeATR"] = (high - low) / df["ATR14"].replace(0, np.nan)
-
-    df["UpperWickPct"] = (
-        high - pd.concat([open_price, close], axis=1).max(axis=1)
-    ).clip(lower=0) / intraday_range
-
-    df["LowerWickPct"] = (
-        pd.concat([open_price, close], axis=1).min(axis=1) - low
-    ).clip(lower=0) / intraday_range
-
-    df["BodyPct"] = candle_body / intraday_range
-    df["CloseLocationValue"] = ((close - low) / intraday_range).clip(0, 1).fillna(0.5)
-
-    df["VolumeMean10"] = volume.rolling(10).mean()
-    df["VolumeMean20"] = volume.rolling(20).mean()
-    df["VolumeRatio10"] = volume / df["VolumeMean10"].replace(0, np.nan)
-    df["VolumeRatio20"] = volume / df["VolumeMean20"].replace(0, np.nan)
-
-    high20 = close.rolling(20).max()
-    low20 = close.rolling(20).min()
-    high60 = close.rolling(60).max()
-    low60 = close.rolling(60).min()
-
-    df["RangePosition20"] = ((close - low20) / (high20 - low20).replace(0, np.nan)).clip(0, 1)
-    df["RangePosition60"] = ((close - low60) / (high60 - low60).replace(0, np.nan)).clip(0, 1)
-
-    df["BreakoutPressure20"] = (df["RangePosition20"] - 0.5) * 200
-    df["BreakoutPressure60"] = (df["RangePosition60"] - 0.5) * 200
-    df["BreakoutScore"] = df["BreakoutPressure60"].abs()
-
-    safe_vol20 = df["Volatility20"].fillna(0.0).clip(lower=0.0005)
-
-    z_mom5 = (df["Mom5"] / (safe_vol20 * math.sqrt(5))).clip(-3, 3)
-    z_mom20 = (df["Mom20"] / (safe_vol20 * math.sqrt(20))).clip(-3, 3)
-    z_ma = (df["MASpread20_50"] / (safe_vol20 * 2.0).clip(lower=0.0005)).clip(-3, 3)
-
-    momentum_raw = (0.30 * z_mom5) + (0.45 * z_mom20) + (0.25 * z_ma)
-    df["BehaviorMomentumScore"] = np.tanh(momentum_raw / 1.20) * 100
-
-    direction_composite = (
-        0.50 * df["BehaviorMomentumScore"].fillna(0)
-        + 0.22 * df["BreakoutPressure60"].fillna(0)
-        + 0.14 * df["BreakoutPressure20"].fillna(0)
-        + 0.14 * ((df["CloseLocationValue"].fillna(0.5) - 0.5) * 200)
-    ).clip(-100, 100)
-
-    flat_risk = 100 - direction_composite.abs()
-    flat_risk += np.where(df["VolRatio20_60"] <= 0.75, 10, 0)
-    flat_risk += np.where(df["VolRatio20_60"] >= 1.35, -4, 0)
-    flat_risk += np.where(df["BreakoutScore"] >= 65, -8, 0)
-    flat_risk += np.where(df["IntradayRangeATR"] >= 1.5, -4, 0)
-
-    df["BehaviorDirectionComposite"] = direction_composite
-    df["BehaviorFlatRisk"] = np.clip(flat_risk, 0, 100)
-
-    return df
-
-
-def add_future_outcomes(
-    df: pd.DataFrame,
-    horizon: int,
-    vol_mult: float,
-    min_threshold: float,
+def add_future_outcome_diagnostics(
+    df: pd.DataFrame, horizons: List[int], vol_mult: float, min_threshold: float,
 ) -> pd.DataFrame:
+    """
+    evaluate_scenario_backtest'in ihtiyac duydugu coklu-ufuk (5/10/20 gun)
+    FutureReturn/FutureMaxReturn/FutureMaxDrawdown/HitUpperBeforeLower/
+    HitLowerBeforeUpper kolonlarini uretir. SADECE tanisal/backtest amaclidir -
+    modelin egitim etiketi (TargetClass) shared_labeling.apply_triple_barrier'dan
+    gelir, burasi degil.
+    """
     close = df["ClosePrice"].astype(float)
     high = df["HighPrice"].astype(float)
     low = df["LowPrice"].astype(float)
+    vol20 = df["Volatility20"].fillna(0.0) if "Volatility20" in df.columns else pd.Series(0.0, index=df.index)
 
-    df["FutureClose"] = close.shift(-horizon)
-    df["FutureDate"] = df["Date"].shift(-horizon)
-    df["FutureReturn"] = (df["FutureClose"] / close) - 1
+    for h in horizons:
+        future_close = close.shift(-h)
+        future_max_high = high.shift(-1).rolling(h, min_periods=h).max().shift(-(h - 1))
+        future_min_low = low.shift(-1).rolling(h, min_periods=h).min().shift(-(h - 1))
 
-    df["DynamicThreshold"] = np.maximum(
-        min_threshold,
-        df["Volatility20"].fillna(0.0) * math.sqrt(horizon) * vol_mult,
-    )
+        df[f"FutureReturn{h}"] = (future_close / close) - 1
+        df[f"FutureMaxReturn{h}"] = (future_max_high / close) - 1
+        df[f"FutureMaxDrawdown{h}"] = (future_min_low / close) - 1
 
-    df["TargetClass"] = np.select(
-        [
-            df["FutureReturn"] < -df["DynamicThreshold"],
-            df["FutureReturn"] > df["DynamicThreshold"],
-        ],
-        [CLASS_DOWN, CLASS_UP],
-        default=CLASS_FLAT,
-    )
-
-    for future_horizon in [5, 10, 20]:
-        future_close = close.shift(-future_horizon)
-
-        future_max_high = high.shift(-1).rolling(
-            future_horizon,
-            min_periods=future_horizon,
-        ).max().shift(-(future_horizon - 1))
-
-        future_min_low = low.shift(-1).rolling(
-            future_horizon,
-            min_periods=future_horizon,
-        ).min().shift(-(future_horizon - 1))
-
-        df[f"FutureReturn{future_horizon}"] = (future_close / close) - 1
-        df[f"FutureMaxReturn{future_horizon}"] = (future_max_high / close) - 1
-        df[f"FutureMaxDrawdown{future_horizon}"] = (future_min_low / close) - 1
-
-        upper_barrier = np.maximum(
-            min_threshold,
-            df["Volatility20"].fillna(0.0) * math.sqrt(future_horizon) * vol_mult,
-        )
+        upper_barrier = np.maximum(min_threshold, vol20 * math.sqrt(h) * vol_mult)
         lower_barrier = -upper_barrier
 
-        hit_upper_first = []
-        hit_lower_first = []
+        high_values, low_values, close_values = high.values, low.values, close.values
+        upper_values, lower_values = upper_barrier.values, lower_barrier.values
 
-        high_values = high.values
-        low_values = low.values
-        close_values = close.values
-        upper_values = upper_barrier.values
-        lower_values = lower_barrier.values
+        hit_upper_first, hit_lower_first = [], []
 
         for i in range(len(df)):
-            upper_day = None
-            lower_day = None
-
-            if i + future_horizon >= len(df):
+            if i + h >= len(df):
                 hit_upper_first.append(np.nan)
                 hit_lower_first.append(np.nan)
                 continue
 
             base_price = close_values[i]
-
             if not np.isfinite(base_price) or base_price <= 0:
                 hit_upper_first.append(np.nan)
                 hit_lower_first.append(np.nan)
                 continue
 
-            for step in range(1, future_horizon + 1):
+            upper_day, lower_day = None, None
+            for step in range(1, h + 1):
                 j = i + step
-
                 high_return = (high_values[j] / base_price) - 1
                 low_return = (low_values[j] / base_price) - 1
-
                 if upper_day is None and high_return >= upper_values[i]:
                     upper_day = step
-
                 if lower_day is None and low_return <= lower_values[i]:
                     lower_day = step
 
-            hit_upper_first.append(
-                1.0 if upper_day is not None and (lower_day is None or upper_day <= lower_day) else 0.0
-            )
-            hit_lower_first.append(
-                1.0 if lower_day is not None and (upper_day is None or lower_day < upper_day) else 0.0
-            )
+            hit_upper_first.append(1.0 if upper_day is not None and (lower_day is None or upper_day <= lower_day) else 0.0)
+            hit_lower_first.append(1.0 if lower_day is not None and (upper_day is None or lower_day < upper_day) else 0.0)
 
-        df[f"HitUpperBeforeLower{future_horizon}"] = hit_upper_first
-        df[f"HitLowerBeforeUpper{future_horizon}"] = hit_lower_first
+        df[f"HitUpperBeforeLower{h}"] = hit_upper_first
+        df[f"HitLowerBeforeUpper{h}"] = hit_lower_first
 
     return df
 
 
-def build_stock_frame(
-    stock_row: pd.Series,
-    historical: pd.DataFrame,
-    external_features: pd.DataFrame,
-    index_ref: pd.DataFrame,
-    args: argparse.Namespace,
-) -> pd.DataFrame:
-    stock_id = int(stock_row["StockID"])
-    symbol = str(stock_row["Symbol"])
-
-    df = historical[historical["StockID"] == stock_id].copy()
-
-    if df.empty:
-        return pd.DataFrame()
-
-    df["Date"] = pd.to_datetime(df["Date"])
-    df = df.sort_values("Date").reset_index(drop=True)
-
-    df = clean_numeric(df, ["OpenPrice", "HighPrice", "LowPrice", "ClosePrice", "Volume"])
-
-    df = df.dropna(subset=["Date", "OpenPrice", "HighPrice", "LowPrice", "ClosePrice"])
-    df = df[
-        (df["OpenPrice"] > 0)
-        & (df["HighPrice"] > 0)
-        & (df["LowPrice"] > 0)
-        & (df["ClosePrice"] > 0)
-        & (df["HighPrice"] >= df["LowPrice"])
-    ].copy()
-
-    if len(df) < args.min_history:
-        return pd.DataFrame()
-
-    df["StockID"] = stock_id
-    df["Symbol"] = symbol
-    df["Market"] = detect_market(symbol)
-    df["DateKey"] = df["Date"].dt.date
-
-    df = add_price_features(df)
-
-    df = df.merge(external_features, on="DateKey", how="left")
-    df = df.merge(index_ref, on="DateKey", how="left")
-
-    external_cols = [c for c in df.columns if c.startswith(("USDTRY_", "BIST100_", "Gold_", "BrentOil_"))]
-    index_cols = [c for c in df.columns if c.startswith("XU100_")]
-
-    df[external_cols + index_cols] = df[external_cols + index_cols].ffill().fillna(0)
-
-    df["RelativeReturnToXU100"] = df["Return"] - df["XU100_Return"]
-    df["RelativeMom5ToXU100"] = df["Mom5"] - df["XU100_Mom5"]
-    df["RelativeMom20ToXU100"] = df["Mom20"] - df["XU100_Mom20"]
-    df["RelativeVol20ToXU100"] = df["Volatility20"] / df["XU100_Vol20"].replace(0, np.nan)
-    df["RangePositionVsXU100"] = df["RangePosition60"] - df["XU100_RangePosition60"]
-
-    df = add_future_outcomes(
-        df=df,
-        horizon=args.horizon,
-        vol_mult=args.vol_mult,
-        min_threshold=args.min_threshold,
-    )
-
-    return df
-
-
-def add_cross_sectional_features(panel: pd.DataFrame) -> pd.DataFrame:
-    panel = panel.copy()
-
-    rank_cols = [
-        "Return",
-        "Mom5",
-        "Mom10",
-        "Mom20",
-        "Mom60",
-        "VolumeRatio10",
-        "VolumeRatio20",
-        "Volatility20",
-        "ATRPercent",
-        "IntradayRangeATR",
-        "RangePosition20",
-        "RangePosition60",
-        "BreakoutPressure60",
-        "BehaviorMomentumScore",
-        "BehaviorDirectionComposite",
-        "BehaviorFlatRisk",
-        "RelativeReturnToXU100",
-        "RelativeMom5ToXU100",
-        "RelativeMom20ToXU100",
-        "RelativeVol20ToXU100",
-        "CloseLocationValue",
-        "UpperWickPct",
-        "LowerWickPct",
-    ]
-
-    for col in rank_cols:
-        if col not in panel.columns:
-            continue
-
-        panel[f"{col}_Rank"] = panel.groupby("DateKey")[col].rank(method="average", pct=True)
-
-    return panel
-
-
-def build_panel_dataset(
+def build_zeta_panel(
     stocks: pd.DataFrame,
     historical: pd.DataFrame,
     external: pd.DataFrame,
-    args: argparse.Namespace,
+    horizon: int,
+    vol_mult: float,
+    min_threshold: float,
+    exclude_symbols: List[str],
 ) -> Tuple[pd.DataFrame, List[str]]:
+    external_features = prepare_external_features(external)
+    index_ref = build_index_reference(historical, stocks, index_symbol=INDEX_SYMBOL)
+    ext = external_features.rename(columns={"Date": "DateKey"})
+
     stocks = stocks.copy()
     stocks["Market"] = stocks["Symbol"].apply(detect_market)
+    target_stocks = stocks[stocks["Market"] == "BIST"]
 
-    historical = historical.copy()
-    historical["StockID"] = pd.to_numeric(historical["StockID"], errors="coerce").astype("Int64")
-
-    external_features = prepare_external(external)
-    index_ref = build_index_reference(historical, stocks)
-
-    target_stocks = stocks[stocks["Market"] == "BIST"].copy()
-
-    if args.exclude_symbols:
-        exclude = {x.strip().upper() for x in args.exclude_symbols.split(",") if x.strip()}
-        target_stocks = target_stocks[
-            ~target_stocks["Symbol"].astype(str).str.upper().str.strip().isin(exclude)
-        ].copy()
+    if exclude_symbols:
+        exclude = {x.strip().upper() for x in exclude_symbols if x.strip()}
+        target_stocks = target_stocks[~target_stocks["Symbol"].astype(str).str.upper().str.strip().isin(exclude)]
 
     frames = []
-
     for _, stock in target_stocks.iterrows():
+        stock_id = int(stock["StockID"])
         symbol = str(stock["Symbol"])
-        item = build_stock_frame(stock, historical, external_features, index_ref, args)
-
-        if item.empty:
-            print(f"   atlandı: {symbol} | yeterli ohlcv verisi yok")
+        df = historical[historical["StockID"] == stock_id].copy()
+        if df.empty:
             continue
 
-        frames.append(item)
-        print(f"   dataset: {symbol} | satır={len(item)}")
+        df["Date"] = pd.to_datetime(df["Date"])
+        df = df.sort_values("Date").reset_index(drop=True)
+        for col in ["OpenPrice", "HighPrice", "LowPrice", "ClosePrice", "Volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df = df.dropna(subset=["Date", "OpenPrice", "ClosePrice"])
+        df = df[df["ClosePrice"] > 0].copy()
+
+        if len(df) < 300:
+            print(f"   atlandi: {symbol} | yeterli ohlcv verisi yok")
+            continue
+
+        df = add_price_features(df)
+        df["DateKey"] = df["Date"].dt.date
+        df = add_relative_features(df, index_ref)
+        df = df.merge(ext, on="DateKey", how="left")
+
+        df = apply_triple_barrier(df, horizon=horizon, vol_mult=vol_mult, min_threshold=min_threshold)
+        df = add_future_outcome_diagnostics(df, horizons=[5, 10, 20], vol_mult=vol_mult, min_threshold=min_threshold)
+
+        df["StockID"] = stock_id
+        df["Symbol"] = symbol
+        frames.append(df)
+        print(f"   dataset: {symbol} | satir={len(df)}")
 
     if not frames:
         return pd.DataFrame(), []
 
     panel = pd.concat(frames, ignore_index=True)
-    panel = add_cross_sectional_features(panel)
+    panel = add_cross_sectional_ranks(panel, date_col="DateKey")
+    panel = panel.replace([np.inf, -np.inf], np.nan)
 
-    base_features = [
-        "Return",
-        "ReturnLag1",
-        "ReturnLag2",
-        "ReturnLag3",
-        "OpenReturn",
-        "GapReturn",
-        "VolumeChange",
-        "Mom3",
-        "Mom5",
-        "Mom10",
-        "Mom20",
-        "Mom60",
-        "MA10_norm",
-        "MA20_norm",
-        "MA50_norm",
-        "MASpread10_20",
-        "MASpread20_50",
-        "DistanceMA20",
-        "DistanceMA50",
-        "RSI14",
-        "Volatility10",
-        "Volatility20",
-        "Volatility60",
-        "VolRatio10_60",
-        "VolRatio20_60",
-        "TrueRange",
-        "TrueRangePct",
-        "ATR14",
-        "ATRPercent",
-        "IntradayRangePct",
-        "IntradayRangeATR",
-        "UpperWickPct",
-        "LowerWickPct",
-        "BodyPct",
-        "CloseLocationValue",
-        "VolumeRatio10",
-        "VolumeRatio20",
-        "RangePosition20",
-        "RangePosition60",
-        "BreakoutPressure20",
-        "BreakoutPressure60",
-        "BreakoutScore",
-        "BehaviorMomentumScore",
-        "BehaviorDirectionComposite",
-        "BehaviorFlatRisk",
-        "USDTRY_Return",
-        "BIST100_Return",
-        "Gold_Return",
-        "BrentOil_Return",
-        "USDTRY_Mom5",
-        "BIST100_Mom5",
-        "Gold_Mom5",
-        "BrentOil_Mom5",
-        "USDTRY_Mom20",
-        "BIST100_Mom20",
-        "Gold_Mom20",
-        "BrentOil_Mom20",
-        "XU100_Return",
-        "XU100_Mom5",
-        "XU100_Mom20",
-        "XU100_Vol20",
-        "XU100_RangePosition60",
-        "RelativeReturnToXU100",
-        "RelativeMom5ToXU100",
-        "RelativeMom20ToXU100",
-        "RelativeVol20ToXU100",
-        "RangePositionVsXU100",
-    ]
-
-    rank_features = [c for c in panel.columns if c.endswith("_Rank")]
-    feature_cols = [c for c in base_features + rank_features if c in panel.columns]
-
-    keep_cols = [
-        "StockID",
-        "Symbol",
-        "Market",
-        "Date",
-        "DateKey",
-        "FutureDate",
-        "ClosePrice",
-        "FutureReturn",
-        "DynamicThreshold",
-        "TargetClass",
-        "FutureReturn5",
-        "FutureReturn10",
-        "FutureReturn20",
-        "FutureMaxReturn5",
-        "FutureMaxReturn10",
-        "FutureMaxReturn20",
-        "FutureMaxDrawdown5",
-        "FutureMaxDrawdown10",
-        "FutureMaxDrawdown20",
-        "HitUpperBeforeLower5",
-        "HitUpperBeforeLower10",
-        "HitUpperBeforeLower20",
-        "HitLowerBeforeUpper5",
-        "HitLowerBeforeUpper10",
-        "HitLowerBeforeUpper20",
-    ] + feature_cols
-
-    panel = panel[keep_cols].replace([np.inf, -np.inf], np.nan)
-
-    before = len(panel)
-    panel = panel.dropna(subset=feature_cols + ["FutureReturn", "TargetClass", "FutureDate"])
-    after = len(panel)
-
-    print(f"\npanel temiz satır: {after}/{before}")
+    feature_cols = [c for c in STANDARD_FEATURE_COLS if c in panel.columns]
 
     return panel, feature_cols
 
 
-def split_panel(panel: pd.DataFrame, validation_start: str, test_start: str):
-    validation_start_dt = pd.to_datetime(validation_start)
-    test_start_dt = pd.to_datetime(test_start)
+# ---------- birincil model + meta-labeling ----------
 
-    panel = panel.copy()
-    panel["Date"] = pd.to_datetime(panel["Date"])
-    panel["FutureDate"] = pd.to_datetime(panel["FutureDate"])
+def select_best_classifier(train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: List[str]):
+    x_train = train_df[feature_cols].values
+    y_train = train_df["TargetClass"].astype(int).values
+    x_val = val_df[feature_cols].values
+    y_val = val_df["TargetClass"].astype(int).values
 
-    train = panel[panel["FutureDate"] < validation_start_dt].copy()
-    validation = panel[
-        (panel["Date"] >= validation_start_dt)
-        & (panel["FutureDate"] < test_start_dt)
-    ].copy()
-    test = panel[panel["Date"] >= test_start_dt].copy()
+    candidates = build_classifier_candidates()
+    best_name, best_model, best_score = None, None, -1.0
 
-    return train, validation, test
+    for name, model in candidates.items():
+        model.fit(x_train, y_train)
+        val_pred = model.predict(x_val)
+        score = evaluate_classification(y_val, val_pred)["actionPrecision"]
+        if score > best_score:
+            best_score, best_name, best_model = score, name, model
 
-
-# model ve değerlendirme fonksiyonları
-
-def build_models() -> Dict[str, Any]:
-    try:
-        from sklearn.ensemble import (
-            GradientBoostingClassifier,
-            HistGradientBoostingClassifier,
-            RandomForestClassifier,
-        )
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.pipeline import make_pipeline
-        from sklearn.preprocessing import StandardScaler
-    except Exception as exc:
-        raise RuntimeError("scikit-learn bulunamadı. kurulum: pip install scikit-learn") from exc
-
-    models = {
-        "logistic_balanced": make_pipeline(
-            StandardScaler(),
-            LogisticRegression(max_iter=1400, class_weight="balanced"),
-        ),
-        "random_forest_balanced": RandomForestClassifier(
-            n_estimators=360,
-            max_depth=9,
-            min_samples_leaf=16,
-            class_weight="balanced_subsample",
-            random_state=42,
-            n_jobs=-1,
-        ),
-        "gradient_boosting": GradientBoostingClassifier(
-            n_estimators=220,
-            learning_rate=0.035,
-            max_depth=3,
-            random_state=42,
-        ),
-        "hist_gradient_boosting": HistGradientBoostingClassifier(
-            max_iter=260,
-            learning_rate=0.035,
-            max_leaf_nodes=31,
-            l2_regularization=0.15,
-            random_state=42,
-        ),
-    }
-
-    try:
-        from xgboost import XGBClassifier
-
-        models["xgboost"] = XGBClassifier(
-            n_estimators=360,
-            max_depth=4,
-            learning_rate=0.035,
-            subsample=0.85,
-            colsample_bytree=0.85,
-            objective="multi:softprob",
-            eval_metric="mlogloss",
-            random_state=42,
-            n_jobs=-1,
-        )
-    except Exception:
-        pass
-
-    return models
+    return best_name, best_model
 
 
-def predict_proba_3(model: Any, x: np.ndarray) -> np.ndarray:
-    raw = model.predict_proba(x)
-    out = np.zeros((len(x), 3), dtype=float)
+def build_meta_training_set(
+    primary_model, df: pd.DataFrame, feature_cols: List[str],
+) -> Tuple[pd.DataFrame, np.ndarray, List[Any]]:
+    """
+    Primary modelin df uzerindeki (cagiran taraf primary'nin GORMEDIGI bir dilim
+    vermeli - leakage'a karsi) tahminlerinden meta-egitim seti uretir: primary
+    bir yon cagirdiysa (flat degilse), gercekte dogru muydu (1/0). Meta
+    feature'lar = orijinal feature'lar + primary'nin olasilik ciktilari.
+    """
+    classes = list(primary_model.classes_)
+    proba = primary_model.predict_proba(df[feature_cols].values)
+    pred_class = np.array(classes)[np.argmax(proba, axis=1)]
 
-    classes = getattr(model, "classes_", None)
+    called_mask = pred_class != CLASS_FLAT
+    if called_mask.sum() < 30:
+        return pd.DataFrame(), np.array([]), classes
 
-    if classes is None and hasattr(model, "steps"):
-        classes = getattr(model.steps[-1][1], "classes_", np.array([0, 1, 2]))
+    meta_x = df.loc[called_mask, feature_cols].copy().reset_index(drop=True)
+    for i, c in enumerate(classes):
+        meta_x[f"PrimaryProb_{c}"] = proba[called_mask, i]
 
-    if classes is None:
-        classes = np.array([0, 1, 2])
+    actual = df.loc[called_mask, "TargetClass"].astype(int).values
+    meta_y = (pred_class[called_mask] == actual).astype(int)
 
-    for idx, cls in enumerate(classes):
-        cls = int(cls)
-
-        if cls in [0, 1, 2]:
-            out[:, cls] = raw[:, idx]
-
-    return out
+    return meta_x, meta_y, classes
 
 
-def proba_to_class(proba: np.ndarray) -> np.ndarray:
-    return np.argmax(proba, axis=1).astype(int)
+def train_meta_model(meta_x: pd.DataFrame, meta_y: np.ndarray):
+    if meta_x.empty or len(np.unique(meta_y)) < 2:
+        return None
+
+    n_val = max(20, int(len(meta_x) * 0.2))
+    x_fit, x_val = meta_x.iloc[:-n_val].values, meta_x.iloc[-n_val:].values
+    y_fit, y_val = meta_y[:-n_val], meta_y[-n_val:]
+
+    if len(np.unique(y_fit)) < 2:
+        return None
+
+    candidates = build_classifier_candidates()
+    best_model, best_score = None, -1.0
+
+    for name, model in candidates.items():
+        model.fit(x_fit, y_fit)
+        val_pred = model.predict(x_val)
+        score = float(np.mean(val_pred == y_val))
+        if score > best_score:
+            best_score, best_model = score, model
+
+    if best_model is not None:
+        best_model.fit(meta_x.values, meta_y)
+
+    return best_model
 
 
-def evaluate_classification(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, Any]:
-    y_true = np.asarray(y_true).astype(int)
-    y_pred = np.asarray(y_pred).astype(int)
+def score_rows_with_model(
+    df: pd.DataFrame,
+    feature_cols: List[str],
+    primary_model,
+    meta_model,
+) -> pd.DataFrame:
+    """
+    Eski ~250 satirlik score_row kural motorunun yerini alir. Agirliklar artik
+    elle ayarlanmiyor - momentumLong/downsideRisk dogrudan primary modelin
+    kalibre olasiligi x meta-modelin "bu cagriya guvenilir mi" tahminiyle
+    olusuyor. dipRebound tek bir siniflandiricidan dogrudan cikmayan bir kavram
+    oldugu icin seffaf, kucuk bir kural olarak kaliyor (eski 9 terimli agirlikli
+    formul yerine 3 anlasilir sinyalin birlesimi).
+    """
+    df = df.copy()
+    classes = list(primary_model.classes_)
+    proba = primary_model.predict_proba(df[feature_cols].values)
 
-    if len(y_true) == 0:
-        return {}
+    class_idx = {c: i for i, c in enumerate(classes)}
+    prob_down = proba[:, class_idx.get(CLASS_DOWN, 0)] if CLASS_DOWN in class_idx else np.zeros(len(df))
+    prob_flat = proba[:, class_idx.get(CLASS_FLAT, 0)] if CLASS_FLAT in class_idx else np.zeros(len(df))
+    prob_up = proba[:, class_idx.get(CLASS_UP, 0)] if CLASS_UP in class_idx else np.zeros(len(df))
 
-    accuracy = float(np.mean(y_true == y_pred))
-
-    pred_action = y_pred != CLASS_FLAT
-    real_action = y_true != CLASS_FLAT
-
-    action_count = int(pred_action.sum())
-    real_action_count = int(real_action.sum())
-
-    if action_count > 0:
-        action_precision = float(np.mean(y_true[pred_action] == y_pred[pred_action]))
+    if meta_model is not None:
+        meta_x = df[feature_cols].copy()
+        for i, c in enumerate(classes):
+            meta_x[f"PrimaryProb_{c}"] = proba[:, i]
+        meta_confidence = meta_model.predict_proba(meta_x.values)[:, list(meta_model.classes_).index(1)] \
+            if 1 in list(meta_model.classes_) else np.full(len(df), 0.5)
     else:
-        action_precision = 0.0
+        # meta model egitilemediyse (yetersiz veri) notr bir guven varsayilir -
+        # bu durumda gate zaten NO_CLEAR_EDGE'e dusurecek.
+        meta_confidence = np.full(len(df), 0.5)
 
-    if real_action_count > 0:
-        action_recall = float(np.sum((y_true == y_pred) & real_action) / real_action_count)
-    else:
-        action_recall = 0.0
+    mom20 = df["Mom20"].fillna(0.0).values if "Mom20" in df.columns else np.zeros(len(df))
 
-    matrix = np.zeros((3, 3), dtype=int)
+    scenarios, scores_list, confidences, reason_tags_list, warning_tags_list = [], [], [], [], []
 
-    for true_value, pred_value in zip(y_true, y_pred):
-        if int(true_value) in [0, 1, 2] and int(pred_value) in [0, 1, 2]:
-            matrix[int(true_value), int(pred_value)] += 1
+    for i in range(len(df)):
+        momentum_long = prob_up[i] * 100.0 * meta_confidence[i]
+        downside_risk = prob_down[i] * 100.0 * meta_confidence[i]
+        flat_risk = prob_flat[i] * 100.0
 
-    return {
-        "samples": int(len(y_true)),
-        "accuracy": round(accuracy * 100, 2),
-        "actionPrecision": round(action_precision * 100, 2),
-        "actionRecall": round(action_recall * 100, 2),
-        "actionRate": round(float(np.mean(pred_action)) * 100, 2),
-        "realActionRate": round(float(np.mean(real_action)) * 100, 2),
-        "flatRate": round(float(np.mean(y_pred == CLASS_FLAT)) * 100, 2),
-        "confusionMatrix": {
-            "labels": ["down", "flat", "up"],
-            "matrix": matrix.tolist(),
-        },
-    }
+        recent_selloff = max(0.0, -float(mom20[i])) * 100.0
+        dip_rebound = min(100.0, recent_selloff * 2.0) * (1.0 - prob_down[i]) * meta_confidence[i]
 
+        falling_knife_risk = downside_risk * (1.0 - meta_confidence[i] * 0.3)
 
-def class_distribution(y: np.ndarray) -> Dict[str, Any]:
-    y = np.asarray(y).astype(int)
+        scenario_candidates = {
+            SCENARIO_MOMENTUM_LONG: momentum_long,
+            SCENARIO_DIP_REBOUND: dip_rebound,
+            SCENARIO_DOWNSIDE_RISK: downside_risk,
+        }
+        scenario = max(scenario_candidates, key=scenario_candidates.get)
+        best_score = scenario_candidates[scenario]
 
-    if len(y) == 0:
-        return {}
-
-    return {
-        "downPct": round(float(np.mean(y == CLASS_DOWN)) * 100, 2),
-        "flatPct": round(float(np.mean(y == CLASS_FLAT)) * 100, 2),
-        "upPct": round(float(np.mean(y == CLASS_UP)) * 100, 2),
-        "downCount": int(np.sum(y == CLASS_DOWN)),
-        "flatCount": int(np.sum(y == CLASS_FLAT)),
-        "upCount": int(np.sum(y == CLASS_UP)),
-        "samples": int(len(y)),
-    }
-
-
-def make_scored_frame(df: pd.DataFrame, proba: np.ndarray) -> pd.DataFrame:
-    scored = df.copy()
-
-    scored["ProbDown"] = proba[:, CLASS_DOWN]
-    scored["ProbFlat"] = proba[:, CLASS_FLAT]
-    scored["ProbUp"] = proba[:, CLASS_UP]
-
-    scored["ModelPredClass"] = proba_to_class(proba)
-    scored["UpEdgeVsFlat"] = scored["ProbUp"] - scored["ProbFlat"]
-    scored["DownEdgeVsFlat"] = scored["ProbDown"] - scored["ProbFlat"]
-    scored["UpEdgeVsDown"] = scored["ProbUp"] - scored["ProbDown"]
-
-    return scored
-
-
-def evaluate_model_selection(scored: pd.DataFrame) -> Dict[str, Any]:
-    metrics = evaluate_classification(
-        scored["TargetClass"].values,
-        scored["ModelPredClass"].values,
-    )
-
-    max_probability = scored[["ProbDown", "ProbFlat", "ProbUp"]].max(axis=1)
-    probability_edge = float(np.mean(np.abs(max_probability - scored["ProbFlat"])))
-
-    action_precision = safe_float(metrics.get("actionPrecision"))
-    action_recall = safe_float(metrics.get("actionRecall"))
-    accuracy = safe_float(metrics.get("accuracy"))
-    action_rate = safe_float(metrics.get("actionRate"))
-    flat_rate = safe_float(metrics.get("flatRate"))
-
-    target_action_rate = 28.0
-    rate_score = max(0.0, 100.0 - abs(action_rate - target_action_rate) * 2.6)
-
-    over_action_penalty = max(0.0, action_rate - 40.0) * 4.5
-    excessive_flat_penalty = max(0.0, flat_rate - 78.0) * 2.0
-    weak_precision_penalty = max(0.0, 30.0 - action_precision) * 5.0
-
-    score = (
-        action_precision * 12.0
-        + min(action_recall, 35.0) * 2.0
-        + accuracy * 1.5
-        + rate_score * 1.5
-        + probability_edge * 160.0
-        - over_action_penalty
-        - excessive_flat_penalty
-        - weak_precision_penalty
-    )
-
-    return {
-        "score": round(float(score), 4),
-        "classification": metrics,
-        "meanProbabilityEdge": round(probability_edge, 4),
-        "selectionDiagnostics": {
-            "targetActionRate": target_action_rate,
-            "rateScore": round(rate_score, 4),
-            "overActionPenalty": round(over_action_penalty, 4),
-            "excessiveFlatPenalty": round(excessive_flat_penalty, 4),
-            "weakPrecisionPenalty": round(weak_precision_penalty, 4),
-        },
-    }
-
-# senaryo skorlayıcı
-
-def score_row(row: pd.Series) -> Dict[str, Any]:
-    prob_up = safe_float(row.get("ProbUp"))
-    prob_down = safe_float(row.get("ProbDown"))
-    prob_flat = safe_float(row.get("ProbFlat"))
-    
-    momentum = safe_float(row.get("BehaviorMomentumScore"))
-    flat_risk_raw = safe_float(row.get("BehaviorFlatRisk"), 50)
-
-    range60 = safe_float(row.get("RangePosition60"), 0.5)
-    breakout60 = safe_float(row.get("BreakoutPressure60"))
-
-    rel_mom20 = safe_float(row.get("RelativeMom20ToXU100"))
-    rel_mom5 = safe_float(row.get("RelativeMom5ToXU100"))
-    rel_return = safe_float(row.get("RelativeReturnToXU100"))
-
-    vol_ratio = safe_float(row.get("VolRatio20_60"), 1.0)
-    volume_ratio = safe_float(row.get("VolumeRatio20"), 1.0)
-
-    lower_wick = safe_float(row.get("LowerWickPct"))
-    close_location = safe_float(row.get("CloseLocationValue"), 0.5)
-    intraday_atr = safe_float(row.get("IntradayRangeATR"), 1.0)
-
-    mom20 = safe_float(row.get("Mom20"))
-    mom60 = safe_float(row.get("Mom60"))
-    rsi = safe_float(row.get("RSI14"), 50)
-
-    prob_up_score = prob_up * 100
-    prob_down_score = prob_down * 100
-    prob_flat_score = prob_flat * 100
-    up_minus_down = prob_up - prob_down
-    down_minus_up = prob_down - prob_up
-
-    momentum_score = norm01(momentum, -80, 80) * 100
-    negative_momentum_score = norm01(momentum, -80, 80, invert=True) * 100
-
-    relative_strength = (
-        0.45 * norm01(rel_mom20, -0.12, 0.12)
-        + 0.35 * norm01(rel_mom5, -0.06, 0.06)
-        + 0.20 * norm01(rel_return, -0.04, 0.04)
-    ) * 100
-
-    relative_weakness = 100 - relative_strength
-
-    breakout_score = norm01(breakout60, -80, 80) * 100
-    breakdown_score = 100 - breakout_score
-
-    controlled_volatility = 100 - norm01(vol_ratio, 0.8, 2.0) * 100
-    volume_support = norm01(volume_ratio, 0.7, 2.2) * 100
-
-    weak_close = (1.0 - close_location) * 100
-    recovery_close = close_location * 100
-
-    lower_wick_support = norm01(lower_wick, 0.05, 0.55) * 100
-
-    low_range_position = (1.0 - range60) * 100
-
-    if range60 <= 0.50:
-        mid_low_range = (1.0 - abs(range60 - 0.25) / 0.25) * 100
-    else:
-        mid_low_range = 0
-
-    if 0.44 <= range60 <= 1.0:
-        trend_range_zone = (1.0 - abs(range60 - 0.72) / 0.28) * 100
-    else:
-        trend_range_zone = 0
-
-    selloff_depth = (
-        0.55 * norm01(-mom20, -0.02, 0.25)
-        + 0.45 * norm01(-mom60, -0.02, 0.35)
-    ) * 100
-
-    falling_knife_risk = (
-        0.24 * prob_down_score
-        + 0.22 * negative_momentum_score
-        + 0.18 * relative_weakness
-        + 0.14 * weak_close
-        + 0.12 * norm01(volume_ratio, 1.2, 4.0) * 100
-        + 0.10 * norm01(intraday_atr, 1.0, 3.0) * 100
-        - 0.14 * lower_wick_support
-        - 0.10 * recovery_close
-    )
-    falling_knife_risk = clamp(falling_knife_risk)
-
-    downside_risk = (
-        0.26 * prob_down_score
-        + 0.22 * negative_momentum_score
-        + 0.18 * relative_weakness
-        + 0.14 * breakdown_score
-        + 0.10 * weak_close
-        + 0.10 * norm01(volume_ratio, 1.0, 3.5) * 100
-        - 0.12 * lower_wick_support
-        - 0.10 * prob_up_score
-    )
-
-    if down_minus_up > 0.08:
-        downside_risk += min(16.0, down_minus_up * 100.0 * 0.90)
-    elif down_minus_up > 0.04:
-        downside_risk += min(8.0, down_minus_up * 100.0 * 0.55)
-
-    downside_risk = clamp(downside_risk)
-
-    momentum_long = (
-        0.26 * prob_up_score
-        + 0.22 * momentum_score
-        + 0.20 * relative_strength
-        + 0.14 * breakout_score
-        + 0.10 * volume_support
-        + 0.08 * trend_range_zone
-        - 0.16 * flat_risk_raw
-        - 0.14 * downside_risk
-    )
-    momentum_long = clamp(momentum_long)
-
-    if range60 > 0.93 and rsi > 72:
-        momentum_long = clamp(momentum_long - 10)
-    if down_minus_up > 0.08 and prob_up < 0.38:
-        momentum_long = min(momentum_long, 51.0)
-    elif down_minus_up > 0.05:
-        momentum_long = clamp(momentum_long - 12.0)
-
-    dip_rebound = (
-        0.19 * prob_up_score
-        + 0.18 * low_range_position
-        + 0.16 * lower_wick_support
-        + 0.14 * recovery_close
-        + 0.12 * controlled_volatility
-        + 0.11 * mid_low_range
-        + 0.10 * selloff_depth
-        - 0.24 * falling_knife_risk
-        - 0.12 * prob_down_score
-    )
-    dip_rebound = clamp(dip_rebound)
-    if prob_down > 0.55 and falling_knife_risk > 35:
-        dip_rebound = clamp(dip_rebound - 12.0)
-    elif prob_down > 0.48 and falling_knife_risk > 50:
-        dip_rebound = clamp(dip_rebound - 8.0)
-
-    flat_risk = clamp(
-        0.55 * flat_risk_raw
-        + 0.30 * prob_flat_score
-        + 0.15 * (100 - max(momentum_long, dip_rebound, downside_risk))
-    )
-
-    scores = {
-        "momentumLong": round(momentum_long, 2),
-        "dipRebound": round(dip_rebound, 2),
-        "downsideRisk": round(downside_risk, 2),
-        "flatRisk": round(flat_risk, 2),
-        "fallingKnifeRisk": round(falling_knife_risk, 2),
-    }
-
-    scenario_candidates = {
-        SCENARIO_MOMENTUM_LONG: momentum_long,
-        SCENARIO_DIP_REBOUND: dip_rebound,
-        SCENARIO_DOWNSIDE_RISK: downside_risk,
-    }
-
-    scenario = max(scenario_candidates, key=scenario_candidates.get)
-    best_score = scenario_candidates[scenario]
-
-    scenario_thresholds = {
-        SCENARIO_MOMENTUM_LONG: 58.0,
-        SCENARIO_DIP_REBOUND: 56.0,
-        SCENARIO_DOWNSIDE_RISK: 55.0,
-    }
-
-    if best_score < scenario_thresholds.get(scenario, 52.0) or flat_risk > 72:
-        scenario = SCENARIO_NEUTRAL
-
-    if scenario == SCENARIO_DIP_REBOUND and falling_knife_risk >= 68:
-        if downside_risk >= 55:
-            scenario = SCENARIO_DOWNSIDE_RISK
-        else:
+        if best_score < 40.0 or meta_confidence[i] < 0.55 or flat_risk > 70:
             scenario = SCENARIO_NEUTRAL
 
-    scenario_conflict_penalty = 0.0
-
-    if scenario == SCENARIO_MOMENTUM_LONG and prob_down > prob_up:
-        scenario_conflict_penalty = norm01(prob_down - prob_up, 0.03, 0.20) * 28.0
-
-    elif scenario == SCENARIO_DIP_REBOUND and prob_down > 0.48:
-        scenario_conflict_penalty = norm01(prob_down, 0.48, 0.70) * 14.0
-
-    elif scenario == SCENARIO_DOWNSIDE_RISK and prob_up > prob_down:
-        scenario_conflict_penalty = norm01(prob_up - prob_down, 0.03, 0.20) * 18.0
-
-    confidence = clamp(
-        max(momentum_long, dip_rebound, downside_risk)
-        - 0.35 * flat_risk
-        + abs(prob_up - prob_down) * 35
-        - scenario_conflict_penalty
-    )
-
-    reason_tags = []
-    warning_tags = []
-
-    if momentum_long >= 55:
-        if prob_up >= 0.40:
+        reason_tags, warning_tags = [], []
+        if scenario == SCENARIO_MOMENTUM_LONG:
             reason_tags.append("UP_PROBABILITY_SUPPORT")
-        if relative_strength >= 60:
-            reason_tags.append("RELATIVE_STRENGTH")
-        if momentum_score >= 60:
-            reason_tags.append("POSITIVE_MOMENTUM")
-        if breakout_score >= 60:
-            reason_tags.append("BREAKOUT_PRESSURE")
-
-    if dip_rebound >= 55:
-        if low_range_position >= 60:
-            reason_tags.append("LOW_RANGE_POSITION")
-        if lower_wick_support >= 55:
-            reason_tags.append("LOWER_WICK_SUPPORT")
-        if recovery_close >= 60:
-            reason_tags.append("RECOVERY_CLOSE")
-        if controlled_volatility >= 55:
-            reason_tags.append("CONTROLLED_VOLATILITY")
-
-    if downside_risk >= 55:
-        if prob_down >= 0.40:
+        if scenario == SCENARIO_DOWNSIDE_RISK:
             reason_tags.append("DOWN_PROBABILITY_PRESSURE")
-        if negative_momentum_score >= 60:
-            reason_tags.append("NEGATIVE_MOMENTUM")
-        if relative_weakness >= 60:
-            reason_tags.append("RELATIVE_WEAKNESS")
-        if weak_close >= 60:
-            reason_tags.append("WEAK_CLOSE")
+        if scenario == SCENARIO_DIP_REBOUND:
+            reason_tags.append("RECOVERY_CLOSE")
+        if flat_risk >= 70:
+            warning_tags.append("HIGH_FLAT_RISK")
+        if meta_confidence[i] < 0.55:
+            warning_tags.append("NO_CLEAR_EDGE")
 
-    if flat_risk >= 70:
-        warning_tags.append("HIGH_FLAT_RISK")
+        scenarios.append(scenario)
+        scores_list.append({
+            "momentumLong": round(float(momentum_long), 2),
+            "dipRebound": round(float(dip_rebound), 2),
+            "downsideRisk": round(float(downside_risk), 2),
+            "flatRisk": round(float(flat_risk), 2),
+            "fallingKnifeRisk": round(float(falling_knife_risk), 2),
+        })
+        confidences.append(round(float(meta_confidence[i]) * 100.0, 2))
+        reason_tags_list.append(sorted(set(reason_tags)))
+        warning_tags_list.append(sorted(set(warning_tags)))
 
-    if falling_knife_risk >= 60:
-        warning_tags.append("FALLING_KNIFE_RISK")
-    elif falling_knife_risk >= 45:
-        warning_tags.append("MEDIUM_FALLING_KNIFE_RISK")
+    df["ProbDown"] = prob_down
+    df["ProbFlat"] = prob_flat
+    df["ProbUp"] = prob_up
+    df["Scenario"] = scenarios
+    df["MomentumLongScore"] = [s["momentumLong"] for s in scores_list]
+    df["DipReboundScore"] = [s["dipRebound"] for s in scores_list]
+    df["DownsideRiskScore"] = [s["downsideRisk"] for s in scores_list]
+    df["FlatRiskScore"] = [s["flatRisk"] for s in scores_list]
+    df["FallingKnifeRisk"] = [s["fallingKnifeRisk"] for s in scores_list]
+    df["ScenarioConfidence"] = confidences
+    df["ReasonTags"] = reason_tags_list
+    df["WarningTags"] = warning_tags_list
 
-    if volume_ratio >= 3 and weak_close >= 60:
-        warning_tags.append("HIGH_VOLUME_WEAK_CLOSE")
-
-    if vol_ratio >= 1.6:
-        warning_tags.append("ELEVATED_VOLATILITY")
-
-    if scenario == SCENARIO_NEUTRAL and not warning_tags:
-        warning_tags.append("NO_CLEAR_EDGE")
-
-    return {
-        "scenario": scenario,
-        "scores": scores,
-        "confidence": round(confidence, 2),
-        "reasonTags": sorted(set(reason_tags)),
-        "warningTags": sorted(set(warning_tags)),
-    }
-
-
-def apply_scenario_scores(scored: pd.DataFrame) -> pd.DataFrame:
-    rows = []
-
-    for _, row in scored.iterrows():
-        rows.append(score_row(row))
-
-    enriched = scored.copy()
-
-    enriched["Scenario"] = [item["scenario"] for item in rows]
-    enriched["MomentumLongScore"] = [item["scores"]["momentumLong"] for item in rows]
-    enriched["DipReboundScore"] = [item["scores"]["dipRebound"] for item in rows]
-    enriched["DownsideRiskScore"] = [item["scores"]["downsideRisk"] for item in rows]
-    enriched["FlatRiskScore"] = [item["scores"]["flatRisk"] for item in rows]
-    enriched["FallingKnifeRisk"] = [item["scores"]["fallingKnifeRisk"] for item in rows]
-    enriched["ScenarioConfidence"] = [item["confidence"] for item in rows]
-    enriched["ReasonTags"] = [item["reasonTags"] for item in rows]
-    enriched["WarningTags"] = [item["warningTags"] for item in rows]
-
-    return enriched
+    return df
 
 
-# radar üretimi
+# ---------- radar + backtest (JSON semasi korunuyor - ZetaController/MarketScreener bunu okuyor) ----------
 
 def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     if enriched.empty:
@@ -1350,7 +527,6 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
         subset = subset.sort_values([score_col, "ScenarioConfidence"], ascending=False).head(top_k)
 
         items = []
-
         for _, row in subset.iterrows():
             items.append({
                 "stockID": int(row["StockID"]),
@@ -1374,11 +550,9 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
                 "reasonTags": row["ReasonTags"],
                 "warningTags": row["WarningTags"],
             })
-
         return items
 
     risk_watch = latest.copy()
-
     risk_watch["RiskWatchScore"] = (
         0.42 * risk_watch["DownsideRiskScore"].fillna(0)
         + 0.22 * risk_watch["FallingKnifeRisk"].fillna(0)
@@ -1392,25 +566,16 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
             (risk_watch["Scenario"] == SCENARIO_DOWNSIDE_RISK)
             | (risk_watch["FallingKnifeRisk"] >= 45)
             | (risk_watch["FlatRiskScore"] >= 70)
-            | (
-                (risk_watch["DownsideRiskScore"] >= 42)
-                & (risk_watch["ProbUp"] < 0.48)
-            )
+            | ((risk_watch["DownsideRiskScore"] >= 42) & (risk_watch["ProbUp"] < 0.48))
         )
         & ~(risk_watch["Scenario"].isin([SCENARIO_MOMENTUM_LONG, SCENARIO_DIP_REBOUND]))
     ].copy()
-
-    risk_watch_pool = risk_watch_pool[
-        risk_watch_pool["RiskWatchScore"] >= 28
-    ].copy()
-
+    risk_watch_pool = risk_watch_pool[risk_watch_pool["RiskWatchScore"] >= 28].copy()
     risk_watch = risk_watch_pool.sort_values(
-        ["RiskWatchScore", "DownsideRiskScore", "FallingKnifeRisk"],
-        ascending=False,
+        ["RiskWatchScore", "DownsideRiskScore", "FallingKnifeRisk"], ascending=False,
     ).head(top_k)
 
     risk_watch_items = []
-
     for _, row in risk_watch.iterrows():
         risk_watch_items.append({
             "stockID": int(row["StockID"]),
@@ -1441,7 +606,6 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     neutral = neutral.sort_values(["FlatRiskScore", "ScenarioConfidence"], ascending=False).head(top_k)
 
     neutral_items = []
-
     for _, row in neutral.iterrows():
         neutral_items.append({
             "stockID": int(row["StockID"]),
@@ -1478,8 +642,6 @@ def latest_radar(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     }
 
 
-# senaryo backtest metrikleri
-
 def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[str, Any]:
     if enriched.empty:
         return {}
@@ -1488,7 +650,6 @@ def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[s
     enriched["DateOnly"] = pd.to_datetime(enriched["Date"]).dt.date
 
     daily_rows = []
-
     scenario_specs = [
         (SCENARIO_MOMENTUM_LONG, "MomentumLongScore"),
         (SCENARIO_DIP_REBOUND, "DipReboundScore"),
@@ -1500,10 +661,8 @@ def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[s
         universe_return20 = safe_float(group["FutureReturn20"].mean())
 
         row = {
-            "date": str(date_value),
-            "universeSize": int(len(group)),
-            "universeReturn10": universe_return10,
-            "universeReturn20": universe_return20,
+            "date": str(date_value), "universeSize": int(len(group)),
+            "universeReturn10": universe_return10, "universeReturn20": universe_return20,
         }
 
         for scenario, score_col in scenario_specs:
@@ -1529,23 +688,20 @@ def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[s
 
     def aggregate(prefix: str) -> Dict[str, Any]:
         count_col = f"{prefix}_count"
-
         if count_col not in daily.columns:
             return {"days": 0}
 
         valid = daily[daily[count_col].fillna(0) > 0].copy()
-
         if valid.empty:
             return {"days": 0}
+
         avg_max_return10 = safe_float(valid.get(f"{prefix}_maxReturn10", pd.Series(dtype=float)).mean())
         avg_max_drawdown10 = safe_float(valid.get(f"{prefix}_maxDrawdown10", pd.Series(dtype=float)).mean())
         upper_hit10 = safe_float(valid.get(f"{prefix}_upperHit10", pd.Series(dtype=float)).mean())
         lower_hit10 = safe_float(valid.get(f"{prefix}_lowerHit10", pd.Series(dtype=float)).mean())
 
-        if abs(avg_max_drawdown10) > 1e-9:
-            reward_risk10 = avg_max_return10 / abs(avg_max_drawdown10)
-        else:
-            reward_risk10 = None
+        reward_risk10 = avg_max_return10 / abs(avg_max_drawdown10) if abs(avg_max_drawdown10) > 1e-9 else None
+
         return {
             "days": int(len(valid)),
             "avgCount": round(safe_float(valid[count_col].mean()), 2),
@@ -1571,121 +727,125 @@ def evaluate_scenario_backtest(enriched: pd.DataFrame, top_k: int = 5) -> Dict[s
         },
     }
 
-    return {
-        "summary": summary,
-        "daily": daily.to_dict(orient="records"),
-    }
+    return {"summary": summary, "daily": daily.to_dict(orient="records")}
 
 
-# ana çalışma akışı
+def compute_gate(scenario_backtest_summary: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Faz 3'un asil yeni parcasi: eski kod bu backtest'i hesaplayip hicbir seye
+    baglamiyordu. Artik her senaryo icin "gunluk ornek sayisi yeterli VE excess
+    return pozitif mi" kontrol ediliyor - degilse o senaryo lowConfidence
+    isaretleniyor, radar sessizce yayinlanmiyor.
+    """
+    gate = {}
+    trustworthy_any = False
+
+    for key in ["momentumLong", "dipRebound", "downsideRisk"]:
+        stats = scenario_backtest_summary.get(key, {})
+        days = stats.get("days", 0)
+        excess = stats.get("avgExcessReturn10Pct", None)
+
+        trustworthy = bool(
+            days >= GATE_MIN_DAYS and excess is not None and excess > GATE_MIN_EXCESS_RETURN10_PCT
+        )
+        trustworthy_any = trustworthy_any or trustworthy
+
+        gate[key] = {
+            "trustworthy": trustworthy,
+            "days": days,
+            "avgExcessReturn10Pct": excess,
+            "reason": (
+                "yeterli gun + pozitif excess return" if trustworthy
+                else "yetersiz veri" if days < GATE_MIN_DAYS
+                else "excess return pozitif degil (universe'u gecmiyor)"
+            ),
+        }
+
+    gate["overallTrustworthy"] = trustworthy_any
+    return gate
+
+
+# ---------- ana calisma akisi ----------
 
 def run(args: argparse.Namespace) -> Dict[str, Any]:
-    print("zeta scenario screener başlıyor...")
-    print(
-        f"horizon={args.horizon}, "
-        f"validation_start={args.validation_start}, "
-        f"test_start={args.test_start}"
-    )
+    print("zeta scenario screener (Faz 3 - meta-labeling) basliyor...")
+    print(f"horizon={args.horizon}, validation_start={args.validation_start}, test_start={args.test_start}")
 
     stocks, historical, external = read_sql_data()
 
-    panel, feature_cols = build_panel_dataset(
-        stocks=stocks,
-        historical=historical,
-        external=external,
-        args=args,
+    exclude_symbols = [s for s in (args.exclude_symbols or "").split(",") if s.strip()]
+    panel, feature_cols = build_zeta_panel(
+        stocks=stocks, historical=historical, external=external,
+        horizon=args.horizon, vol_mult=args.vol_mult, min_threshold=args.min_threshold,
+        exclude_symbols=exclude_symbols,
     )
 
     if panel.empty:
-        raise RuntimeError("panel veri seti boş oluştu. ohlcv verilerini ve bist filtrelerini kontrol edin.")
+        raise RuntimeError("panel veri seti bos oluştu. ohlcv verilerini ve bist filtrelerini kontrol edin.")
 
-    train, validation, test = split_panel(
-        panel=panel,
-        validation_start=args.validation_start,
-        test_start=args.test_start,
+    panel_clean = panel.dropna(subset=feature_cols + ["TargetClass"]).reset_index(drop=True)
+    print(f"panel_clean: {len(panel_clean)} satir, {panel_clean['StockID'].nunique()} hisse, {len(feature_cols)} feature")
+
+    train, validation, test = purged_embargo_split(
+        panel_clean, validation_start=args.validation_start, test_start=args.test_start,
+        horizon=args.horizon, embargo_days=5,
     )
 
-    print("\nsplit özeti")
-    print(f"train:      {len(train)}")
-    print(f"validation: {len(validation)}")
-    print(f"test:       {len(test)}")
-    print(f"feature:    {len(feature_cols)}")
+    print(f"\nsplit ozeti\ntrain: {len(train)}\nvalidation: {len(validation)}\ntest: {len(test)}")
 
     if len(train) < 1000 or len(validation) < 200 or len(test) < 200:
-        raise RuntimeError("train/validation/test bölümleri beklenenden küçük. tarih aralıklarını kontrol edin.")
+        raise RuntimeError("train/validation/test bolumleri beklenenden kucuk. tarih araliklarini kontrol edin.")
 
-    x_train = train[feature_cols].values
-    y_train = train["TargetClass"].values.astype(int)
+    # birincil model: train'de egit, validation'da sec (test'e hic bakilmadan).
+    best_name, primary_model = select_best_classifier(train, validation, feature_cols)
+    print(f"secilen birincil model: {best_name}")
 
-    x_val = validation[feature_cols].values
-    y_val = validation["TargetClass"].values.astype(int)
+    # meta-labeling: birincilin validation'daki (kendisi icin out-of-sample)
+    # tahminlerinden meta-egitim seti uretilir.
+    meta_x, meta_y, classes = build_meta_training_set(primary_model, validation, feature_cols)
+    meta_model = train_meta_model(meta_x, meta_y)
+    print(f"meta model egitildi: {'evet' if meta_model is not None else 'hayir (yetersiz veri)'}")
 
-    x_test = test[feature_cols].values
-    y_test = test["TargetClass"].values.astype(int)
-
-    models = build_models()
-
-    model_reports = {}
-    best_name = None
-    best_score = -1e18
-    best_model = None
-
-    for name, model in models.items():
-        print(f"\nmodel deneniyor: {name}")
-
-        try:
-            model.fit(x_train, y_train)
-
-            val_proba = predict_proba_3(model, x_val)
-            val_scored = make_scored_frame(validation, val_proba)
-            val_eval = evaluate_model_selection(val_scored)
-
-            test_proba = predict_proba_3(model, x_test)
-            test_scored = make_scored_frame(test, test_proba)
-            test_eval = evaluate_classification(y_test, test_scored["ModelPredClass"].values)
-
-            model_reports[name] = {
-                "validation": val_eval,
-                "test": test_eval,
-            }
-
-            print(
-                f"  score={val_eval['score']} | "
-                f"val actionPrecision={val_eval['classification'].get('actionPrecision')} | "
-                f"test actionPrecision={test_eval.get('actionPrecision')}"
-            )
-
-            if val_eval["score"] > best_score:
-                best_score = val_eval["score"]
-                best_name = name
-                best_model = model
-
-        except Exception as exc:
-            model_reports[name] = {"error": str(exc)}
-            print(f"  hata: {exc}")
-
-    if best_model is None:
-        raise RuntimeError("hiçbir model başarıyla eğitilemedi.")
-
-    test_proba = predict_proba_3(best_model, x_test)
-    test_scored = make_scored_frame(test, test_proba)
-    test_enriched = apply_scenario_scores(test_scored)
-
-    latest_date = panel["Date"].max()
-    latest_rows = panel[panel["Date"] == latest_date].copy()
-
-    latest_proba = predict_proba_3(best_model, latest_rows[feature_cols].values)
-    latest_scored = make_scored_frame(latest_rows, latest_proba)
-    latest_enriched = apply_scenario_scores(latest_scored)
-
-    radar = latest_radar(latest_enriched, top_k=args.top_k)
+    # test uzerinde puanla (gate/backtest icin) - dogru degerlendirme icin
+    # sadece train+validation ile egitilmis modeller kullanilir.
+    test_enriched = score_rows_with_model(test, feature_cols, primary_model, meta_model)
     scenario_backtest = evaluate_scenario_backtest(test_enriched, top_k=args.top_k)
+    gate = compute_gate(scenario_backtest.get("summary", {}))
+
+    print("\ngate sonucu:")
+    for key, val in gate.items():
+        if key == "overallTrustworthy":
+            continue
+        print(f"  {key}: trustworthy={val['trustworthy']} ({val['reason']}, days={val['days']}, excessReturn10={val['avgExcessReturn10Pct']})")
+
+    # uretim: train+validation ile nihai modeli egit (test hala hic gorulmedi),
+    # en guncel satirlari bu nihai modelle puanla.
+    final_train = pd.concat([train, validation], ignore_index=True)
+    final_primary = build_classifier_candidates()[best_name]
+    final_primary.fit(final_train[feature_cols].values, final_train["TargetClass"].astype(int).values)
+
+    # bazi hisselerin (ör. XU100 endeks referansi) diger hisselere gore veri
+    # gecikmesi olabilir - o zaman panel'in en son tarihinde Relative* feature'lar
+    # NaN kalip o gunu tamamen bosaltabilir. Once feature'lari tam olan satirlari
+    # filtrele, "en guncel" tarihi ONDAN SONRA sec.
+    panel_features_complete = panel.dropna(subset=feature_cols)
+    if panel_features_complete.empty:
+        raise RuntimeError("feature'lari tam olan hicbir guncel satir yok.")
+
+    latest_date = panel_features_complete["Date"].max()
+    latest_rows = panel_features_complete[panel_features_complete["Date"] == latest_date].copy().reset_index(drop=True)
+
+    latest_enriched = score_rows_with_model(latest_rows, feature_cols, final_primary, meta_model)
+    radar = latest_radar(latest_enriched, top_k=args.top_k)
+    radar["gate"] = gate
+    radar["lowConfidence"] = not gate["overallTrustworthy"]
 
     report = {
         "generatedAt": datetime.now().isoformat(timespec="seconds"),
-        "version": "v12_zeta_scenario_screener_v1",
-        "architecture": "bist_global_panel_model_plus_rule_scenario_scorer",
+        "version": "v12_zeta_scenario_screener_v2_meta_labeling",
+        "architecture": "pooled_panel_primary_model_plus_meta_labeling",
         "selectedModel": best_name,
+        "metaModelTrained": meta_model is not None,
         "universe": "BIST",
         "horizon": args.horizon,
         "validationStart": args.validation_start,
@@ -1693,16 +853,15 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         "featureCount": len(feature_cols),
         "features": feature_cols,
         "dataset": {
-            "panelRows": int(len(panel)),
-            "symbols": int(panel["Symbol"].nunique()),
+            "panelRows": int(len(panel_clean)),
+            "symbols": int(panel_clean["Symbol"].nunique()),
             "trainRows": int(len(train)),
             "validationRows": int(len(validation)),
             "testRows": int(len(test)),
-            "trainClassDistribution": class_distribution(y_train),
-            "validationClassDistribution": class_distribution(y_val),
-            "testClassDistribution": class_distribution(y_test),
+            "trainClassDistribution": class_distribution(train["TargetClass"].values),
+            "testClassDistribution": class_distribution(test["TargetClass"].values),
         },
-        "models": model_reports,
+        "gate": gate,
         "latestRadar": radar,
         "scenarioBacktest": scenario_backtest.get("summary", {}),
     }
@@ -1717,56 +876,53 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
 
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(to_serializable(report), f, ensure_ascii=False, indent=2)
-
     with open(radar_path, "w", encoding="utf-8") as f:
         json.dump(to_serializable(radar), f, ensure_ascii=False, indent=2)
-
     with open(backtest_path, "w", encoding="utf-8") as f:
         json.dump(to_serializable(scenario_backtest), f, ensure_ascii=False, indent=2)
 
     csv_cols = [
-        "StockID",
-        "Symbol",
-        "Date",
-        "ClosePrice",
-        "Scenario",
-        "ScenarioConfidence",
-        "MomentumLongScore",
-        "DipReboundScore",
-        "DownsideRiskScore",
-        "FlatRiskScore",
-        "FallingKnifeRisk",
-        "ProbDown",
-        "ProbFlat",
-        "ProbUp",
-        "ReasonTags",
-        "WarningTags",
+        "StockID", "Symbol", "Date", "ClosePrice", "Scenario", "ScenarioConfidence",
+        "MomentumLongScore", "DipReboundScore", "DownsideRiskScore", "FlatRiskScore", "FallingKnifeRisk",
+        "ProbDown", "ProbFlat", "ProbUp", "ReasonTags", "WarningTags",
     ]
-
     latest_enriched[csv_cols].to_csv(radar_csv_path, index=False, encoding="utf-8-sig")
 
-    print("\n============================================================")
-    print("zeta scenario screener özeti")
+    log_run(
+        name="zeta_meta_labeling_faz3",
+        config={
+            "horizon": args.horizon, "vol_mult": args.vol_mult, "min_threshold": args.min_threshold,
+            "validation_start": args.validation_start, "test_start": args.test_start,
+            "selectedModel": best_name, "metaModelTrained": meta_model is not None,
+        },
+        metrics={
+            "overallTrustworthy": gate["overallTrustworthy"],
+            "momentumLongExcessReturn10": gate["momentumLong"]["avgExcessReturn10Pct"] or 0.0,
+            "downsideRiskExcessReturn10": gate["downsideRisk"]["avgExcessReturn10Pct"] or 0.0,
+        },
+        tags=["faz3", "zeta", "meta_labeling"],
+    )
+
+    print("\n" + "=" * 60)
+    print("zeta scenario screener ozeti")
     print(json.dumps(to_serializable({
         "selectedModel": best_name,
+        "metaModelTrained": meta_model is not None,
         "dataset": report["dataset"],
+        "gate": gate,
         "latestRadarSummary": radar.get("summary", {}),
-        "scenarioBacktest": report["scenarioBacktest"],
         "outputs": {
-            "report": str(report_path),
-            "latestRadar": str(radar_path),
-            "backtestSummary": str(backtest_path),
-            "latestRadarCsv": str(radar_csv_path),
+            "report": str(report_path), "latestRadar": str(radar_path),
+            "backtestSummary": str(backtest_path), "latestRadarCsv": str(radar_csv_path),
         },
     }), ensure_ascii=False, indent=2))
-    print("============================================================")
+    print("=" * 60)
 
     return report
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-
     parser.add_argument("--horizon", type=int, default=10)
     parser.add_argument("--validation-start", type=str, default="2023-01-01")
     parser.add_argument("--test-start", type=str, default="2024-01-01")
@@ -1776,9 +932,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--exclude-symbols", type=str, default="")
     parser.add_argument("--output-dir", type=str, default="artifacts/v12_zeta")
-
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    run(parse_args())
+    args = parse_args()
+    run(args)

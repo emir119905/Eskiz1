@@ -1,0 +1,79 @@
+{
+  "artifacts": [],
+  "command": "_run",
+  "experiment": {
+    "base_dir": "C:\\Users\\ASUS\\Desktop\\Eskiz-1\\ai_service",
+    "dependencies": [
+      "numpy==2.4.4",
+      "sacred==0.8.7"
+    ],
+    "mainfile": "experiment_log.py",
+    "name": "factor_ic_analysis",
+    "repositories": [],
+    "sources": [
+      [
+        "experiment_log.py",
+        "_sources\\experiment_log_b267144edb84def43a9d11299d81bdad.py"
+      ]
+    ]
+  },
+  "heartbeat": "2026-07-31T20:11:16.387051",
+  "host": {
+    "ENV": {},
+    "cpu": "AMD Ryzen 9 7845HX with Radeon Graphics",
+    "gpus": {
+      "driver_version": "596.36",
+      "gpus": [
+        {
+          "model": "NVIDIA GeForce RTX 4060 Laptop GPU",
+          "persistence_mode": false,
+          "total_memory": 8188
+        }
+      ]
+    },
+    "hostname": "DESKTOP-DEF01FG",
+    "os": [
+      "Windows",
+      "Windows-11-10.0.26200-SP0"
+    ],
+    "python_version": "3.12.7"
+  },
+  "meta": {
+    "command": "_run",
+    "named_configs": [],
+    "options": {
+      "--beat-interval": null,
+      "--capture": null,
+      "--comment": null,
+      "--debug": false,
+      "--enforce_clean": false,
+      "--file_storage": null,
+      "--force": false,
+      "--help": false,
+      "--id": null,
+      "--loglevel": null,
+      "--mongo_db": null,
+      "--name": null,
+      "--pdb": false,
+      "--print-config": false,
+      "--priority": null,
+      "--queue": false,
+      "--s3": null,
+      "--sql": null,
+      "--tiny_db": null,
+      "--unobserved": false
+    }
+  },
+  "resources": [],
+  "result": {
+    "significantCount": 28,
+    "topTStat": {
+      "dtype": "float64",
+      "py/object": "numpy.float64",
+      "value": 4.94
+    }
+  },
+  "start_time": "2026-07-31T20:11:16.382362",
+  "status": "COMPLETED",
+  "stop_time": "2026-07-31T20:11:16.387051"
+}

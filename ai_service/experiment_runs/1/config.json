@@ -1,0 +1,11 @@
+{
+  "embargo_days": 5,
+  "horizon": 10,
+  "min_threshold": 0.01,
+  "n_trials": 3,
+  "seed": 535876058,
+  "stock": "2",
+  "test_start": "2025-01-01",
+  "validation_start": "2024-01-01",
+  "vol_mult": 0.6
+}
