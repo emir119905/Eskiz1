@@ -1,0 +1,10 @@
+{
+  "metrics": {
+    "regimesPositive": 5,
+    "rollingWindowsPositive": 4
+  },
+  "tags": [
+    "momentum_robustness",
+    "faz4_followup"
+  ]
+}

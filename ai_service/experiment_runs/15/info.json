@@ -1,0 +1,14 @@
+{
+  "metrics": {
+    "significantCount": 29,
+    "topTStat": {
+      "dtype": "float64",
+      "py/object": "numpy.float64",
+      "value": -8.28
+    }
+  },
+  "tags": [
+    "faktor_ic",
+    "signal_hunting"
+  ]
+}

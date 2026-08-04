@@ -43,7 +43,7 @@ from shared_features import prepare_external_features
 from engine_baseline import build_full_panel
 from experiment_log import log_run
 
-COMPOSITE_RAW_FACTORS = ["RangePositionVsIndex", "MASpread20_50"]
+DEFAULT_COMPOSITE_RAW_FACTORS = ["RangePositionVsIndex", "MASpread20_50"]
 N_GROUPS = 3  # tercile - N~40 hisseyle grup basina ~13 hisse, quintile icin cok az olurdu
 
 
@@ -52,7 +52,7 @@ def build_rebalance_dates(dates: List, horizon: int) -> List:
     return sorted(dates)[::horizon]
 
 
-def backtest_period(panel: pd.DataFrame, horizon: int, label: str) -> Dict[str, Any]:
+def backtest_period(panel: pd.DataFrame, horizon: int, label: str, composite_factors: List[str]) -> Dict[str, Any]:
     dates = sorted(panel["DateKey"].unique())
     rebalance_dates = build_rebalance_dates(dates, horizon)
 
@@ -60,7 +60,7 @@ def backtest_period(panel: pd.DataFrame, horizon: int, label: str) -> Dict[str, 
 
     for date_value in rebalance_dates:
         day = panel[panel["DateKey"] == date_value].copy()
-        day = day.dropna(subset=COMPOSITE_RAW_FACTORS + ["FutureReturn"])
+        day = day.dropna(subset=composite_factors + ["FutureReturn"])
 
         if len(day) < N_GROUPS * 3:
             continue
@@ -69,7 +69,7 @@ def backtest_period(panel: pd.DataFrame, horizon: int, label: str) -> Dict[str, 
         # her iki ham faktoru yuzdelik siraya cevirip ortalamasini al - shared_features'in
         # sabit _Rank listesine bagimli olmadan, ayni mantigi burada tekrar uygular.
         rank_cols = []
-        for factor in COMPOSITE_RAW_FACTORS:
+        for factor in composite_factors:
             rank_col = f"{factor}_DayRank"
             day[rank_col] = day[factor].rank(method="average", pct=True)
             rank_cols.append(rank_col)
@@ -131,6 +131,8 @@ def backtest_period(panel: pd.DataFrame, horizon: int, label: str) -> Dict[str, 
 
 
 def run(args: argparse.Namespace) -> Dict[str, Any]:
+    composite_factors = [f.strip() for f in args.factors.split(",") if f.strip()]
+
     stocks, historical, external = read_sql_data()
     external_features = prepare_external_features(external)
 
@@ -143,21 +145,21 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
     if panel.empty:
         raise RuntimeError("panel bos.")
 
-    panel = panel.dropna(subset=COMPOSITE_RAW_FACTORS + ["FutureReturn"]).copy()
+    panel = panel.dropna(subset=composite_factors + ["FutureReturn"]).copy()
     print(f"panel: {len(panel)} satir, {panel['StockID'].nunique()} hisse")
 
-    full_period = backtest_period(panel, args.horizon, "tum_donem")
+    full_period = backtest_period(panel, args.horizon, "tum_donem", composite_factors)
     print("\ntum donem sonucu:")
     print(json.dumps(full_period, indent=2, ensure_ascii=False))
 
     oos_panel = panel[pd.to_datetime(panel["Date"]) >= pd.to_datetime(args.oos_start)]
-    oos_period = backtest_period(oos_panel, args.horizon, f"oos_{args.oos_start}_sonrasi")
+    oos_period = backtest_period(oos_panel, args.horizon, f"oos_{args.oos_start}_sonrasi", composite_factors)
     print(f"\nout-of-sample ({args.oos_start} sonrasi) sonucu:")
     print(json.dumps(oos_period, indent=2, ensure_ascii=False))
 
     summary = {
         "horizon": args.horizon,
-        "compositeFactors": COMPOSITE_RAW_FACTORS,
+        "compositeFactors": composite_factors,
         "nGroups": N_GROUPS,
         "fullPeriod": full_period,
         "outOfSample": oos_period,
@@ -165,7 +167,7 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
 
     log_run(
         name="ranking_strategy_backtest",
-        config={"horizon": args.horizon, "compositeFactors": COMPOSITE_RAW_FACTORS, "oos_start": args.oos_start},
+        config={"horizon": args.horizon, "compositeFactors": composite_factors, "oos_start": args.oos_start},
         metrics={
             "fullSpreadTStat": full_period.get("spreadTStat", 0.0),
             "oosSpreadTStat": oos_period.get("spreadTStat", 0.0),
@@ -183,6 +185,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vol-mult", type=float, default=0.60, dest="vol_mult")
     parser.add_argument("--min-threshold", type=float, default=0.01, dest="min_threshold")
     parser.add_argument("--oos-start", type=str, default="2024-01-01", dest="oos_start")
+    parser.add_argument(
+        "--factors", type=str, default=",".join(DEFAULT_COMPOSITE_RAW_FACTORS),
+        help="virgulle ayrilmis ham faktor listesi (gunluk yuzdelik siraya cevrilip ortalanir)",
+    )
     return parser.parse_args()
 
 

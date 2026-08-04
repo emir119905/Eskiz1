@@ -39,7 +39,7 @@ from experiment_log import log_run
 # ham (rank olmayan) faktorler de test edilir - bazen ham deger, kesitsel
 # rank'tan daha bilgilendirici olabilir (ozellikle olcek-bagimli olmayanlar icin).
 CANDIDATE_RAW_FACTORS = [
-    "Mom3", "Mom5", "Mom10", "Mom20", "Mom60",
+    "Mom3", "Mom5", "Mom10", "Mom20", "Mom60", "Mom252Skip21",
     "RSI14", "Volatility10", "Volatility20", "Volatility60",
     "VolRatio10_60", "VolRatio20_60", "MA20_norm", "MA50_norm",
     "MASpread10_20", "MASpread20_50", "RangePosition20", "RangePosition60",

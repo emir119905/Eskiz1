@@ -1,0 +1,24 @@
+{
+  "significantCount": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:16:48.358186"
+    ],
+    "values": [
+      37.0
+    ]
+  },
+  "topTStat": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:16:48.358186"
+    ],
+    "values": [
+      5.73
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "regimesPositive": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:31:11.921316"
+    ],
+    "values": [
+      5.0
+    ]
+  },
+  "rollingWindowsPositive": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:31:11.921316"
+    ],
+    "values": [
+      4.0
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "embargo_days": 5,
+  "featureSet": "technical+relative+crossSectionalRank",
+  "horizon": 20,
+  "min_threshold": 0.01,
+  "n_trials": 3,
+  "seed": 814474555,
+  "stock": "2",
+  "test_start": "2025-01-01",
+  "validation_start": "2024-01-01",
+  "vol_mult": 0.6
+}

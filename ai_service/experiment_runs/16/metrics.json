@@ -1,0 +1,35 @@
+{
+  "fullSpreadTStat": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:15:00.701661"
+    ],
+    "values": [
+      2.47
+    ]
+  },
+  "oosExcessTStat": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:15:00.701661"
+    ],
+    "values": [
+      2.24
+    ]
+  },
+  "oosSpreadTStat": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:15:00.701661"
+    ],
+    "values": [
+      2.83
+    ]
+  }
+}

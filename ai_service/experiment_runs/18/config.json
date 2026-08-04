@@ -1,0 +1,8 @@
+{
+  "compositeFactors": [
+    "CloseLocationValue"
+  ],
+  "horizon": 3,
+  "oos_start": "2024-01-01",
+  "seed": 407777441
+}

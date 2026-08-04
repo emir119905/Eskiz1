@@ -1,0 +1,46 @@
+{
+  "likelyOverfit": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:34:56.567379"
+    ],
+    "values": [
+      0.0
+    ]
+  },
+  "okCount": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:34:56.567379"
+    ],
+    "values": [
+      1.0
+    ]
+  },
+  "pctStocksBeatingNaive": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:34:56.567379"
+    ],
+    "values": [
+      0.0
+    ]
+  },
+  "totalCount": {
+    "steps": [
+      0
+    ],
+    "timestamps": [
+      "2026-08-04T19:34:56.567379"
+    ],
+    "values": [
+      1.0
+    ]
+  }
+}
